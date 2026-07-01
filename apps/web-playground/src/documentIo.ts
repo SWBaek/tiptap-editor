@@ -1,6 +1,6 @@
 import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
 import { createEmptySdocContainer, packSdoc, unpackSdoc, type SDocMetadata } from "@sdoc/format";
-import { createEmptyDocument, type SDocDocument } from "@sdoc/schema";
+import { createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
 
 export interface OpenDocumentInput {
   name: string;
@@ -64,8 +64,9 @@ export function createMarkdownPayload(document: SDocDocument, metadata: SDocMeta
 
 export async function openDocumentInput(input: OpenDocumentInput): Promise<OpenDocumentResult> {
   const bytes = toUint8Array(input.data);
+  const lowerName = input.name.toLowerCase();
 
-  if (bytes.length === 0 && input.name.toLowerCase().endsWith(".sdoc")) {
+  if (bytes.length === 0 && lowerName.endsWith(".sdoc")) {
     const document = createEmptyDocument();
     return {
       document,
@@ -77,7 +78,7 @@ export async function openDocumentInput(input: OpenDocumentInput): Promise<OpenD
     };
   }
 
-  if (input.name.toLowerCase().endsWith(".sdoc")) {
+  if (lowerName.endsWith(".sdoc")) {
     const container = await unpackSdoc(bytes);
     return {
       document: container.document,
@@ -86,7 +87,11 @@ export async function openDocumentInput(input: OpenDocumentInput): Promise<OpenD
     };
   }
 
-  const document = JSON.parse(decodeUtf8(bytes)) as SDocDocument;
+  if (!lowerName.endsWith(".json")) {
+    throw new Error(`Unsupported file type: ${input.name}. Open a .sdoc or .json file.`);
+  }
+
+  const document = parseDocumentJson(decodeUtf8(bytes), input.name);
   return {
     document,
     metadata: input.fallbackMetadata,
@@ -105,4 +110,20 @@ function toUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array {
 
 function decodeUtf8(data: Uint8Array): string {
   return new TextDecoder().decode(data).replace(/^\uFEFF/, "");
+}
+
+function parseDocumentJson(text: string, filename: string): SDocDocument {
+  let document: unknown;
+  try {
+    document = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Invalid JSON in ${filename}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  const validation = validateDocument(document);
+  if (!validation.ok) {
+    throw new Error(`Invalid document JSON in ${filename}: ${validation.issues[0]?.message ?? "schema validation failed"}`);
+  }
+
+  return document as SDocDocument;
 }

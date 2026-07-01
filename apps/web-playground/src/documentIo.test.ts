@@ -99,6 +99,36 @@ describe("openDocumentInput", () => {
     expect(opened.statusMessage).toBe("Opened document.json");
   });
 
+  it("rejects unsupported file types before parsing", async () => {
+    await expect(
+      openDocumentInput({
+        name: "notes.txt",
+        data: new TextEncoder().encode(JSON.stringify(document)),
+        fallbackMetadata: metadata
+      })
+    ).rejects.toThrow("Unsupported file type: notes.txt");
+  });
+
+  it("rejects malformed document JSON with filename context", async () => {
+    await expect(
+      openDocumentInput({
+        name: "document.json",
+        data: new TextEncoder().encode("{not json"),
+        fallbackMetadata: metadata
+      })
+    ).rejects.toThrow("Invalid JSON in document.json");
+  });
+
+  it("rejects schema-invalid document JSON", async () => {
+    await expect(
+      openDocumentInput({
+        name: "document.json",
+        data: new TextEncoder().encode(JSON.stringify({ ...document, content: [{ type: "figure" }] })),
+        fallbackMetadata: metadata
+      })
+    ).rejects.toThrow("Invalid document JSON in document.json");
+  });
+
   it("recreates stale derived outputs after opening and saving a .sdoc", async () => {
     const staleContainer = createEmptySdocContainer(metadata);
     const stalePayload = await packSdoc({

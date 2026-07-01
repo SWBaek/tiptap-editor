@@ -14,6 +14,7 @@ import {
   Download,
   FileJson,
   FilePlus,
+  FileText,
   FolderOpen,
   Heading1,
   Heading2,
@@ -38,7 +39,7 @@ import {
   toSdocDocument,
   type BlockMoveDirection
 } from "@sdoc/editor-tiptap";
-import { createSdocPayload, openDocumentInput } from "./documentIo";
+import { createMarkdownPayload, createSdocPayload, openDocumentInput } from "./documentIo";
 import { getFileLabel, getSavedLabel, isMetadataDirty, renderDiffPreview, renderMetadataDiff } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
@@ -116,6 +117,12 @@ export function App() {
     downloadBlob(new Blob([json], { type: "application/json" }), "document.json");
     setBaselineDocument(document);
     markSaved("Saved document.json");
+  }
+
+  function downloadMarkdown() {
+    const payload = createMarkdownPayload(document, metadata);
+    downloadBlob(new Blob([payload.text], { type: "text/markdown" }), payload.filename);
+    setStatusMessage("Exported Markdown");
   }
 
   async function openFile(file: File) {
@@ -306,6 +313,9 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Download document.json" onClick={downloadJson}>
             <Braces size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Download Markdown" onClick={downloadMarkdown}>
+            <FileText size={18} />
           </ToolbarButton>
           <ToolbarButton title="Download .sdoc" onClick={downloadSdoc}>
             <Download size={18} />

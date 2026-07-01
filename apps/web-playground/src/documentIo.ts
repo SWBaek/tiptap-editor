@@ -1,4 +1,4 @@
-import { exportDerivedOutputs } from "@sdoc/export";
+import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
 import { createEmptySdocContainer, packSdoc, unpackSdoc, type SDocMetadata } from "@sdoc/format";
 import { createEmptyDocument, type SDocDocument } from "@sdoc/schema";
 
@@ -16,6 +16,11 @@ export interface OpenDocumentResult {
 
 export interface CreateSdocPayloadResult {
   bytes: Uint8Array;
+  filename: string;
+}
+
+export interface CreateMarkdownPayloadResult {
+  text: string;
   filename: string;
 }
 
@@ -47,6 +52,13 @@ export async function createSdocPayload(
   return {
     bytes,
     filename: `${safeFilename(metadata.title || "document")}.sdoc`
+  };
+}
+
+export function createMarkdownPayload(document: SDocDocument, metadata: SDocMetadata): CreateMarkdownPayloadResult {
+  return {
+    text: exportMarkdown(document),
+    filename: `${safeFilename(metadata.title || "document")}.md`
   };
 }
 
@@ -94,4 +106,3 @@ function toUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array {
 function decodeUtf8(data: Uint8Array): string {
   return new TextDecoder().decode(data).replace(/^\uFEFF/, "");
 }
-

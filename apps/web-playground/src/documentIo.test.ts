@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { unpackSdoc, type SDocMetadata } from "@sdoc/format";
 import type { SDocDocument } from "@sdoc/schema";
-import { createSdocPayload, openDocumentInput, safeFilename } from "./documentIo";
+import { createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename } from "./documentIo";
 
 const document: SDocDocument = {
   schemaVersion: 1,
@@ -49,6 +49,16 @@ describe("createSdocPayload", () => {
   });
 });
 
+describe("createMarkdownPayload", () => {
+  it("creates a title-based Markdown export payload", () => {
+    const payload = createMarkdownPayload(document, metadata);
+
+    expect(payload.filename).toBe("Round Trip Spec.md");
+    expect(payload.text).toContain("# Round Trip {#title}");
+    expect(payload.text).toContain("The saved file should reopen with metadata and derived output.");
+  });
+});
+
 describe("openDocumentInput", () => {
   it("round-trips a saved .sdoc payload", async () => {
     const payload = await createSdocPayload(document, metadata, new Date("2026-07-01T00:00:00.000Z"));
@@ -89,4 +99,3 @@ describe("openDocumentInput", () => {
     expect(opened.statusMessage).toBe("Opened document.json");
   });
 });
-

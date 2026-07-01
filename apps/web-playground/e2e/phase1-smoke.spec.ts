@@ -1,5 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
+
+interface JsonNode {
+  attrs?: {
+    id?: unknown;
+  };
+  content?: JsonNode[];
+}
 
 test("loads the Phase 1 playground and exercises preview/export basics", async ({ page }) => {
   await page.goto("/");
@@ -67,6 +74,38 @@ test("reports unsupported files without replacing the current document", async (
   await expect(page.getByText("Valid")).toBeVisible();
 });
 
+test("preserves unique block ids across split undo and redo", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  const initialIds = collectBlockIds(await readPreviewDocument(page));
+  expect(initialIds).toContain("blk_intro");
+
+  await placeCursorAtEndOfFirstParagraph(page);
+  await page.keyboard.press("Enter");
+
+  await expect
+    .poll(async () => collectBlockIds(await readPreviewDocument(page)).length)
+    .toBe(initialIds.length + 1);
+
+  const splitIds = collectBlockIds(await readPreviewDocument(page));
+  expectUniqueIds(splitIds);
+  expect(splitIds).toEqual(expect.arrayContaining(initialIds));
+
+  await page.keyboard.press("Control+Z");
+  await expect.poll(async () => collectBlockIds(await readPreviewDocument(page)).join("|")).toBe(initialIds.join("|"));
+
+  await page.keyboard.press("Control+Y");
+  await expect
+    .poll(async () => collectBlockIds(await readPreviewDocument(page)).length)
+    .toBe(initialIds.length + 1);
+
+  const redoIds = collectBlockIds(await readPreviewDocument(page));
+  expectUniqueIds(redoIds);
+  expect(redoIds).toEqual(expect.arrayContaining(initialIds));
+  await expect(page.getByText("Valid")).toBeVisible();
+});
+
 test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
@@ -91,3 +130,44 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   const screenshot = await page.screenshot({ fullPage: true });
   expect(screenshot.length).toBeGreaterThan(1_000);
 });
+
+async function readPreviewDocument(page: Page): Promise<JsonNode> {
+  return JSON.parse(await page.locator(".preview-output").innerText()) as JsonNode;
+}
+
+async function placeCursorAtEndOfFirstParagraph(page: Page): Promise<void> {
+  await page.locator(".editor-surface").evaluate((surface) => {
+    const paragraph = surface.querySelector("p");
+    const textNode = paragraph?.firstChild;
+    if (!paragraph || !textNode) {
+      throw new Error("missing editable paragraph");
+    }
+
+    const range = document.createRange();
+    range.setStart(textNode, textNode.textContent?.length ?? 0);
+    range.collapse(true);
+
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    (surface as HTMLElement).focus();
+  });
+}
+
+function collectBlockIds(node: JsonNode): string[] {
+  const ids: string[] = [];
+
+  function visit(current: JsonNode): void {
+    if (typeof current.attrs?.id === "string") {
+      ids.push(current.attrs.id);
+    }
+    current.content?.forEach(visit);
+  }
+
+  node.content?.forEach(visit);
+  return ids;
+}
+
+function expectUniqueIds(ids: string[]): void {
+  expect(new Set(ids).size).toBe(ids.length);
+}

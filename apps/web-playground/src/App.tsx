@@ -71,6 +71,7 @@ export function App() {
   const [baselineDocument, setBaselineDocument] = useState<SDocDocument>(initialDocument);
   const [baselineMetadata, setBaselineMetadata] = useState<SDocMetadata>(initialMetadata);
   const [currentFilename, setCurrentFilename] = useState<string | null>(null);
+  const [editorRevision, setEditorRevision] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
@@ -91,12 +92,13 @@ export function App() {
       attributes: {
         class: "editor-surface"
       }
-    }
+    },
+    onUpdate: () => setEditorRevision((revision) => revision + 1)
   });
 
   const document = useMemo(() => {
     return editor ? toSdocDocument(editor.getJSON(), documentId) : initialDocument;
-  }, [documentId, editor?.state.doc]);
+  }, [documentId, editor, editorRevision]);
 
   const validation = validateDocument(document);
   const json = stableStringify(document);

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agy Reviewer"
+  short_description: "Use Antigravity CLI as a model-selectable critic"
+  default_prompt: "Use $agy-reviewer to get a model-selected Antigravity review of this document."

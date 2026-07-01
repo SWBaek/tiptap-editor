@@ -1,0 +1,4 @@
+interface:
+  display_name: "Grok Reviewer"
+  short_description: "Use Grok CLI as an external critic"
+  default_prompt: "Use $grok-reviewer to get an external critical review of this document."

@@ -59,6 +59,23 @@ describe("exportMarkdown", () => {
     expect(markdown).toContain("## No Anchor {#blk_heading}");
     expect(markdown).toContain("[heading](#blk_heading)");
   });
+
+  it("exports warning callouts as admonitions", () => {
+    const withWarning: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_warning" },
+      content: [
+        {
+          type: "callout",
+          attrs: { id: "blk_warning", kind: "warning" },
+          content: [{ type: "paragraph", attrs: { id: "blk_warning_body" }, content: [{ type: "text", text: "Watch the limit." }] }]
+        }
+      ]
+    };
+
+    expect(exportMarkdown(withWarning)).toContain("> [!WARNING]\n> Watch the limit.");
+  });
 });
 
 describe("exportDerivedOutputs", () => {

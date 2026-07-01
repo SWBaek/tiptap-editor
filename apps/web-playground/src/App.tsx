@@ -18,6 +18,7 @@ import {
   FolderOpen,
   Heading1,
   Heading2,
+  Info,
   Italic,
   List,
   ListOrdered,
@@ -50,6 +51,7 @@ import {
 } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
+type CalloutKind = "note" | "warning";
 
 const initialDocument = toSdocDocument(initialContent);
 const initialMetadata: SDocMetadata = {
@@ -239,6 +241,13 @@ export function App() {
     }
   }
 
+  function applyCallout(kind: CalloutKind) {
+    const applied = editor.isActive("callout")
+      ? editor.chain().focus().updateAttributes("callout", { kind }).run()
+      : editor.chain().focus().wrapIn("callout", { kind }).run();
+    setStatusMessage(applied ? `Applied ${kind} callout` : `Cannot apply ${kind} callout`);
+  }
+
   if (!editor) {
     return null;
   }
@@ -320,7 +329,10 @@ export function App() {
           <ToolbarButton title="Code block" active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
             <Code2 size={18} />
           </ToolbarButton>
-          <ToolbarButton title="Callout" active={editor.isActive("callout")} onClick={() => editor.chain().focus().wrapIn("callout", { kind: "note" }).run()}>
+          <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
+            <Info size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Warning callout" active={editor.isActive("callout", { kind: "warning" })} onClick={() => applyCallout("warning")}>
             <AlertTriangle size={18} />
           </ToolbarButton>
           <ToolbarButton title="Move block up" onClick={() => moveBlock("up")}>

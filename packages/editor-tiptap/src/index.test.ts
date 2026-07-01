@@ -101,6 +101,33 @@ describe("SDoc conversion", () => {
       content: [{ type: "paragraph", attrs: { id: "blk_round" }, content: [{ type: "text", text: "Round trip" }] }]
     });
   });
+
+  it("preserves callout kind across SDoc conversion", () => {
+    const document = toSdocDocument(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "callout",
+            attrs: { id: "blk_warning", kind: "warning" },
+            content: [{ type: "paragraph", attrs: { id: "blk_warning_body" }, content: [{ type: "text", text: "Check this" }] }]
+          }
+        ]
+      },
+      "doc_callout"
+    );
+
+    expect(fromSdocDocument(document)).toEqual({
+      type: "doc",
+      content: [
+        {
+          type: "callout",
+          attrs: { id: "blk_warning", kind: "warning" },
+          content: [{ type: "paragraph", attrs: { id: "blk_warning_body" }, content: [{ type: "text", text: "Check this" }] }]
+        }
+      ]
+    });
+  });
 });
 
 describe("BlockIdExtension", () => {

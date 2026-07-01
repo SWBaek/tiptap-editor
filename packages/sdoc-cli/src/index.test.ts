@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 const execFileAsync = promisify(execFile);
 const cliPath = path.join(process.cwd(), "packages/sdoc-cli/dist/index.js");
 const validDocumentPath = path.join(process.cwd(), "examples/sdoc-json/basic.document.json");
+const modifiedDocumentPath = path.join(process.cwd(), "examples/sdoc-json/modified.document.json");
 
 describe("sdoc CLI", () => {
   it("validates a document JSON file", async () => {
@@ -63,6 +64,41 @@ describe("sdoc CLI", () => {
     expect(outline.stdout).toContain('"id": "blk_overview"');
     expect(references.stdout).toContain('"anchor": "overview"');
   });
+
+  it("runs the Phase 0 pack/unpack/diff/export smoke flow", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const basicFolder = path.join(tempDir, "basic.sdoc.d");
+    const modifiedFolder = path.join(tempDir, "modified.sdoc.d");
+    const unpackedFolder = path.join(tempDir, "unpacked.sdoc.d");
+    const basicSdoc = path.join(tempDir, "basic.sdoc");
+    const modifiedSdoc = path.join(tempDir, "modified.sdoc");
+    const markdownPath = path.join(tempDir, "basic.md");
+
+    try {
+      await createUnpackedFixture(basicFolder, validDocumentPath, "Basic Sample");
+      await createUnpackedFixture(modifiedFolder, modifiedDocumentPath, "Modified Sample");
+
+      await runSdoc(["pack", basicFolder, basicSdoc]);
+      await runSdoc(["pack", modifiedFolder, "-o", modifiedSdoc]);
+
+      const validate = await runSdoc(["validate", basicSdoc]);
+      expect(validate.stdout).toContain(`VALID ${basicSdoc}`);
+
+      await runSdoc(["unpack", basicSdoc, unpackedFolder]);
+      const unpackedDocument = JSON.parse(await readFile(path.join(unpackedFolder, "document.json"), "utf8"));
+      expect(unpackedDocument.attrs.id).toBe("doc_sample");
+
+      const diff = await runSdoc(["diff", basicSdoc, modifiedSdoc]);
+      expect(diff.stdout).toContain("MODIFIED heading blk_overview");
+      expect(diff.stdout).toContain('text changed "[-System-] [+Architecture+] Overview"');
+
+      await runSdoc(["export", basicSdoc, "--format", "markdown", "-o", markdownPath]);
+      const markdown = await readFile(markdownPath, "utf8");
+      expect(markdown).toContain("# System Overview {#overview}");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });
 
 async function runSdoc(args: string[]): Promise<{ stdout: string; stderr: string }> {
@@ -73,7 +109,10 @@ async function runSdoc(args: string[]): Promise<{ stdout: string; stderr: string
   };
 }
 
-async function createUnpackedFixture(folderPath: string): Promise<void> {
+async function createUnpackedFixture(folderPath: string, documentPath = validDocumentPath, title = "CLI Test"): Promise<void> {
+  const documentText = await readFile(documentPath, "utf8");
+  const document = JSON.parse(documentText) as { attrs?: { id?: string } };
+
   await mkdir(folderPath, { recursive: true });
   await writeFile(
     path.join(folderPath, "manifest.json"),
@@ -82,7 +121,7 @@ async function createUnpackedFixture(folderPath: string): Promise<void> {
         format: "sdoc",
         formatVersion: 1,
         schemaVersion: 1,
-        documentId: "doc_cli",
+        documentId: document.attrs?.id ?? "doc_cli",
         createdBy: "test"
       },
       null,
@@ -90,10 +129,6 @@ async function createUnpackedFixture(folderPath: string): Promise<void> {
     ),
     "utf8"
   );
-  await writeFile(
-    path.join(folderPath, "document.json"),
-    JSON.stringify({ schemaVersion: 1, type: "doc", attrs: { id: "doc_cli" }, content: [] }, null, 2),
-    "utf8"
-  );
-  await writeFile(path.join(folderPath, "metadata.json"), JSON.stringify({ title: "CLI Test" }, null, 2), "utf8");
+  await writeFile(path.join(folderPath, "document.json"), documentText, "utf8");
+  await writeFile(path.join(folderPath, "metadata.json"), JSON.stringify({ title }, null, 2), "utf8");
 }

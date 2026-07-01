@@ -14,7 +14,7 @@ Phase 1의 목표는 브라우저 playground에서 `.sdoc` 문서를 만들고, 
 | Basic block editing | StarterKit toolbar supports heading, paragraph, bullet/ordered list, blockquote, and code block. `packages/editor-tiptap` converts editor JSON to SDoc JSON. |
 | Callout/admonition basics | `CalloutNode` supports note/warning callouts; conversion and Markdown export tests preserve callout kind. |
 | Metadata editing | Sidebar fields edit title, author, and version. `documentState` tests cover dirty detection and metadata diff lines. |
-| `.sdoc` open/save | `documentIo` tests cover `.sdoc` round trip, empty `.sdoc` initialization, JSON open, invalid input rejection, and derived output regeneration. |
+| `.sdoc` open/save | `documentIo` tests cover `.sdoc` round trip, empty `.sdoc` initialization, JSON open, invalid input rejection, and derived output regeneration. Playwright also covers browser download and reopen. |
 | Block ID lifecycle | `editor-tiptap` tests cover missing IDs, duplicate IDs, split blocks, list wrappers, nested blocks, and top-level block moves without ID loss. |
 | Markdown export | `documentIo` and `sdoc-export` tests cover title-based `.md` payloads and Markdown content generation. |
 
@@ -34,7 +34,7 @@ Then verify the running playground at `http://127.0.0.1:6280`:
 Invoke-WebRequest -Uri http://127.0.0.1:6280 -UseBasicParsing
 ```
 
-The automated smoke test in `apps/web-playground/e2e/phase1-smoke.spec.ts` verifies the playground loads, Markdown/Diff previews update, Markdown download works, and the rendered page is non-empty. For release candidates, also run this manual browser smoke:
+The automated smoke tests in `apps/web-playground/e2e/phase1-smoke.spec.ts` verify the playground loads, Markdown/Diff previews update, Markdown download works, `.sdoc` download/reopen preserves metadata and block anchors, unsupported files report an error without replacing the document, and the mobile viewport remains usable. For release candidates, also run this manual browser smoke:
 
 1. Create a new document.
 2. Edit heading, paragraph, list, blockquote, code block, note callout, and warning callout.
@@ -45,7 +45,7 @@ The automated smoke test in `apps/web-playground/e2e/phase1-smoke.spec.ts` verif
 
 ## Remaining Risk
 
-The browser smoke test covers the happy path only. It does not yet automate reopening the downloaded `.sdoc`, invalid-file UX, or mobile viewport behavior.
+The browser smoke tests cover core happy/error paths, but they do not yet automate clipboard paste, undo/redo sequences, drag/drop, or every toolbar command across mobile viewports.
 
 ## Phase 1 Boundary
 

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@sdoc/diff": "0.0.0",
+    "@sdoc/editor-tiptap": "0.0.0",
     "@sdoc/export": "0.0.0",
     "@sdoc/format": "0.0.0",
     "@sdoc/schema": "0.0.0",

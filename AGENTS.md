@@ -18,6 +18,7 @@ Before implementation, read `docs/development-plan.md`. Current implementation l
 - `packages/sdoc-diff/`: semantic diff engine.
 - `packages/sdoc-export/`: Markdown, AI/RAG, outline, and reference exports.
 - `packages/sdoc-cli/`: Phase 0 CLI for pack/unpack/diff/export checks.
+- `packages/editor-tiptap/`: Tiptap extensions and editor JSON/SDoc conversion helpers.
 
 Key design documents:
 
@@ -31,7 +32,6 @@ Key design documents:
 Planned later layout:
 
 - `apps/desktop/`: later Tauri wrapper.
-- `packages/editor-tiptap/`: Tiptap integration and extensions.
 
 ## Mandatory Architecture Rules
 

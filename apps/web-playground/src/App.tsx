@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import type { AnyExtension } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -24,7 +25,7 @@ import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
 import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
 import { createEmptySdocContainer, packSdoc, stableStringify, unpackSdoc, type SDocMetadata } from "@sdoc/format";
 import { createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
-import { BlockIdExtension, CalloutNode, fromSdocDocument, initialContent, toSdocDocument } from "./sdocEditor";
+import { BlockIdExtension, CalloutNode, fromSdocDocument, initialContent, toSdocDocument } from "@sdoc/editor-tiptap";
 
 type PreviewTab = "json" | "markdown" | "diff";
 
@@ -34,6 +35,8 @@ const initialMetadata: SDocMetadata = {
   author: "",
   version: "0.1"
 };
+
+const sdocExtensions = [CalloutNode, BlockIdExtension] as unknown as AnyExtension[];
 
 export function App() {
   const [activeTab, setActiveTab] = useState<PreviewTab>("json");
@@ -55,8 +58,7 @@ export function App() {
       }),
       Underline,
       Placeholder.configure({ placeholder: "Write the technical document..." }),
-      CalloutNode,
-      BlockIdExtension
+      ...sdocExtensions
     ],
     content: initialContent,
     editorProps: {

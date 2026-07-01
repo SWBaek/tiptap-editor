@@ -5,7 +5,7 @@
     { "path": "./packages/sdoc-format" },
     { "path": "./packages/sdoc-diff" },
     { "path": "./packages/sdoc-export" },
+    { "path": "./packages/editor-tiptap" },
     { "path": "./packages/sdoc-cli" }
   ]
 }
-

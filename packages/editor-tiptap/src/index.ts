@@ -2,7 +2,7 @@ import { Extension, mergeAttributes, Node, type JSONContent } from "@tiptap/core
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { createBlockId, type SDocDocument, type SDocNode } from "@sdoc/schema";
 
-const BLOCK_TYPES_WITH_IDS = [
+export const BLOCK_TYPES_WITH_IDS = [
   "paragraph",
   "heading",
   "blockquote",
@@ -11,7 +11,9 @@ const BLOCK_TYPES_WITH_IDS = [
   "orderedList",
   "listItem",
   "callout"
-];
+] as const;
+
+const blockTypeSet = new Set<string>(BLOCK_TYPES_WITH_IDS);
 
 export const CalloutNode = Node.create({
   name: "callout",
@@ -44,7 +46,7 @@ export const BlockIdExtension = Extension.create({
   addGlobalAttributes() {
     return [
       {
-        types: BLOCK_TYPES_WITH_IDS,
+        types: [...BLOCK_TYPES_WITH_IDS],
         attributes: {
           id: {
             default: null,
@@ -65,7 +67,7 @@ export const BlockIdExtension = Extension.create({
           const updates: Array<{ pos: number; attrs: Record<string, unknown> }> = [];
 
           newState.doc.descendants((node, pos) => {
-            if (!BLOCK_TYPES_WITH_IDS.includes(node.type.name)) {
+            if (!blockTypeSet.has(node.type.name)) {
               return true;
             }
 
@@ -126,12 +128,61 @@ export const initialContent: JSONContent = {
   ]
 };
 
+export function repairJsonBlockIds(content: JSONContent, createId = createBlockId): JSONContent {
+  const seen = new Set<string>();
+
+  function visit(node: JSONContent): JSONContent {
+    const repaired: JSONContent = {
+      ...node,
+      attrs: node.attrs ? { ...node.attrs } : undefined,
+      marks: node.marks ? node.marks.map((mark) => ({ ...mark, attrs: mark.attrs ? { ...mark.attrs } : undefined })) : undefined,
+      content: node.content?.map(visit)
+    };
+
+    if (!repaired.type || !blockTypeSet.has(repaired.type)) {
+      return removeEmptyCollections(repaired);
+    }
+
+    const attrs = { ...(repaired.attrs ?? {}) };
+    const id = typeof attrs.id === "string" && attrs.id.length > 0 ? attrs.id : undefined;
+
+    if (!id || seen.has(id)) {
+      attrs.id = createId();
+    }
+
+    seen.add(String(attrs.id));
+    repaired.attrs = attrs;
+    return removeEmptyCollections(repaired);
+  }
+
+  return visit(content);
+}
+
+export function collectJsonBlockIds(content: JSONContent): string[] {
+  const ids: string[] = [];
+
+  function visit(node: JSONContent): void {
+    if (node.type && blockTypeSet.has(node.type)) {
+      const id = node.attrs?.id;
+      if (typeof id === "string" && id.length > 0) {
+        ids.push(id);
+      }
+    }
+
+    node.content?.forEach(visit);
+  }
+
+  visit(content);
+  return ids;
+}
+
 export function toSdocDocument(content: JSONContent, documentId = "doc_playground"): SDocDocument {
+  const repaired = repairJsonBlockIds(content);
   return {
     schemaVersion: 1,
     type: "doc",
     attrs: { id: documentId },
-    content: (content.content ?? []).map(toSdocNode)
+    content: (repaired.content ?? []).map(toSdocNode)
   };
 }
 
@@ -195,3 +246,18 @@ function fromSdocNode(node: SDocNode): JSONContent {
 
   return content;
 }
+
+function removeEmptyCollections(content: JSONContent): JSONContent {
+  const cleaned = { ...content };
+  if (cleaned.attrs && Object.keys(cleaned.attrs).length === 0) {
+    delete cleaned.attrs;
+  }
+  if (cleaned.marks && cleaned.marks.length === 0) {
+    delete cleaned.marks;
+  }
+  if (cleaned.content && cleaned.content.length === 0) {
+    delete cleaned.content;
+  }
+  return cleaned;
+}
+

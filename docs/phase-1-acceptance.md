@@ -1,0 +1,51 @@
+# Phase 1 Acceptance Audit
+
+작성일: 2026-07-02
+
+## Scope
+
+Phase 1의 목표는 브라우저 playground에서 `.sdoc` 문서를 만들고, 열고, 저장하고, 기본 편집할 수 있음을 증명하는 것이다. 제품 완성도나 고급 기술 문서 기능보다 format-first editor workflow가 우선이다.
+
+## Acceptance Evidence
+
+| Requirement | Evidence |
+| --- | --- |
+| Tiptap editor shell | `apps/web-playground/src/App.tsx` renders the editor, toolbar, metadata sidebar, and JSON/Markdown/Diff preview panes. |
+| Basic block editing | StarterKit toolbar supports heading, paragraph, bullet/ordered list, blockquote, and code block. `packages/editor-tiptap` converts editor JSON to SDoc JSON. |
+| Callout/admonition basics | `CalloutNode` supports note/warning callouts; conversion and Markdown export tests preserve callout kind. |
+| Metadata editing | Sidebar fields edit title, author, and version. `documentState` tests cover dirty detection and metadata diff lines. |
+| `.sdoc` open/save | `documentIo` tests cover `.sdoc` round trip, empty `.sdoc` initialization, JSON open, invalid input rejection, and derived output regeneration. |
+| Block ID lifecycle | `editor-tiptap` tests cover missing IDs, duplicate IDs, split blocks, list wrappers, nested blocks, and top-level block moves without ID loss. |
+| Markdown export | `documentIo` and `sdoc-export` tests cover title-based `.md` payloads and Markdown content generation. |
+
+## Required Verification
+
+Run these before declaring Phase 1 closed:
+
+```text
+npm test
+npm run build
+```
+
+Then verify the running playground at `http://127.0.0.1:6280`:
+
+```text
+Invoke-WebRequest -Uri http://127.0.0.1:6280 -UseBasicParsing
+```
+
+Manual browser smoke:
+
+1. Create a new document.
+2. Edit heading, paragraph, list, blockquote, code block, note callout, and warning callout.
+3. Change title, author, and version metadata.
+4. Confirm JSON, Markdown, and Diff previews update.
+5. Download `.sdoc` and Markdown.
+6. Reopen the downloaded `.sdoc` and confirm content, metadata, and block IDs survive.
+
+## Remaining Risk
+
+There is no automated browser E2E test yet. Unit tests cover the editor-core and file I/O logic, while final Phase 1 closure still requires the manual smoke path above or a future Playwright test.
+
+## Phase 1 Boundary
+
+Phase 1 does not include visual semantic diff UI, advanced tables, image/asset management, KaTeX, Mermaid rendering, PDF/slide export, real-time collaboration, or Git integration. Those remain Phase 2+ work.

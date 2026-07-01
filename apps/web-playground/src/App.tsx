@@ -34,6 +34,7 @@ import {
   toSdocDocument
 } from "@sdoc/editor-tiptap";
 import { createSdocPayload, openDocumentInput } from "./documentIo";
+import { getSavedLabel, isMetadataDirty } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
 
@@ -53,6 +54,7 @@ export function App() {
   const [documentId, setDocumentId] = useState<string>(initialDocument.attrs.id);
   const [metadata, setMetadata] = useState<SDocMetadata>(initialMetadata);
   const [baselineDocument, setBaselineDocument] = useState<SDocDocument>(initialDocument);
+  const [baselineMetadata, setBaselineMetadata] = useState<SDocMetadata>(initialMetadata);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
@@ -84,17 +86,24 @@ export function App() {
   const json = stableStringify(document);
   const markdown = exportMarkdown(document);
   const diffLines = renderDiffEvents(diffDocuments(baselineDocument, document));
+  const hasDocumentChanges = diffLines.length > 0;
+  const hasMetadataChanges = isMetadataDirty(metadata, baselineMetadata);
+  const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges;
+  const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
   const preview = activeTab === "json" ? json : activeTab === "markdown" ? markdown : diffLines.join("\n") || "NO_CHANGES\n";
 
   async function downloadSdoc() {
     const payload = await createSdocPayload(document, metadata);
     const blobPart = payload.bytes.buffer.slice(payload.bytes.byteOffset, payload.bytes.byteOffset + payload.bytes.byteLength) as ArrayBuffer;
     downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), payload.filename);
+    setBaselineDocument(document);
+    setBaselineMetadata(metadata);
     markSaved("Saved .sdoc");
   }
 
   function downloadJson() {
     downloadBlob(new Blob([json], { type: "application/json" }), "document.json");
+    setBaselineDocument(document);
     markSaved("Saved document.json");
   }
 
@@ -115,12 +124,14 @@ export function App() {
       editor.commands.setContent(fromSdocDocument(loaded.document), { emitUpdate: true });
       repairEditorBlockIds(editor);
       setDocumentId(loaded.document.attrs.id);
-      setMetadata((current) => ({
-        ...current,
+      const nextMetadata = {
+        ...metadata,
         ...loaded.metadata,
-        title: loaded.metadata.title || current.title
-      }));
+        title: loaded.metadata.title || metadata.title
+      };
+      setMetadata(nextMetadata);
       setBaselineDocument(loaded.document);
+      setBaselineMetadata(nextMetadata);
       setActiveTab("json");
       setStatusMessage(loaded.statusMessage);
       setSavedAt("Not saved");
@@ -159,7 +170,7 @@ export function App() {
         </div>
         <div className="status-block">
           <span>Saved</span>
-          <strong>{savedAt}</strong>
+          <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
         </div>
         <label className="metadata-field">
           <span>Title</span>

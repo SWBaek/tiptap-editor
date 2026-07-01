@@ -131,6 +131,10 @@ button {
   color: #ffaaa5;
 }
 
+.warning {
+  color: #ffd27a;
+}
+
 .issue-list {
   display: grid;
   gap: 8px;

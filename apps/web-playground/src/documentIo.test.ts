@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { unpackSdoc, type SDocMetadata } from "@sdoc/format";
+import { createEmptySdocContainer, packSdoc, unpackSdoc, type SDocMetadata } from "@sdoc/format";
 import type { SDocDocument } from "@sdoc/schema";
 import { createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename } from "./documentIo";
 
@@ -97,5 +97,35 @@ describe("openDocumentInput", () => {
     expect(opened.document).toEqual(document);
     expect(opened.metadata).toEqual(metadata);
     expect(opened.statusMessage).toBe("Opened document.json");
+  });
+
+  it("recreates stale derived outputs after opening and saving a .sdoc", async () => {
+    const staleContainer = createEmptySdocContainer(metadata);
+    const stalePayload = await packSdoc({
+      ...staleContainer,
+      manifest: {
+        ...staleContainer.manifest,
+        documentId: document.attrs.id
+      },
+      document,
+      metadata,
+      derived: {
+        "plain.md": "stale markdown\n"
+      }
+    });
+
+    const opened = await openDocumentInput({
+      name: "Stale Derived.sdoc",
+      data: stalePayload,
+      fallbackMetadata: { title: "Fallback" }
+    });
+    const saved = await createSdocPayload(opened.document, opened.metadata, new Date("2026-07-02T00:00:00.000Z"));
+    const roundTripped = await unpackSdoc(saved.bytes);
+
+    expect(opened.document).toEqual(document);
+    expect(roundTripped.derived?.["plain.md"]).toContain("# Round Trip {#title}");
+    expect(roundTripped.derived?.["plain.md"]).not.toContain("stale markdown");
+    expect(roundTripped.derived?.["outline.json"]).toContain("blk_title");
+    expect(roundTripped.derived?.["chunks.jsonl"]).toContain("blk_body");
   });
 });

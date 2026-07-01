@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
 import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
 import { isLikelyZipContainer, normalizeDocument, packSdoc, stableStringify, unpackSdoc, type SDocContainer } from "@sdoc/format";
-import type { SDocDocument } from "@sdoc/schema";
+import { validateDocument, type SDocDocument, type ValidationIssue } from "@sdoc/schema";
 
 async function main(args: string[]): Promise<void> {
   const [command, ...rest] = args;
@@ -22,6 +22,9 @@ async function main(args: string[]): Promise<void> {
       break;
     case "unpack":
       await runUnpack(rest);
+      break;
+    case "validate":
+      await runValidate(rest);
       break;
     default:
       printHelp();
@@ -86,13 +89,38 @@ async function runUnpack(args: string[]): Promise<void> {
   await writeContainerFolder(output, container);
 }
 
+async function runValidate(args: string[]): Promise<void> {
+  const [inputPath] = args;
+  if (!inputPath) {
+    throw new Error("usage: sdoc validate <input.sdoc|document.json|unpacked-folder>");
+  }
+
+  const inputStat = await stat(inputPath);
+  if (inputStat.isDirectory()) {
+    const container = await readContainerFolder(inputPath);
+    await packSdoc(container);
+    process.stdout.write(`VALID ${inputPath}\n`);
+    return;
+  }
+
+  const data = await readFile(inputPath);
+  if (inputPath.toLowerCase().endsWith(".sdoc") || isLikelyZipContainer(data)) {
+    await unpackSdoc(data);
+    process.stdout.write(`VALID ${inputPath}\n`);
+    return;
+  }
+
+  parseDocumentJson(stripBom(data.toString("utf8")), inputPath);
+  process.stdout.write(`VALID ${inputPath}\n`);
+}
+
 async function loadDocument(filePath: string): Promise<SDocDocument> {
   const data = await readFile(filePath);
-  if (filePath.endsWith(".sdoc") || isLikelyZipContainer(data)) {
+  if (filePath.toLowerCase().endsWith(".sdoc") || isLikelyZipContainer(data)) {
     return (await unpackSdoc(data)).document;
   }
 
-  return JSON.parse(stripBom(data.toString("utf8"))) as SDocDocument;
+  return parseDocumentJson(stripBom(data.toString("utf8")), filePath);
 }
 
 async function readContainerFolder(folderPath: string): Promise<SDocContainer> {
@@ -179,7 +207,32 @@ Commands:
   sdoc export <input.sdoc|document.json> markdown [output.md]
   sdoc pack <folder> <output.sdoc>
   sdoc unpack <input.sdoc> <folder>
+  sdoc validate <input.sdoc|document.json|unpacked-folder>
 `);
+}
+
+function assertValidDocument(document: unknown, source: string): SDocDocument {
+  const validation = validateDocument(document);
+  if (!validation.ok) {
+    throw new Error(`invalid document in ${source}:\n${formatValidationIssues(validation.issues)}`);
+  }
+
+  return document as SDocDocument;
+}
+
+function parseDocumentJson(text: string, source: string): SDocDocument {
+  let document: unknown;
+  try {
+    document = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`invalid JSON in ${source}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  return assertValidDocument(document, source);
+}
+
+function formatValidationIssues(issues: ValidationIssue[]): string {
+  return issues.length > 0 ? issues.map((issue) => `- ${issue.path}: ${issue.message}`).join("\n") : "- schema validation failed";
 }
 
 function stripBom(value: string): string {

@@ -112,6 +112,13 @@ function renderBlock(node: SDocNode, references: Map<string, ReferenceTarget>, d
         .join("\n")}`;
     }
 
+    case "figure": {
+      const assetId = typeof node.attrs?.assetId === "string" ? node.attrs.assetId : "";
+      const caption = renderInlineChildren(node, references).trim();
+      const alt = typeof node.attrs?.alt === "string" && node.attrs.alt.length > 0 ? node.attrs.alt : caption;
+      return `![${escapeMarkdownAlt(alt)}](assets/${encodeURI(assetId)})\n\n_Figure: ${caption}_`;
+    }
+
     case "bulletList":
       return (node.content ?? []).map((child) => renderListItem(child, references, "-", depth)).join("\n");
 
@@ -186,6 +193,10 @@ function applyMarks(text: string, marks: SDocMark[]): string {
         return current;
     }
   }, text);
+}
+
+function escapeMarkdownAlt(value: string): string {
+  return value.replaceAll("[", "\\[").replaceAll("]", "\\]");
 }
 
 function collectReferenceTargets(document: SDocDocument): Map<string, ReferenceTarget> {

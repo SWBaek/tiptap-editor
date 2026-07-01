@@ -29,10 +29,10 @@ describe("document state helpers", () => {
     expect(getValidationFailureMessage({ ok: true, issues: [] }, "save .sdoc")).toBeNull();
     expect(
       getValidationFailureMessage(
-        { ok: false, issues: [{ path: "$.content[0].type", message: "unsupported node type: figure" }] },
+        { ok: false, issues: [{ path: "$.content[0].type", message: "unsupported node type: table" }] },
         "export Markdown"
       )
-    ).toBe("Cannot export Markdown: $.content[0].type: unsupported node type: figure");
+    ).toBe("Cannot export Markdown: $.content[0].type: unsupported node type: table");
   });
 
   it("renders metadata changes by field", () => {

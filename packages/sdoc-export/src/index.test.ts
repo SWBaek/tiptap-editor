@@ -76,6 +76,25 @@ describe("exportMarkdown", () => {
 
     expect(exportMarkdown(withWarning)).toContain("> [!WARNING]\n> Watch the limit.");
   });
+
+  it("exports figures with asset links and captions", () => {
+    const withFigure: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_figure" },
+      content: [
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "System architecture" }] }]
+        }
+      ]
+    };
+
+    const markdown = exportMarkdown(withFigure);
+    expect(markdown).toContain("![Architecture](assets/asset_architecture.png)");
+    expect(markdown).toContain("_Figure: System architecture_");
+  });
 });
 
 describe("exportDerivedOutputs", () => {
@@ -86,5 +105,27 @@ describe("exportDerivedOutputs", () => {
     expect(outputs["outline.json"]).toContain("blk_h");
     expect(outputs["references.json"]).toContain("overview");
     expect(outputs["chunks.jsonl"]).toContain("blk_p");
+  });
+
+  it("includes figure captions in derived outputs", () => {
+    const withFigure: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_figure" },
+      content: [
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "System architecture" }] }]
+        }
+      ]
+    };
+
+    const outputs = exportDerivedOutputs(withFigure);
+
+    expect(outputs["plain.md"]).toContain("_Figure: System architecture_");
+    expect(outputs["references.json"]).toContain('"type": "figure"');
+    expect(outputs["chunks.jsonl"]).toContain('"type":"figure"');
+    expect(outputs["chunks.jsonl"]).toContain("System architecture");
   });
 });

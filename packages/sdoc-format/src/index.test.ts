@@ -8,6 +8,7 @@ import {
   tryUnpackSdoc,
   unpackSdoc
 } from "./index";
+import type { SDocDocument } from "@sdoc/schema";
 
 describe("stableStringify", () => {
   it("produces deterministic document JSON", () => {
@@ -40,7 +41,7 @@ describe("stableStringify", () => {
   });
 
   it("preserves empty strings in attributes", () => {
-    const document = {
+    const document: SDocDocument = {
       schemaVersion: 1,
       type: "doc",
       attrs: { id: "doc_a" },
@@ -77,6 +78,57 @@ describe("packSdoc", () => {
     const second = await packSdoc(container);
 
     expect(Buffer.compare(Buffer.from(first), Buffer.from(second))).toBe(0);
+  });
+
+  it("round-trips figure asset references and binary assets", async () => {
+    const container = createEmptySdocContainer({ title: "Figure Asset" });
+    const document: SDocDocument = {
+      schemaVersion: 1 as const,
+      type: "doc" as const,
+      attrs: { id: "doc_figure" },
+      content: [
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "System architecture" }] }]
+        }
+      ]
+    };
+
+    const packed = await packSdoc({
+      ...container,
+      manifest: { ...container.manifest, documentId: document.attrs.id },
+      document,
+      assets: { "asset_architecture.png": new Uint8Array([1, 2, 3]) }
+    });
+    const unpacked = await unpackSdoc(packed);
+
+    expect(unpacked.document.content[0]?.attrs?.assetId).toBe("asset_architecture.png");
+    expect(Array.from(unpacked.assets?.["asset_architecture.png"] ?? [])).toEqual([1, 2, 3]);
+  });
+
+  it("rejects figure references to missing assets", async () => {
+    const container = createEmptySdocContainer({ title: "Missing Figure Asset" });
+    const document = {
+      schemaVersion: 1 as const,
+      type: "doc" as const,
+      attrs: { id: "doc_figure" },
+      content: [
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_missing.png" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "Missing asset" }] }]
+        }
+      ]
+    };
+
+    await expect(
+      packSdoc({
+        ...container,
+        manifest: { ...container.manifest, documentId: document.attrs.id },
+        document
+      })
+    ).rejects.toThrow("missing assets: asset_missing.png");
   });
 });
 

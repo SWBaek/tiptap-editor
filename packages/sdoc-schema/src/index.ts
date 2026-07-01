@@ -45,7 +45,8 @@ export const BLOCK_NODE_TYPES = new Set([
   "bulletList",
   "orderedList",
   "listItem",
-  "callout"
+  "callout",
+  "figure"
 ]);
 
 export const INLINE_NODE_TYPES = new Set(["text", "hardBreak", "crossReference"]);
@@ -186,6 +187,18 @@ function validateNode(
     const targetId = typedNode.attrs?.targetId;
     if (typeof targetId !== "string" || targetId.length === 0) {
       issues.push({ path: `${path}.attrs.targetId`, message: "crossReference targetId is required" });
+    }
+  }
+
+  if (typedNode.type === "figure") {
+    const assetId = typedNode.attrs?.assetId;
+    if (typeof assetId !== "string" || assetId.length === 0) {
+      issues.push({ path: `${path}.attrs.assetId`, message: "figure assetId is required" });
+    }
+
+    const caption = Array.isArray(typedNode.content) ? typedNode.content.find((child) => child.type === "paragraph") : undefined;
+    if (!caption || getPlainText(caption).trim().length === 0) {
+      issues.push({ path: `${path}.content`, message: "figure caption paragraph is required" });
     }
   }
 

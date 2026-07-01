@@ -8,7 +8,7 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 
 ## v1 기본 노드
 
-Phase 0/1에서 우선 지원할 노드는 다음으로 제한한다.
+현재 지원하는 canonical node는 다음으로 제한한다.
 
 | Node | Block | 설명 |
 |---|---:|---|
@@ -21,11 +21,34 @@ Phase 0/1에서 우선 지원할 노드는 다음으로 제한한다.
 | `orderedList` | yes | 순서 목록 컨테이너 |
 | `listItem` | yes | 목록 항목 |
 | `callout` | yes | `kind: note/info/warning/danger/tip` |
+| `figure` | yes | Phase 2 asset-backed image with caption; `assetId` required |
 | `text` | no | inline text |
 | `hardBreak` | no | 줄바꿈 |
 | `crossReference` | no | 내부 참조 inline node |
 
-Phase 2 이후 `figure`, `table`, `equationBlock`, `diagram`을 추가한다. PDF, slide, Draw.io deep integration은 schema foundation 이후로 미룬다.
+Phase 2 이후 `table`, `equationBlock`, `diagram`을 추가한다. PDF, slide, Draw.io deep integration은 schema foundation 이후로 미룬다.
+
+## Phase 2 Figure Shape
+
+`figure` is the first Phase 2 block node. It stores an asset reference in `attrs.assetId`, keeps image bytes in the `.sdoc` `assets/` container, and requires a paragraph caption so Markdown and AI/RAG exports have useful text.
+
+```json
+{
+  "type": "figure",
+  "attrs": {
+    "id": "blk_figure",
+    "assetId": "asset_architecture.png",
+    "alt": "Architecture"
+  },
+  "content": [
+    {
+      "type": "paragraph",
+      "attrs": { "id": "blk_caption" },
+      "content": [{ "type": "text", "text": "System architecture" }]
+    }
+  ]
+}
+```
 
 ## Mark
 
@@ -59,4 +82,3 @@ Phase 2 이후 `figure`, `table`, `equationBlock`, `diagram`을 추가한다. PD
 - 복사/붙여넣기, split, merge, undo/redo 후 block ID 중복을 검사한다.
 - 중복 ID가 발견되면 붙여넣어진 쪽에 새 ID를 발급한다.
 - editor plugin state는 `document.json`에 저장하지 않는다.
-

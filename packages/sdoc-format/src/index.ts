@@ -214,6 +214,27 @@ function assertValidContainer(container: SDocContainer): void {
     const messages = validation.issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ");
     throw new SDocFormatError("invalid-document", `invalid document: ${messages}`);
   }
+
+  const assets = container.assets ?? {};
+  const missingAssetIds = collectReferencedAssetIds(container.document).filter((assetId) => !(assetId in assets));
+  if (missingAssetIds.length > 0) {
+    throw new SDocFormatError("invalid-document", `missing assets: ${missingAssetIds.join(", ")}`);
+  }
+}
+
+function collectReferencedAssetIds(document: SDocDocument): string[] {
+  const assetIds = new Set<string>();
+
+  function visit(node: SDocNode): void {
+    if (node.type === "figure" && typeof node.attrs?.assetId === "string" && node.attrs.assetId.length > 0) {
+      assetIds.add(node.attrs.assetId);
+    }
+
+    node.content?.forEach(visit);
+  }
+
+  document.content.forEach(visit);
+  return [...assetIds].sort((a, b) => a.localeCompare(b));
 }
 
 async function readJsonFile<T>(zip: JSZip, path: string): Promise<T> {

@@ -23,17 +23,49 @@ describe("validateDocument", () => {
     expect(result.issues.some((issue) => issue.message.includes("duplicate block id"))).toBe(true);
   });
 
-  it("rejects nodes outside the v1 scope", () => {
+  it("accepts a figure with an asset reference and caption", () => {
     const document = {
       schemaVersion: 1,
       type: "doc",
       attrs: { id: "doc_test" },
-      content: [{ type: "figure", attrs: { id: "blk_future" }, content: [] }]
+      content: [
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "System diagram" }] }]
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects figures without an asset reference or caption", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_test" },
+      content: [{ type: "figure", attrs: { id: "blk_figure" }, content: [] }]
     };
 
     const result = validateDocument(document);
     expect(result.ok).toBe(false);
-    expect(result.issues.some((issue) => issue.message.includes("unsupported node type: figure"))).toBe(true);
+    expect(result.issues.some((issue) => issue.message.includes("figure assetId is required"))).toBe(true);
+    expect(result.issues.some((issue) => issue.message.includes("figure caption paragraph is required"))).toBe(true);
+  });
+
+  it("rejects nodes outside the current scope", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_test" },
+      content: [{ type: "table", attrs: { id: "blk_future" }, content: [] }]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("unsupported node type: table"))).toBe(true);
   });
 
   it("rejects marks outside the v1 scope", () => {

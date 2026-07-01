@@ -135,6 +135,13 @@ export function toSdocDocument(content: JSONContent, documentId = "doc_playgroun
   };
 }
 
+export function fromSdocDocument(document: SDocDocument): JSONContent {
+  return {
+    type: "doc",
+    content: document.content.map(fromSdocNode)
+  };
+}
+
 function toSdocNode(node: JSONContent): SDocNode {
   const sdocNode: SDocNode = {
     type: node.type ?? "paragraph"
@@ -162,3 +169,29 @@ function toSdocNode(node: JSONContent): SDocNode {
   return sdocNode;
 }
 
+function fromSdocNode(node: SDocNode): JSONContent {
+  const content: JSONContent = {
+    type: node.type
+  };
+
+  if (node.text !== undefined) {
+    content.text = node.text;
+  }
+
+  if (node.attrs && Object.keys(node.attrs).length > 0) {
+    content.attrs = node.attrs;
+  }
+
+  if (node.marks && node.marks.length > 0) {
+    content.marks = node.marks.map((mark) => ({
+      type: mark.type,
+      attrs: mark.attrs
+    }));
+  }
+
+  if (node.content && node.content.length > 0) {
+    content.content = node.content.map(fromSdocNode);
+  }
+
+  return content;
+}

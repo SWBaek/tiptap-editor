@@ -1,6 +1,6 @@
 import { getNodeAnchor, getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocMark, type SDocNode } from "@sdoc/schema";
 
-export interface DerivedOutputs {
+export interface DerivedOutputs extends Record<string, string> {
   "plain.md": string;
   "outline.json": string;
   "references.json": string;

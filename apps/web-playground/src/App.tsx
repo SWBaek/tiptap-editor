@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -10,6 +10,7 @@ import {
   Code2,
   Download,
   FileJson,
+  FolderOpen,
   Heading1,
   Heading2,
   Italic,
@@ -20,18 +21,28 @@ import {
   Underline as UnderlineIcon
 } from "lucide-react";
 import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
-import { exportMarkdown } from "@sdoc/export";
-import { createEmptySdocContainer, packSdoc, stableStringify } from "@sdoc/format";
-import { validateDocument } from "@sdoc/schema";
-import { BlockIdExtension, CalloutNode, initialContent, toSdocDocument } from "./sdocEditor";
+import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
+import { createEmptySdocContainer, packSdoc, stableStringify, unpackSdoc, type SDocMetadata } from "@sdoc/format";
+import { createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
+import { BlockIdExtension, CalloutNode, fromSdocDocument, initialContent, toSdocDocument } from "./sdocEditor";
 
 type PreviewTab = "json" | "markdown" | "diff";
 
 const initialDocument = toSdocDocument(initialContent);
+const initialMetadata: SDocMetadata = {
+  title: "Playground Document",
+  author: "",
+  version: "0.1"
+};
 
 export function App() {
   const [activeTab, setActiveTab] = useState<PreviewTab>("json");
   const [savedAt, setSavedAt] = useState<string>("Not saved");
+  const [statusMessage, setStatusMessage] = useState<string>("Ready");
+  const [documentId, setDocumentId] = useState<string>(initialDocument.attrs.id);
+  const [metadata, setMetadata] = useState<SDocMetadata>(initialMetadata);
+  const [baselineDocument, setBaselineDocument] = useState<SDocDocument>(initialDocument);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -56,18 +67,19 @@ export function App() {
   });
 
   const document = useMemo(() => {
-    return editor ? toSdocDocument(editor.getJSON()) : initialDocument;
-  }, [editor?.state.doc]);
+    return editor ? toSdocDocument(editor.getJSON(), documentId) : initialDocument;
+  }, [documentId, editor?.state.doc]);
 
   const validation = validateDocument(document);
   const json = stableStringify(document);
   const markdown = exportMarkdown(document);
-  const diffLines = renderDiffEvents(diffDocuments(initialDocument, document));
+  const diffLines = renderDiffEvents(diffDocuments(baselineDocument, document));
   const preview = activeTab === "json" ? json : activeTab === "markdown" ? markdown : diffLines.join("\n") || "NO_CHANGES\n";
 
   async function downloadSdoc() {
     const now = new Date().toISOString();
-    const container = createEmptySdocContainer({ title: "Playground Document", updatedAt: now });
+    const container = createEmptySdocContainer({ ...metadata, updatedAt: now });
+    const derived = exportDerivedOutputs(document);
     const packed = await packSdoc({
       ...container,
       manifest: {
@@ -78,22 +90,58 @@ export function App() {
       document,
       metadata: {
         ...container.metadata,
-        title: "Playground Document",
+        ...metadata,
         updatedAt: now
       },
-      derived: {
-        "plain.md": markdown
-      }
+      derived
     });
 
     const blobPart = packed.buffer.slice(packed.byteOffset, packed.byteOffset + packed.byteLength) as ArrayBuffer;
-    downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), "playground.sdoc");
-    setSavedAt(new Date().toLocaleTimeString());
+    downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), `${safeFilename(metadata.title || "document")}.sdoc`);
+    markSaved("Saved .sdoc");
   }
 
   function downloadJson() {
     downloadBlob(new Blob([json], { type: "application/json" }), "document.json");
+    markSaved("Saved document.json");
+  }
+
+  async function openFile(file: File) {
+    try {
+      const loaded =
+        file.name.endsWith(".sdoc") || file.size === 0
+          ? await loadSdocFile(file)
+          : { document: JSON.parse(await file.text()) as SDocDocument, metadata };
+
+      const validationResult = validateDocument(loaded.document);
+      if (!validationResult.ok) {
+        setStatusMessage(`Invalid document: ${validationResult.issues[0]?.message ?? "schema validation failed"}`);
+        return;
+      }
+
+      editor.commands.setContent(fromSdocDocument(loaded.document), { emitUpdate: true });
+      setDocumentId(loaded.document.attrs.id);
+      setMetadata((current) => ({
+        ...current,
+        ...loaded.metadata,
+        title: loaded.metadata.title || current.title
+      }));
+      setBaselineDocument(loaded.document);
+      setActiveTab("json");
+      setStatusMessage(file.size === 0 ? "Initialized empty .sdoc" : `Opened ${file.name}`);
+      setSavedAt("Not saved");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  function markSaved(message: string) {
     setSavedAt(new Date().toLocaleTimeString());
+    setStatusMessage(message);
   }
 
   if (!editor) {
@@ -119,6 +167,19 @@ export function App() {
           <span>Saved</span>
           <strong>{savedAt}</strong>
         </div>
+        <label className="metadata-field">
+          <span>Title</span>
+          <input value={metadata.title} onChange={(event) => setMetadata({ ...metadata, title: event.target.value })} />
+        </label>
+        <label className="metadata-field">
+          <span>Author</span>
+          <input value={String(metadata.author ?? "")} onChange={(event) => setMetadata({ ...metadata, author: event.target.value })} />
+        </label>
+        <label className="metadata-field">
+          <span>Version</span>
+          <input value={String(metadata.version ?? "")} onChange={(event) => setMetadata({ ...metadata, version: event.target.value })} />
+        </label>
+        <div className="status-note">{statusMessage}</div>
         {!validation.ok && (
           <div className="issue-list">
             {validation.issues.slice(0, 5).map((issue) => (
@@ -164,6 +225,21 @@ export function App() {
             <AlertTriangle size={18} />
           </ToolbarButton>
           <div className="toolbar-spacer" />
+          <input
+            ref={fileInputRef}
+            className="file-input"
+            type="file"
+            accept=".sdoc,.json,application/json"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                void openFile(file);
+              }
+            }}
+          />
+          <ToolbarButton title="Open .sdoc or document.json" onClick={() => fileInputRef.current?.click()}>
+            <FolderOpen size={18} />
+          </ToolbarButton>
           <ToolbarButton title="Download document.json" onClick={downloadJson}>
             <Braces size={18} />
           </ToolbarButton>
@@ -192,6 +268,24 @@ export function App() {
       </section>
     </main>
   );
+}
+
+async function loadSdocFile(file: File): Promise<{ document: SDocDocument; metadata: SDocMetadata }> {
+  if (file.size === 0) {
+    const document = createEmptyDocument();
+    return {
+      document,
+      metadata: {
+        title: file.name.replace(/\.sdoc$/i, "") || "Untitled"
+      }
+    };
+  }
+
+  const container = await unpackSdoc(await file.arrayBuffer());
+  return {
+    document: container.document,
+    metadata: container.metadata
+  };
 }
 
 function ToolbarButton({
@@ -237,4 +331,9 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function safeFilename(value: string): string {
+  const name = value.trim().replace(/[<>:"/\\|?*\x00-\x1f]/g, "-");
+  return name.length > 0 ? name : "document";
 }

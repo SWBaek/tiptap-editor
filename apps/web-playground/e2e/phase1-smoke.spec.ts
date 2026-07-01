@@ -6,6 +6,7 @@ interface JsonNode {
     id?: unknown;
   };
   content?: JsonNode[];
+  text?: unknown;
 }
 
 test("loads the Phase 1 playground and exercises preview/export basics", async ({ page }) => {
@@ -106,6 +107,35 @@ test("preserves unique block ids across split undo and redo", async ({ page }) =
   await expect(page.getByText("Valid")).toBeVisible();
 });
 
+test("repairs duplicate block ids from pasted editor HTML", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:6280" });
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  const initialIds = collectBlockIds(await readPreviewDocument(page));
+  expect(initialIds).toContain("blk_intro");
+
+  const pastedText = "This document describes the initial SDoc editor shell.";
+  await page.locator(".editor-surface p").first().click({ clickCount: 3 });
+  await page.keyboard.press("Control+C");
+  expect(await readClipboardHtml(page)).toContain('data-id="blk_intro"');
+
+  await placeCursorAtEndOfFirstParagraph(page);
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Control+V");
+
+  await expect(page.locator(".editor-surface")).toContainText(pastedText);
+  await expect
+    .poll(async () => countTextMatches(await readPreviewDocument(page), pastedText))
+    .toBeGreaterThan(1);
+
+  const pastedIds = collectBlockIds(await readPreviewDocument(page));
+  expectUniqueIds(pastedIds);
+  expect(pastedIds.filter((id) => id === "blk_intro")).toHaveLength(1);
+  expect(pastedIds).toEqual(expect.arrayContaining(initialIds));
+  await expect(page.getByText("Valid")).toBeVisible();
+});
+
 test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
@@ -154,6 +184,18 @@ async function placeCursorAtEndOfFirstParagraph(page: Page): Promise<void> {
   });
 }
 
+async function readClipboardHtml(page: Page): Promise<string> {
+  return page.evaluate(async () => {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      if (item.types.includes("text/html")) {
+        return (await item.getType("text/html")).text();
+      }
+    }
+    return "";
+  });
+}
+
 function collectBlockIds(node: JsonNode): string[] {
   const ids: string[] = [];
 
@@ -170,4 +212,18 @@ function collectBlockIds(node: JsonNode): string[] {
 
 function expectUniqueIds(ids: string[]): void {
   expect(new Set(ids).size).toBe(ids.length);
+}
+
+function countTextMatches(node: JsonNode, text: string): number {
+  let count = 0;
+
+  function visit(current: JsonNode): void {
+    if (current.text === text) {
+      count += 1;
+    }
+    current.content?.forEach(visit);
+  }
+
+  visit(node);
+  return count;
 }

@@ -47,6 +47,8 @@ reference-broken
 
 ## Text Diff
 
+현재 구현은 inline text 변경을 whitespace token 기준으로 `[-removed-]`, `[+added+]` marker에 표시한다. 예: `text changed "This is [-old-] [+new+]"`. 이는 Phase 0의 CLI/editor preview 요약 형식이며 canonical 저장 형식은 아니다.
+
 inline text는 Phase 0에서 word-level diff만 제공한다. 한국어/영어 혼합 문서는 whitespace tokenization이 완벽하지 않으므로, UI 단계에서 더 정교한 tokenizer를 검토한다.
 
 ## Reference Checks

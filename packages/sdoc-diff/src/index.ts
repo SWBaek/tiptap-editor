@@ -323,7 +323,7 @@ function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
   const oldText = getPlainText(oldNode);
   const newText = getPlainText(newNode);
   if (oldText !== newText) {
-    changes.push(`text changed ${quote(oldText)} -> ${quote(newText)}`);
+    changes.push(summarizeTextChange(oldText, newText));
   }
 
   const oldAttrs = stableStringify(omitId(oldNode.attrs ?? {}));
@@ -333,6 +333,96 @@ function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
   }
 
   return changes.length > 0 ? changes : ["content changed"];
+}
+
+type WordDiffKind = "same" | "added" | "deleted";
+
+interface WordDiffSegment {
+  kind: WordDiffKind;
+  tokens: string[];
+}
+
+function summarizeTextChange(oldText: string, newText: string): string {
+  const oldTokens = tokenizeWords(oldText);
+  const newTokens = tokenizeWords(newText);
+  const segments = diffWordTokens(oldTokens, newTokens);
+  const hasWordChange = segments.some((segment) => segment.kind !== "same");
+  if (!hasWordChange) {
+    return `text changed ${quote(oldText)} -> ${quote(newText)}`;
+  }
+
+  return `text changed ${quote(formatWordDiff(segments))}`;
+}
+
+function tokenizeWords(value: string): string[] {
+  return value.trim().length > 0 ? value.trim().split(/\s+/) : [];
+}
+
+function diffWordTokens(oldTokens: string[], newTokens: string[]): WordDiffSegment[] {
+  const lengths = Array.from({ length: oldTokens.length + 1 }, () => Array<number>(newTokens.length + 1).fill(0));
+
+  for (let i = oldTokens.length - 1; i >= 0; i -= 1) {
+    for (let j = newTokens.length - 1; j >= 0; j -= 1) {
+      lengths[i][j] =
+        oldTokens[i] === newTokens[j] ? lengths[i + 1][j + 1] + 1 : Math.max(lengths[i + 1][j], lengths[i][j + 1]);
+    }
+  }
+
+  const segments: WordDiffSegment[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < oldTokens.length && j < newTokens.length) {
+    if (oldTokens[i] === newTokens[j]) {
+      pushWordDiffSegment(segments, "same", oldTokens[i]);
+      i += 1;
+      j += 1;
+    } else if (lengths[i + 1][j] >= lengths[i][j + 1]) {
+      pushWordDiffSegment(segments, "deleted", oldTokens[i]);
+      i += 1;
+    } else {
+      pushWordDiffSegment(segments, "added", newTokens[j]);
+      j += 1;
+    }
+  }
+
+  while (i < oldTokens.length) {
+    pushWordDiffSegment(segments, "deleted", oldTokens[i]);
+    i += 1;
+  }
+
+  while (j < newTokens.length) {
+    pushWordDiffSegment(segments, "added", newTokens[j]);
+    j += 1;
+  }
+
+  return segments;
+}
+
+function pushWordDiffSegment(segments: WordDiffSegment[], kind: WordDiffKind, token: string): void {
+  const last = segments[segments.length - 1];
+  if (last?.kind === kind) {
+    last.tokens.push(token);
+    return;
+  }
+
+  segments.push({ kind, tokens: [token] });
+}
+
+function formatWordDiff(segments: WordDiffSegment[]): string {
+  return segments
+    .map((segment) => {
+      const text = segment.tokens.join(" ");
+      switch (segment.kind) {
+        case "same":
+          return text;
+        case "added":
+          return `[+${text}+]`;
+        case "deleted":
+          return `[-${text}-]`;
+      }
+    })
+    .join(" ")
+    .trim();
 }
 
 function findBrokenReferences(document: SDocDocument, blocks: Map<string, BlockInfo>): SDocDiffEvent[] {

@@ -63,6 +63,13 @@ describe("diffDocuments", () => {
     expect(lines.some((line) => line.startsWith("BROKEN_REF crossReference ref_missing"))).toBe(true);
   });
 
+  it("summarizes text modifications with word-level markers", () => {
+    const modified = diffDocuments(oldDocument, newDocument).find((event) => event.kind === "modified" && event.id === "blk_body");
+
+    expect(modified?.kind).toBe("modified");
+    expect(modified?.kind === "modified" ? modified.changes : []).toContain('text changed "[-Old-] [+New+] body"');
+  });
+
   it("does not report moves when a new sibling only shifts indexes", () => {
     const oldShiftDocument: SDocDocument = {
       schemaVersion: 1,

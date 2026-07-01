@@ -1,0 +1,30 @@
+{
+  "name": "@sdoc/web-playground",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 6280",
+    "build": "tsc -b && vite build",
+    "clean": "tsc -b --clean",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@sdoc/diff": "0.0.0",
+    "@sdoc/export": "0.0.0",
+    "@sdoc/format": "0.0.0",
+    "@sdoc/schema": "0.0.0",
+    "@tiptap/core": "^3.27.1",
+    "@tiptap/extension-placeholder": "^3.27.1",
+    "@tiptap/extension-underline": "^3.27.1",
+    "@tiptap/react": "^3.27.1",
+    "@tiptap/starter-kit": "^3.27.1",
+    "lucide-react": "^1.22.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.2.0",
+    "vite": "^7.3.6"
+  }
+}

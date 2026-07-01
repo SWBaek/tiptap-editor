@@ -8,18 +8,30 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "tsc -b",
-    "test": "npm run build && vitest run",
+    "build": "tsc -b && npm run build -w apps/web-playground",
+    "build:packages": "tsc -b",
+    "dev:web": "npm run dev -w apps/web-playground",
+    "test": "npm run build:packages && vitest run",
     "sdoc": "node packages/sdoc-cli/dist/index.js",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean && npm run clean -w apps/web-playground --if-present"
   },
   "dependencies": {
-    "jszip": "^3.10.1"
+    "@tiptap/core": "^3.27.1",
+    "@tiptap/extension-placeholder": "^3.27.1",
+    "@tiptap/extension-underline": "^3.27.1",
+    "@tiptap/react": "^3.27.1",
+    "@tiptap/starter-kit": "^3.27.1",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.22.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@types/node": "^24.0.7",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }
 }
-

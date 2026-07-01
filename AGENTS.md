@@ -12,6 +12,7 @@ This repository is an early-stage AI/Diff-friendly technical document editor. Th
 
 Before implementation, read `docs/development-plan.md`. Current implementation layout:
 
+- `apps/web-playground/`: browser-first prototype for schema, serialization, diff, and editor shell.
 - `packages/sdoc-schema/`: canonical document types and validation.
 - `packages/sdoc-format/`: `.sdoc` pack/unpack, deterministic serialization.
 - `packages/sdoc-diff/`: semantic diff engine.
@@ -29,7 +30,6 @@ Key design documents:
 
 Planned later layout:
 
-- `apps/web-playground/`: browser-first prototype for schema, serialization, diff, and editor shell.
 - `apps/desktop/`: later Tauri wrapper.
 - `packages/editor-tiptap/`: Tiptap integration and extensions.
 
@@ -53,7 +53,9 @@ Planned later layout:
 Use npm workspaces from the repository root.
 
 - `npm install`: install project dependencies.
-- `npm run build`: compile all TypeScript packages.
+- `npm run dev:web`: start the browser playground at `http://127.0.0.1:6280`.
+- `npm run build`: compile packages and build the browser playground.
+- `npm run build:packages`: compile only the TypeScript packages.
 - `npm test`: build packages and run unit tests with Vitest.
 - `npm run sdoc -- diff examples/sdoc-json/basic.document.json examples/sdoc-json/modified.document.json`: run the Phase 0 semantic diff CLI.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json markdown`: export a sample document to Markdown.

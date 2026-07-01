@@ -23,6 +23,15 @@ derived/
 - `outline.json`: heading 기반 문서 구조.
 - `references.json`: block ID, anchor, label, type 기반 참조 대상 목록.
 
+CLI export aliases:
+
+```text
+sdoc export document.sdoc --format markdown
+sdoc export document.sdoc --format chunks
+sdoc export document.sdoc --format outline
+sdoc export document.sdoc --format references
+```
+
 ## Markdown Export
 
 Markdown은 canonical이 아니다. Markdown export는 리뷰, 외부 협업, LLM 입력을 위한 projection이다.

@@ -47,21 +47,18 @@ async function runDiff(args: string[]): Promise<void> {
 async function runExport(args: string[]): Promise<void> {
   const [inputPath, ...rest] = args;
   if (!inputPath) {
-    throw new Error("usage: sdoc export <input.sdoc|document.json> --format markdown [-o output.md]");
+    throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|chunks|outline|references> [-o output]");
   }
 
   const positionals = rest.filter((value) => !value.startsWith("-"));
   const format = getOption(rest, "--format") ?? positionals[0] ?? "markdown";
   const output = getOption(rest, "-o") ?? positionals[1];
-  if (format !== "markdown") {
-    throw new Error(`unsupported export format: ${format}`);
-  }
+  const exportText = renderExport(await loadDocument(inputPath), format);
 
-  const markdown = exportMarkdown(await loadDocument(inputPath));
   if (output) {
-    await writeFile(output, markdown, "utf8");
+    await writeFile(output, exportText, "utf8");
   } else {
-    process.stdout.write(markdown);
+    process.stdout.write(exportText);
   }
 }
 
@@ -204,11 +201,33 @@ function printHelp(): void {
 
 Commands:
   sdoc diff <old.sdoc|old.document.json> <new.sdoc|new.document.json>
-  sdoc export <input.sdoc|document.json> markdown [output.md]
+  sdoc export <input.sdoc|document.json> <markdown|chunks|outline|references> [output]
   sdoc pack <folder> <output.sdoc>
   sdoc unpack <input.sdoc> <folder>
   sdoc validate <input.sdoc|document.json|unpacked-folder>
 `);
+}
+
+function renderExport(document: SDocDocument, format: string): string {
+  const normalizedFormat = format.toLowerCase();
+  if (normalizedFormat === "markdown" || normalizedFormat === "plain" || normalizedFormat === "plain.md") {
+    return exportMarkdown(document);
+  }
+
+  const derived = exportDerivedOutputs(document);
+  switch (normalizedFormat) {
+    case "chunks":
+    case "chunks.jsonl":
+      return derived["chunks.jsonl"];
+    case "outline":
+    case "outline.json":
+      return derived["outline.json"];
+    case "references":
+    case "references.json":
+      return derived["references.json"];
+    default:
+      throw new Error(`unsupported export format: ${format}`);
+  }
 }
 
 function assertValidDocument(document: unknown, source: string): SDocDocument {

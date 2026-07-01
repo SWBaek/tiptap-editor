@@ -53,6 +53,16 @@ describe("sdoc CLI", () => {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("exports AI/RAG derived outputs", async () => {
+    const chunks = await runSdoc(["export", validDocumentPath, "--format", "chunks"]);
+    const outline = await runSdoc(["export", validDocumentPath, "--format", "outline"]);
+    const references = await runSdoc(["export", validDocumentPath, "--format", "references"]);
+
+    expect(chunks.stdout).toContain('"id":"blk_intro"');
+    expect(outline.stdout).toContain('"id": "blk_overview"');
+    expect(references.stdout).toContain('"anchor": "overview"');
+  });
 });
 
 async function runSdoc(args: string[]): Promise<{ stdout: string; stderr: string }> {

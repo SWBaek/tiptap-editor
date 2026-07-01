@@ -85,6 +85,12 @@ button {
 }
 
 .status-block strong {
+  min-width: 0;
+  max-width: min(180px, 52vw);
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
 }
 

@@ -8,6 +8,10 @@ export function getSavedLabel(savedAt: string, hasUnsavedChanges: boolean): stri
   return hasUnsavedChanges ? "Unsaved changes" : savedAt;
 }
 
+export function getFileLabel(filename: string | null, metadata: SDocMetadata): string {
+  return filename ?? `${metadata.title.trim() || "Untitled"}.sdoc`;
+}
+
 export function renderMetadataDiff(current: SDocMetadata, baseline: SDocMetadata): string[] {
   const keys = [...new Set([...Object.keys(baseline), ...Object.keys(current)])].sort((a, b) => a.localeCompare(b));
   const lines: string[] = [];

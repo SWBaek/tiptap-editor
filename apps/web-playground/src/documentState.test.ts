@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSavedLabel, isMetadataDirty, renderDiffPreview, renderMetadataDiff } from "./documentState";
+import { getFileLabel, getSavedLabel, isMetadataDirty, renderDiffPreview, renderMetadataDiff } from "./documentState";
 
 describe("document state helpers", () => {
   it("detects metadata changes with stable key ordering", () => {
@@ -10,6 +10,12 @@ describe("document state helpers", () => {
   it("shows unsaved changes ahead of the last save timestamp", () => {
     expect(getSavedLabel("10:00:00", false)).toBe("10:00:00");
     expect(getSavedLabel("10:00:00", true)).toBe("Unsaved changes");
+  });
+
+  it("uses the opened filename before deriving a draft filename from metadata", () => {
+    expect(getFileLabel("Opened.sdoc", { title: "Draft" })).toBe("Opened.sdoc");
+    expect(getFileLabel(null, { title: "Draft" })).toBe("Draft.sdoc");
+    expect(getFileLabel(null, { title: "   " })).toBe("Untitled.sdoc");
   });
 
   it("renders metadata changes by field", () => {

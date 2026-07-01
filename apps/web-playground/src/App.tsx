@@ -13,6 +13,7 @@ import {
   Code2,
   Download,
   FileJson,
+  FilePlus,
   FolderOpen,
   Heading1,
   Heading2,
@@ -26,7 +27,7 @@ import {
 import { diffDocuments, renderReadableDiffEvents } from "@sdoc/diff";
 import { exportMarkdown } from "@sdoc/export";
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
-import { type SDocDocument, validateDocument } from "@sdoc/schema";
+import { createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
 import {
   BlockIdExtension,
   CalloutNode,
@@ -38,7 +39,7 @@ import {
   type BlockMoveDirection
 } from "@sdoc/editor-tiptap";
 import { createSdocPayload, openDocumentInput } from "./documentIo";
-import { getSavedLabel, isMetadataDirty, renderDiffPreview, renderMetadataDiff } from "./documentState";
+import { getFileLabel, getSavedLabel, isMetadataDirty, renderDiffPreview, renderMetadataDiff } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
 
@@ -59,6 +60,7 @@ export function App() {
   const [metadata, setMetadata] = useState<SDocMetadata>(initialMetadata);
   const [baselineDocument, setBaselineDocument] = useState<SDocDocument>(initialDocument);
   const [baselineMetadata, setBaselineMetadata] = useState<SDocMetadata>(initialMetadata);
+  const [currentFilename, setCurrentFilename] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
@@ -96,6 +98,7 @@ export function App() {
   const hasDocumentChanges = documentDiffEvents.length > 0;
   const hasMetadataChanges = isMetadataDirty(metadata, baselineMetadata);
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges;
+  const fileLabel = getFileLabel(currentFilename, metadata);
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
   const preview = activeTab === "json" ? json : activeTab === "markdown" ? markdown : diffPreview;
 
@@ -105,6 +108,7 @@ export function App() {
     downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), payload.filename);
     setBaselineDocument(document);
     setBaselineMetadata(metadata);
+    setCurrentFilename(payload.filename);
     markSaved("Saved .sdoc");
   }
 
@@ -131,17 +135,18 @@ export function App() {
       editor.commands.setContent(fromSdocDocument(loaded.document), { emitUpdate: true });
       repairEditorBlockIds(editor);
       setDocumentId(loaded.document.attrs.id);
+      const appliedDocument = toSdocDocument(editor.getJSON(), loaded.document.attrs.id);
       const nextMetadata = {
         ...metadata,
         ...loaded.metadata,
         title: loaded.metadata.title || metadata.title
       };
       setMetadata(nextMetadata);
-      setBaselineDocument(loaded.document);
+      setBaselineDocument(appliedDocument);
       setBaselineMetadata(nextMetadata);
+      setCurrentFilename(file.name);
       setActiveTab("json");
-      setStatusMessage(loaded.statusMessage);
-      setSavedAt("Not saved");
+      markSaved(loaded.statusMessage);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -160,6 +165,26 @@ export function App() {
     setBaselineDocument(document);
     setBaselineMetadata(metadata);
     markSaved("Marked current state as saved");
+  }
+
+  function createNewDocument() {
+    const nextDocument = createEmptyDocument();
+    const nextMetadata: SDocMetadata = {
+      ...initialMetadata,
+      author: metadata.author,
+      title: "Untitled"
+    };
+    editor.commands.setContent(fromSdocDocument(nextDocument), { emitUpdate: true });
+    repairEditorBlockIds(editor);
+    const appliedDocument = toSdocDocument(editor.getJSON(), nextDocument.attrs.id);
+    setDocumentId(nextDocument.attrs.id);
+    setMetadata(nextMetadata);
+    setBaselineDocument(appliedDocument);
+    setBaselineMetadata(nextMetadata);
+    setCurrentFilename(null);
+    setActiveTab("json");
+    setSavedAt("Not saved");
+    setStatusMessage("Created new document");
   }
 
   function moveBlock(direction: BlockMoveDirection) {
@@ -192,6 +217,10 @@ export function App() {
         <div className="status-block">
           <span>Saved</span>
           <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
+        </div>
+        <div className="status-block">
+          <span>File</span>
+          <strong>{fileLabel}</strong>
         </div>
         <label className="metadata-field">
           <span>Title</span>
@@ -269,6 +298,9 @@ export function App() {
               }
             }}
           />
+          <ToolbarButton title="New document" onClick={createNewDocument}>
+            <FilePlus size={18} />
+          </ToolbarButton>
           <ToolbarButton title="Open .sdoc or document.json" onClick={() => fileInputRef.current?.click()}>
             <FolderOpen size={18} />
           </ToolbarButton>

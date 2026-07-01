@@ -14,6 +14,7 @@ export const BLOCK_TYPES_WITH_IDS = [
 ] as const;
 
 const blockTypeSet = new Set<string>(BLOCK_TYPES_WITH_IDS);
+const BLOCK_ID_REPAIR_META = "sdocBlockIdRepair";
 
 export interface EditorBlockIdTarget {
   state: {
@@ -36,6 +37,7 @@ interface BlockIdDocument {
 
 interface BlockIdTransaction {
   setNodeMarkup: (pos: number, type?: any, attrs?: Record<string, unknown>) => unknown;
+  setMeta?: (key: string, value: unknown) => unknown;
 }
 
 export const CalloutNode = Node.create({
@@ -65,6 +67,14 @@ export const CalloutNode = Node.create({
 
 export const BlockIdExtension = Extension.create({
   name: "blockId",
+
+  onTransaction({ editor, transaction }) {
+    if (!transaction.docChanged || transaction.getMeta(BLOCK_ID_REPAIR_META)) {
+      return;
+    }
+
+    repairEditorBlockIds(editor);
+  },
 
   addGlobalAttributes() {
     return [
@@ -109,6 +119,7 @@ export function repairEditorBlockIds(editor: EditorBlockIdTarget): boolean {
   }
 
   const transaction = editor.state.tr;
+  transaction.setMeta?.(BLOCK_ID_REPAIR_META, true);
   updates.forEach((update) => {
     transaction.setNodeMarkup(update.pos, undefined, update.attrs);
   });

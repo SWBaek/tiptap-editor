@@ -120,12 +120,12 @@ describe("BlockIdExtension", () => {
         { type: "paragraph", content: [{ type: "text", text: "Missing" }] }
       ]
     });
-    const repaired = repairEditorBlockIds(editor);
+    const noOpAfterAutomaticRepair = repairEditorBlockIds(editor);
 
     const ids = collectJsonBlockIds(editor.getJSON());
     editor.destroy();
 
-    expect(repaired).toBe(true);
+    expect(noOpAfterAutomaticRepair).toBe(false);
     expect(ids).toHaveLength(3);
     expect(ids[0]).toBe("blk_keep");
     expect(new Set(ids).size).toBe(3);
@@ -155,14 +155,57 @@ describe("BlockIdExtension", () => {
         }
       ]
     });
-    const repaired = repairEditorBlockIds(editor);
+    const noOpAfterAutomaticRepair = repairEditorBlockIds(editor);
 
     const ids = collectJsonBlockIds(editor.getJSON());
     editor.destroy();
 
-    expect(repaired).toBe(true);
+    expect(noOpAfterAutomaticRepair).toBe(false);
     expect(ids).toHaveLength(3);
     expect(ids.every((id) => id.startsWith("blk_"))).toBe(true);
     expect(new Set(ids).size).toBe(3);
+  });
+
+  it("repairs duplicated ids created by splitBlock commands", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_split" }, content: [{ type: "text", text: "Alpha Beta" }] }]
+      }
+    });
+
+    editor.commands.setTextSelection(7);
+    const split = editor.commands.splitBlock();
+
+    const ids = collectJsonBlockIds(editor.getJSON());
+    editor.destroy();
+
+    expect(split).toBe(true);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBe("blk_split");
+    expect(ids[1]).not.toBe("blk_split");
+    expect(ids[1].startsWith("blk_")).toBe(true);
+  });
+
+  it("assigns ids to list wrappers created by toggleBulletList commands", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_item" }, content: [{ type: "text", text: "List me" }] }]
+      }
+    });
+
+    editor.commands.setTextSelection(3);
+    const toggled = editor.commands.toggleBulletList();
+
+    const ids = collectJsonBlockIds(editor.getJSON());
+    editor.destroy();
+
+    expect(toggled).toBe(true);
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids.every((id) => id.startsWith("blk_"))).toBe(true);
   });
 });

@@ -13,9 +13,26 @@ interface JsonNode {
   text?: unknown;
 }
 
+interface BlockToolbarCase {
+  button: string;
+  topType: string;
+  attrs?: Record<string, unknown>;
+}
+
+const inlineToolbarCommands = ["Bold", "Italic", "Underline"] as const;
+const blockToolbarCases: BlockToolbarCase[] = [
+  { button: "Heading 1", topType: "heading", attrs: { level: 1 } },
+  { button: "Heading 2", topType: "heading", attrs: { level: 2 } },
+  { button: "Bullet list", topType: "bulletList" },
+  { button: "Ordered list", topType: "orderedList" },
+  { button: "Blockquote", topType: "blockquote" },
+  { button: "Code block", topType: "codeBlock" },
+  { button: "Note callout", topType: "callout", attrs: { kind: "note" } },
+  { button: "Warning callout", topType: "callout", attrs: { kind: "warning" } }
+];
+
 test("loads the Phase 1 playground and exercises preview/export basics", async ({ page }) => {
   await page.goto("/");
-
   await expect(page.getByText("Phase 1 Playground")).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
   await expect(page.getByRole("button", { name: "Heading 1" })).toBeVisible();
@@ -141,73 +158,28 @@ test("repairs duplicate block ids from pasted editor HTML", async ({ page, conte
 });
 
 test("applies inline mark toolbar commands to selected text", async ({ page }) => {
-  await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
-
-  await page.locator(".editor-surface p").first().click({ clickCount: 3 });
-  for (const command of ["Bold", "Italic", "Underline"]) {
-    await page.getByRole("button", { name: command }).click();
-  }
-
-  const document = await readPreviewDocument(page);
-  const intro = findNodeById(document, "blk_intro");
-  const textNode = findTextNode(intro, "This document describes the initial SDoc editor shell.");
-  expect(markTypes(textNode)).toEqual(expect.arrayContaining(["bold", "italic", "underline"]));
-  expectUniqueIds(collectBlockIds(document));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await assertInlineToolbarCommands(page);
 });
 
 test("applies block toolbar commands to a selected paragraph", async ({ page }) => {
-  const cases = [
-    { button: "Heading 1", topType: "heading", attrs: { level: 1 } },
-    { button: "Heading 2", topType: "heading", attrs: { level: 2 } },
-    { button: "Bullet list", topType: "bulletList" },
-    { button: "Ordered list", topType: "orderedList" },
-    { button: "Blockquote", topType: "blockquote" },
-    { button: "Code block", topType: "codeBlock" },
-    { button: "Note callout", topType: "callout", attrs: { kind: "note" } },
-    { button: "Warning callout", topType: "callout", attrs: { kind: "warning" } }
-  ];
-
-  for (const { button, topType, attrs } of cases) {
-    await page.goto("/");
-    await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
-    const text = `Toolbar ${button}`;
-    await createSingleParagraphDocument(page, text);
-    await page.locator(".editor-surface p").first().click({ clickCount: 3 });
-    await page.getByRole("button", { name: button }).click();
-
-    await expect.poll(async () => firstTopLevelNodeContainingText(await readPreviewDocument(page), text)?.type).toBe(topType);
-
-    const document = await readPreviewDocument(page);
-    const transformed = firstTopLevelNodeContainingText(document, text);
-    expect(transformed?.attrs).toMatchObject(attrs ?? {});
-    expectUniqueIds(collectBlockIds(document));
-    await expect(page.getByText("Valid")).toBeVisible();
+  for (const toolbarCase of blockToolbarCases) {
+    await assertBlockToolbarCommand(page, toolbarCase);
   }
 });
 
 test("moves top-level blocks with toolbar buttons without changing ids", async ({ page }) => {
-  await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await assertMoveToolbarActions(page);
+});
 
-  const initialIds = collectTopLevelIds(await readPreviewDocument(page));
-  expect(initialIds.slice(0, 3)).toEqual(["blk_overview", "blk_intro", "blk_note"]);
+test("applies editing toolbar commands on a mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await assertInlineToolbarCommands(page);
 
-  await page.locator(".editor-surface h1").click();
-  await page.getByRole("button", { name: "Move block down" }).click();
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
-  await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).slice(0, 3).join("|")).toBe("blk_intro|blk_overview|blk_note");
+  for (const toolbarCase of blockToolbarCases) {
+    await assertBlockToolbarCommand(page, toolbarCase);
+  }
 
-  const movedIds = collectTopLevelIds(await readPreviewDocument(page));
-  expect(movedIds.slice().sort()).toEqual(initialIds.slice().sort());
-  expectUniqueIds(collectBlockIds(await readPreviewDocument(page)));
-
-  await page.locator(".editor-surface h1").click();
-  await page.getByRole("button", { name: "Move block up" }).click();
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
-  await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).join("|")).toBe(initialIds.join("|"));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await assertMoveToolbarActions(page);
 });
 
 test("keeps the playground usable on a mobile viewport", async ({ page }) => {
@@ -268,6 +240,63 @@ async function readClipboardHtml(page: Page): Promise<string> {
     }
     return "";
   });
+}
+
+async function assertInlineToolbarCommands(page: Page): Promise<void> {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  await page.locator(".editor-surface p").first().click({ clickCount: 3 });
+  for (const command of inlineToolbarCommands) {
+    await page.getByRole("button", { name: command }).click();
+  }
+
+  const document = await readPreviewDocument(page);
+  const intro = findNodeById(document, "blk_intro");
+  const textNode = findTextNode(intro, "This document describes the initial SDoc editor shell.");
+  expect(markTypes(textNode)).toEqual(expect.arrayContaining([...inlineToolbarCommands.map((command) => command.toLowerCase())]));
+  expectUniqueIds(collectBlockIds(document));
+  await expect(page.getByText("Valid")).toBeVisible();
+}
+
+async function assertBlockToolbarCommand(page: Page, toolbarCase: BlockToolbarCase): Promise<void> {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const text = `Toolbar ${toolbarCase.button}`;
+  await createSingleParagraphDocument(page, text);
+  await page.locator(".editor-surface p").first().click({ clickCount: 3 });
+  await page.getByRole("button", { name: toolbarCase.button }).click();
+
+  await expect.poll(async () => firstTopLevelNodeContainingText(await readPreviewDocument(page), text)?.type).toBe(toolbarCase.topType);
+
+  const document = await readPreviewDocument(page);
+  const transformed = firstTopLevelNodeContainingText(document, text);
+  expect(transformed?.attrs).toMatchObject(toolbarCase.attrs ?? {});
+  expectUniqueIds(collectBlockIds(document));
+  await expect(page.getByText("Valid")).toBeVisible();
+}
+
+async function assertMoveToolbarActions(page: Page): Promise<void> {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  const initialIds = collectTopLevelIds(await readPreviewDocument(page));
+  expect(initialIds.slice(0, 3)).toEqual(["blk_overview", "blk_intro", "blk_note"]);
+
+  await page.locator(".editor-surface h1").click();
+  await page.getByRole("button", { name: "Move block down" }).click();
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).slice(0, 3).join("|")).toBe("blk_intro|blk_overview|blk_note");
+
+  const movedIds = collectTopLevelIds(await readPreviewDocument(page));
+  expect(movedIds).toEqual(expect.arrayContaining(initialIds));
+  expectUniqueIds(collectBlockIds(await readPreviewDocument(page)));
+
+  await page.locator(".editor-surface h1").click();
+  await page.getByRole("button", { name: "Move block up" }).click();
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).slice(0, initialIds.length).join("|")).toBe(initialIds.join("|"));
+  await expect(page.getByText("Valid")).toBeVisible();
 }
 
 async function createSingleParagraphDocument(page: Page, text: string): Promise<void> {

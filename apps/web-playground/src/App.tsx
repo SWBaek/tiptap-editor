@@ -6,6 +6,8 @@ import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   Bold,
   Braces,
   Code2,
@@ -30,8 +32,10 @@ import {
   CalloutNode,
   fromSdocDocument,
   initialContent,
+  moveSelectedTopLevelBlock,
   repairEditorBlockIds,
-  toSdocDocument
+  toSdocDocument,
+  type BlockMoveDirection
 } from "@sdoc/editor-tiptap";
 import { createSdocPayload, openDocumentInput } from "./documentIo";
 import { getSavedLabel, isMetadataDirty } from "./documentState";
@@ -149,6 +153,20 @@ export function App() {
     setStatusMessage(message);
   }
 
+  function markCurrentAsBaseline() {
+    setBaselineDocument(document);
+    setBaselineMetadata(metadata);
+    markSaved("Marked current state as saved");
+  }
+
+  function moveBlock(direction: BlockMoveDirection) {
+    const moved = moveSelectedTopLevelBlock(editor, direction);
+    setStatusMessage(moved ? `Moved block ${direction}` : `Cannot move block ${direction}`);
+    if (moved) {
+      setActiveTab("diff");
+    }
+  }
+
   if (!editor) {
     return null;
   }
@@ -229,6 +247,12 @@ export function App() {
           <ToolbarButton title="Callout" active={editor.isActive("callout")} onClick={() => editor.chain().focus().wrapIn("callout", { kind: "note" }).run()}>
             <AlertTriangle size={18} />
           </ToolbarButton>
+          <ToolbarButton title="Move block up" onClick={() => moveBlock("up")}>
+            <ArrowUp size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Move block down" onClick={() => moveBlock("down")}>
+            <ArrowDown size={18} />
+          </ToolbarButton>
           <div className="toolbar-spacer" />
           <input
             ref={fileInputRef}
@@ -251,7 +275,7 @@ export function App() {
           <ToolbarButton title="Download .sdoc" onClick={downloadSdoc}>
             <Download size={18} />
           </ToolbarButton>
-          <ToolbarButton title="Mark saved" onClick={() => setSavedAt(new Date().toLocaleTimeString())}>
+          <ToolbarButton title="Mark saved" onClick={markCurrentAsBaseline}>
             <Save size={18} />
           </ToolbarButton>
         </div>

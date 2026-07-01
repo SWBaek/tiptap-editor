@@ -16,6 +16,8 @@ export const BLOCK_TYPES_WITH_IDS = [
 const blockTypeSet = new Set<string>(BLOCK_TYPES_WITH_IDS);
 const BLOCK_ID_REPAIR_META = "sdocBlockIdRepair";
 
+export type BlockMoveDirection = "up" | "down";
+
 export interface EditorBlockIdTarget {
   state: {
     doc: BlockIdDocument;
@@ -38,6 +40,36 @@ interface BlockIdDocument {
 interface BlockIdTransaction {
   setNodeMarkup: (pos: number, type?: any, attrs?: Record<string, unknown>) => unknown;
   setMeta?: (key: string, value: unknown) => unknown;
+}
+
+export interface EditorBlockMoveTarget {
+  state: {
+    doc: TopLevelDocument;
+    selection: {
+      $from: {
+        index: (depth: number) => number;
+      };
+    };
+    tr: BlockMoveTransaction;
+  };
+  view: {
+    dispatch: (transaction: any) => void;
+  };
+}
+
+interface TopLevelDocument {
+  childCount: number;
+  child: (index: number) => TopLevelNode;
+}
+
+interface TopLevelNode {
+  nodeSize: number;
+}
+
+interface BlockMoveTransaction {
+  delete: (from: number, to: number) => BlockMoveTransaction;
+  insert: (pos: number, node: any) => BlockMoveTransaction;
+  scrollIntoView?: () => BlockMoveTransaction;
 }
 
 export const CalloutNode = Node.create({
@@ -123,6 +155,23 @@ export function repairEditorBlockIds(editor: EditorBlockIdTarget): boolean {
   updates.forEach((update) => {
     transaction.setNodeMarkup(update.pos, undefined, update.attrs);
   });
+  editor.view.dispatch(transaction);
+  return true;
+}
+
+export function canMoveSelectedTopLevelBlock(editor: EditorBlockMoveTarget, direction: BlockMoveDirection): boolean {
+  return getMoveSelectedTopLevelBlockRange(editor.state, direction) !== null;
+}
+
+export function moveSelectedTopLevelBlock(editor: EditorBlockMoveTarget, direction: BlockMoveDirection): boolean {
+  const move = getMoveSelectedTopLevelBlockRange(editor.state, direction);
+  if (!move) {
+    return false;
+  }
+
+  let transaction = editor.state.tr.delete(move.from, move.to);
+  transaction = transaction.insert(move.insertAtAfterDelete, move.node);
+  transaction.scrollIntoView?.();
   editor.view.dispatch(transaction);
   return true;
 }
@@ -290,6 +339,80 @@ function removeEmptyCollections(content: JSONContent): JSONContent {
     delete cleaned.content;
   }
   return cleaned;
+}
+
+interface TopLevelBlockRange {
+  index: number;
+  from: number;
+  to: number;
+  node: TopLevelNode;
+}
+
+interface TopLevelBlockMove {
+  from: number;
+  to: number;
+  insertAtAfterDelete: number;
+  node: TopLevelNode;
+}
+
+function getMoveSelectedTopLevelBlockRange(
+  state: EditorBlockMoveTarget["state"],
+  direction: BlockMoveDirection
+): TopLevelBlockMove | null {
+  const index = state.selection.$from.index(0);
+  if (index < 0 || index >= state.doc.childCount) {
+    return null;
+  }
+
+  const current = getTopLevelBlockRange(state.doc, index);
+  if (!current) {
+    return null;
+  }
+
+  if (direction === "up") {
+    const previous = getTopLevelBlockRange(state.doc, current.index - 1);
+    if (!previous) {
+      return null;
+    }
+
+    return {
+      from: current.from,
+      to: current.to,
+      insertAtAfterDelete: previous.from,
+      node: current.node
+    };
+  }
+
+  const next = getTopLevelBlockRange(state.doc, current.index + 1);
+  if (!next) {
+    return null;
+  }
+
+  return {
+    from: current.from,
+    to: current.to,
+    insertAtAfterDelete: current.from + next.node.nodeSize,
+    node: current.node
+  };
+}
+
+function getTopLevelBlockRange(doc: TopLevelDocument, index: number): TopLevelBlockRange | null {
+  if (index < 0 || index >= doc.childCount) {
+    return null;
+  }
+
+  let from = 0;
+  for (let i = 0; i < index; i += 1) {
+    from += doc.child(i).nodeSize;
+  }
+
+  const node = doc.child(index);
+  return {
+    index,
+    from,
+    to: from + node.nodeSize,
+    node
+  };
 }
 
 function findBlockIdUpdates(doc: BlockIdDocument): Array<{ pos: number; attrs: Record<string, unknown> }> {

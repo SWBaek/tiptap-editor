@@ -7,6 +7,7 @@ import {
   CalloutNode,
   collectJsonBlockIds,
   fromSdocDocument,
+  moveSelectedTopLevelBlock,
   repairJsonBlockIds,
   repairEditorBlockIds,
   toSdocDocument
@@ -209,3 +210,74 @@ describe("BlockIdExtension", () => {
     expect(ids.every((id) => id.startsWith("blk_"))).toBe(true);
   });
 });
+
+describe("moveSelectedTopLevelBlock", () => {
+  it("moves the selected top-level block down without changing block ids", () => {
+    const editor = createMoveTestEditor();
+    editor.commands.setTextSelection(topLevelTextPositionById(editor, "blk_a"));
+    const moved = moveSelectedTopLevelBlock(editor, "down");
+
+    const ids = topLevelIds(editor.getJSON());
+    const validation = validateDocument(toSdocDocument(editor.getJSON()));
+    editor.destroy();
+
+    expect(moved).toBe(true);
+    expect(ids).toEqual(["blk_b", "blk_a", "blk_c"]);
+    expect(validation.ok).toBe(true);
+  });
+
+  it("moves the selected top-level block up without changing block ids", () => {
+    const editor = createMoveTestEditor();
+    editor.commands.setTextSelection(topLevelTextPositionById(editor, "blk_c"));
+    const moved = moveSelectedTopLevelBlock(editor, "up");
+
+    const ids = topLevelIds(editor.getJSON());
+    editor.destroy();
+
+    expect(moved).toBe(true);
+    expect(ids).toEqual(["blk_a", "blk_c", "blk_b"]);
+  });
+
+  it("does not move beyond document boundaries", () => {
+    const editor = createMoveTestEditor();
+    editor.commands.setTextSelection(topLevelTextPositionById(editor, "blk_a"));
+    const moved = moveSelectedTopLevelBlock(editor, "up");
+
+    const ids = topLevelIds(editor.getJSON());
+    editor.destroy();
+
+    expect(moved).toBe(false);
+    expect(ids).toEqual(["blk_a", "blk_b", "blk_c"]);
+  });
+});
+
+function createMoveTestEditor(): Editor {
+  return new Editor({
+    extensions: [StarterKit, CalloutNode, BlockIdExtension],
+    content: {
+      type: "doc",
+      content: [
+        { type: "heading", attrs: { id: "blk_a", level: 1 }, content: [{ type: "text", text: "Alpha" }] },
+        { type: "paragraph", attrs: { id: "blk_b" }, content: [{ type: "text", text: "Bravo" }] },
+        { type: "codeBlock", attrs: { id: "blk_c" }, content: [{ type: "text", text: "charlie();" }] }
+      ]
+    }
+  });
+}
+
+function topLevelIds(content: JSONContent): string[] {
+  return (content.content ?? []).map((node) => String(node.attrs?.id));
+}
+
+function topLevelTextPositionById(editor: Editor, id: string): number {
+  let pos = 0;
+  for (let index = 0; index < editor.state.doc.childCount; index += 1) {
+    const node = editor.state.doc.child(index);
+    if (node.attrs.id === id) {
+      return pos + 1;
+    }
+    pos += node.nodeSize;
+  }
+
+  throw new Error(`missing top-level block ${id}`);
+}

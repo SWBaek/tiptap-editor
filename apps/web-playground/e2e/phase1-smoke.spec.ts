@@ -2,10 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 
 interface JsonNode {
+  type?: unknown;
   attrs?: {
     id?: unknown;
+    kind?: unknown;
+    level?: unknown;
   };
   content?: JsonNode[];
+  marks?: Array<{ type?: unknown }>;
   text?: unknown;
 }
 
@@ -136,6 +140,76 @@ test("repairs duplicate block ids from pasted editor HTML", async ({ page, conte
   await expect(page.getByText("Valid")).toBeVisible();
 });
 
+test("applies inline mark toolbar commands to selected text", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  await page.locator(".editor-surface p").first().click({ clickCount: 3 });
+  for (const command of ["Bold", "Italic", "Underline"]) {
+    await page.getByRole("button", { name: command }).click();
+  }
+
+  const document = await readPreviewDocument(page);
+  const intro = findNodeById(document, "blk_intro");
+  const textNode = findTextNode(intro, "This document describes the initial SDoc editor shell.");
+  expect(markTypes(textNode)).toEqual(expect.arrayContaining(["bold", "italic", "underline"]));
+  expectUniqueIds(collectBlockIds(document));
+  await expect(page.getByText("Valid")).toBeVisible();
+});
+
+test("applies block toolbar commands to a selected paragraph", async ({ page }) => {
+  const cases = [
+    { button: "Heading 1", topType: "heading", attrs: { level: 1 } },
+    { button: "Heading 2", topType: "heading", attrs: { level: 2 } },
+    { button: "Bullet list", topType: "bulletList" },
+    { button: "Ordered list", topType: "orderedList" },
+    { button: "Blockquote", topType: "blockquote" },
+    { button: "Code block", topType: "codeBlock" },
+    { button: "Note callout", topType: "callout", attrs: { kind: "note" } },
+    { button: "Warning callout", topType: "callout", attrs: { kind: "warning" } }
+  ];
+
+  for (const { button, topType, attrs } of cases) {
+    await page.goto("/");
+    await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+    const text = `Toolbar ${button}`;
+    await createSingleParagraphDocument(page, text);
+    await page.locator(".editor-surface p").first().click({ clickCount: 3 });
+    await page.getByRole("button", { name: button }).click();
+
+    await expect.poll(async () => firstTopLevelNodeContainingText(await readPreviewDocument(page), text)?.type).toBe(topType);
+
+    const document = await readPreviewDocument(page);
+    const transformed = firstTopLevelNodeContainingText(document, text);
+    expect(transformed?.attrs).toMatchObject(attrs ?? {});
+    expectUniqueIds(collectBlockIds(document));
+    await expect(page.getByText("Valid")).toBeVisible();
+  }
+});
+
+test("moves top-level blocks with toolbar buttons without changing ids", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  const initialIds = collectTopLevelIds(await readPreviewDocument(page));
+  expect(initialIds.slice(0, 3)).toEqual(["blk_overview", "blk_intro", "blk_note"]);
+
+  await page.locator(".editor-surface h1").click();
+  await page.getByRole("button", { name: "Move block down" }).click();
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).slice(0, 3).join("|")).toBe("blk_intro|blk_overview|blk_note");
+
+  const movedIds = collectTopLevelIds(await readPreviewDocument(page));
+  expect(movedIds.slice().sort()).toEqual(initialIds.slice().sort());
+  expectUniqueIds(collectBlockIds(await readPreviewDocument(page)));
+
+  await page.locator(".editor-surface h1").click();
+  await page.getByRole("button", { name: "Move block up" }).click();
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).join("|")).toBe(initialIds.join("|"));
+  await expect(page.getByText("Valid")).toBeVisible();
+});
+
 test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
@@ -196,6 +270,14 @@ async function readClipboardHtml(page: Page): Promise<string> {
   });
 }
 
+async function createSingleParagraphDocument(page: Page, text: string): Promise<void> {
+  await page.getByRole("button", { name: "New document" }).click();
+  await expect(page.getByLabel("Title")).toHaveValue("Untitled");
+  await page.locator(".editor-surface").click();
+  await page.keyboard.type(text);
+  await expect(page.locator(".editor-surface")).toContainText(text);
+}
+
 function collectBlockIds(node: JsonNode): string[] {
   const ids: string[] = [];
 
@@ -208,6 +290,10 @@ function collectBlockIds(node: JsonNode): string[] {
 
   node.content?.forEach(visit);
   return ids;
+}
+
+function collectTopLevelIds(node: JsonNode): string[] {
+  return (node.content ?? []).flatMap((child) => (typeof child.attrs?.id === "string" ? [child.attrs.id] : []));
 }
 
 function expectUniqueIds(ids: string[]): void {
@@ -226,4 +312,72 @@ function countTextMatches(node: JsonNode, text: string): number {
 
   visit(node);
   return count;
+}
+
+function findNodeById(node: JsonNode, id: string): JsonNode {
+  if (node.attrs?.id === id) {
+    return node;
+  }
+
+  for (const child of node.content ?? []) {
+    const match = findNodeByIdOrNull(child, id);
+    if (match) {
+      return match;
+    }
+  }
+
+  throw new Error(`missing node id ${id}`);
+}
+
+function findNodeByIdOrNull(node: JsonNode, id: string): JsonNode | null {
+  if (node.attrs?.id === id) {
+    return node;
+  }
+
+  for (const child of node.content ?? []) {
+    const match = findNodeByIdOrNull(child, id);
+    if (match) {
+      return match;
+    }
+  }
+
+  return null;
+}
+
+function findTextNode(node: JsonNode, text: string): JsonNode {
+  if (node.text === text) {
+    return node;
+  }
+
+  for (const child of node.content ?? []) {
+    const match = findTextNodeOrNull(child, text);
+    if (match) {
+      return match;
+    }
+  }
+
+  throw new Error(`missing text node ${text}`);
+}
+
+function findTextNodeOrNull(node: JsonNode, text: string): JsonNode | null {
+  if (node.text === text) {
+    return node;
+  }
+
+  for (const child of node.content ?? []) {
+    const match = findTextNodeOrNull(child, text);
+    if (match) {
+      return match;
+    }
+  }
+
+  return null;
+}
+
+function firstTopLevelNodeContainingText(node: JsonNode, text: string): JsonNode | null {
+  return (node.content ?? []).find((child) => countTextMatches(child, text) > 0) ?? null;
+}
+
+function markTypes(node: JsonNode): string[] {
+  return (node.marks ?? []).flatMap((mark) => (typeof mark.type === "string" ? [mark.type] : []));
 }

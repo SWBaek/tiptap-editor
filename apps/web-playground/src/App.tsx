@@ -22,10 +22,11 @@ import {
   Underline as UnderlineIcon
 } from "lucide-react";
 import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
-import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
-import { createEmptySdocContainer, packSdoc, stableStringify, unpackSdoc, type SDocMetadata } from "@sdoc/format";
-import { createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
+import { exportMarkdown } from "@sdoc/export";
+import { stableStringify, type SDocMetadata } from "@sdoc/format";
+import { type SDocDocument, validateDocument } from "@sdoc/schema";
 import { BlockIdExtension, CalloutNode, fromSdocDocument, initialContent, toSdocDocument } from "@sdoc/editor-tiptap";
+import { createSdocPayload, openDocumentInput } from "./documentIo";
 
 type PreviewTab = "json" | "markdown" | "diff";
 
@@ -79,27 +80,9 @@ export function App() {
   const preview = activeTab === "json" ? json : activeTab === "markdown" ? markdown : diffLines.join("\n") || "NO_CHANGES\n";
 
   async function downloadSdoc() {
-    const now = new Date().toISOString();
-    const container = createEmptySdocContainer({ ...metadata, updatedAt: now });
-    const derived = exportDerivedOutputs(document);
-    const packed = await packSdoc({
-      ...container,
-      manifest: {
-        ...container.manifest,
-        documentId: document.attrs.id,
-        updatedAt: now
-      },
-      document,
-      metadata: {
-        ...container.metadata,
-        ...metadata,
-        updatedAt: now
-      },
-      derived
-    });
-
-    const blobPart = packed.buffer.slice(packed.byteOffset, packed.byteOffset + packed.byteLength) as ArrayBuffer;
-    downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), `${safeFilename(metadata.title || "document")}.sdoc`);
+    const payload = await createSdocPayload(document, metadata);
+    const blobPart = payload.bytes.buffer.slice(payload.bytes.byteOffset, payload.bytes.byteOffset + payload.bytes.byteLength) as ArrayBuffer;
+    downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), payload.filename);
     markSaved("Saved .sdoc");
   }
 
@@ -110,10 +93,11 @@ export function App() {
 
   async function openFile(file: File) {
     try {
-      const loaded =
-        file.name.endsWith(".sdoc") || file.size === 0
-          ? await loadSdocFile(file)
-          : { document: JSON.parse(await file.text()) as SDocDocument, metadata };
+      const loaded = await openDocumentInput({
+        name: file.name,
+        data: await file.arrayBuffer(),
+        fallbackMetadata: metadata
+      });
 
       const validationResult = validateDocument(loaded.document);
       if (!validationResult.ok) {
@@ -130,7 +114,7 @@ export function App() {
       }));
       setBaselineDocument(loaded.document);
       setActiveTab("json");
-      setStatusMessage(file.size === 0 ? "Initialized empty .sdoc" : `Opened ${file.name}`);
+      setStatusMessage(loaded.statusMessage);
       setSavedAt("Not saved");
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
@@ -272,24 +256,6 @@ export function App() {
   );
 }
 
-async function loadSdocFile(file: File): Promise<{ document: SDocDocument; metadata: SDocMetadata }> {
-  if (file.size === 0) {
-    const document = createEmptyDocument();
-    return {
-      document,
-      metadata: {
-        title: file.name.replace(/\.sdoc$/i, "") || "Untitled"
-      }
-    };
-  }
-
-  const container = await unpackSdoc(await file.arrayBuffer());
-  return {
-    document: container.document,
-    metadata: container.metadata
-  };
-}
-
 function ToolbarButton({
   title,
   active = false,
@@ -333,9 +299,4 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
-}
-
-function safeFilename(value: string): string {
-  const name = value.trim().replace(/[<>:"/\\|?*\x00-\x1f]/g, "-");
-  return name.length > 0 ? name : "document";
 }

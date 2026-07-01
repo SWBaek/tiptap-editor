@@ -43,6 +43,43 @@ describe("createSdocPayload", () => {
     expect(container.derived?.["chunks.jsonl"]).toContain("blk_body");
   });
 
+  it("creates a .sdoc with referenced figure assets", async () => {
+    const figureDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_figure" },
+      content: [
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "Architecture diagram" }] }]
+        }
+      ]
+    };
+
+    const payload = await createSdocPayload(
+      figureDocument,
+      metadata,
+      new Date("2026-07-01T00:00:00.000Z"),
+      {
+        "asset_architecture.png": new Uint8Array([137, 80, 78, 71]),
+        "asset_unused.png": new Uint8Array([0])
+      }
+    );
+    const container = await unpackSdoc(payload.bytes);
+    const opened = await openDocumentInput({
+      name: payload.filename,
+      data: payload.bytes,
+      fallbackMetadata: { title: "Fallback" }
+    });
+
+    expect(Object.keys(container.assets ?? {})).toEqual(["asset_architecture.png"]);
+    expect(Array.from(container.assets?.["asset_architecture.png"] ?? [])).toEqual([137, 80, 78, 71]);
+    expect(container.derived?.["plain.md"]).toContain("_Figure: Architecture diagram_");
+    expect(opened.document).toEqual(figureDocument);
+    expect(Array.from(opened.assets["asset_architecture.png"] ?? [])).toEqual([137, 80, 78, 71]);
+  });
+
   it("sanitizes filenames", () => {
     expect(safeFilename('  A:B/C*D?  ')).toBe("A-B-C-D-");
     expect(safeFilename("   ")).toBe("document");

@@ -11,6 +11,7 @@ export interface OpenDocumentInput {
 export interface OpenDocumentResult {
   document: SDocDocument;
   metadata: SDocMetadata;
+  assets: SDocAssets;
   statusMessage: string;
 }
 
@@ -24,14 +25,18 @@ export interface CreateMarkdownPayloadResult {
   filename: string;
 }
 
+export type SDocAssets = Record<string, Uint8Array>;
+
 export async function createSdocPayload(
   document: SDocDocument,
   metadata: SDocMetadata,
-  now = new Date()
+  now = new Date(),
+  assets: SDocAssets = {}
 ): Promise<CreateSdocPayloadResult> {
   const timestamp = now.toISOString();
   const container = createEmptySdocContainer({ ...metadata, updatedAt: timestamp });
   const derived = exportDerivedOutputs(document);
+  const referencedAssets = selectReferencedAssets(document, assets);
 
   const bytes = await packSdoc({
     ...container,
@@ -46,6 +51,7 @@ export async function createSdocPayload(
       ...metadata,
       updatedAt: timestamp
     },
+    assets: referencedAssets,
     derived
   });
 
@@ -74,6 +80,7 @@ export async function openDocumentInput(input: OpenDocumentInput): Promise<OpenD
         ...input.fallbackMetadata,
         title: input.name.replace(/\.sdoc$/i, "") || "Untitled"
       },
+      assets: {},
       statusMessage: "Initialized empty .sdoc"
     };
   }
@@ -83,6 +90,7 @@ export async function openDocumentInput(input: OpenDocumentInput): Promise<OpenD
     return {
       document: container.document,
       metadata: container.metadata,
+      assets: container.assets ?? {},
       statusMessage: `Opened ${input.name}`
     };
   }
@@ -95,6 +103,7 @@ export async function openDocumentInput(input: OpenDocumentInput): Promise<OpenD
   return {
     document,
     metadata: input.fallbackMetadata,
+    assets: {},
     statusMessage: `Opened ${input.name}`
   };
 }
@@ -126,4 +135,33 @@ function parseDocumentJson(text: string, filename: string): SDocDocument {
   }
 
   return document as SDocDocument;
+}
+
+function selectReferencedAssets(document: SDocDocument, assets: SDocAssets): SDocAssets {
+  const referencedAssetIds = collectReferencedAssetIds(document);
+  const selected: SDocAssets = {};
+
+  for (const assetId of referencedAssetIds) {
+    const asset = assets[assetId];
+    if (asset) {
+      selected[assetId] = asset;
+    }
+  }
+
+  return selected;
+}
+
+function collectReferencedAssetIds(document: SDocDocument): string[] {
+  const assetIds = new Set<string>();
+
+  function visit(node: SDocDocument["content"][number]): void {
+    if (node.type === "figure" && typeof node.attrs?.assetId === "string" && node.attrs.assetId.length > 0) {
+      assetIds.add(node.attrs.assetId);
+    }
+
+    node.content?.forEach(visit);
+  }
+
+  document.content.forEach(visit);
+  return [...assetIds].sort((a, b) => a.localeCompare(b));
 }

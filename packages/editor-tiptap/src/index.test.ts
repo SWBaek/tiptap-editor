@@ -6,6 +6,7 @@ import {
   BlockIdExtension,
   CalloutNode,
   collectJsonBlockIds,
+  FigureNode,
   fromSdocDocument,
   moveSelectedTopLevelBlock,
   repairJsonBlockIds,
@@ -124,6 +125,49 @@ describe("SDoc conversion", () => {
           type: "callout",
           attrs: { id: "blk_warning", kind: "warning" },
           content: [{ type: "paragraph", attrs: { id: "blk_warning_body" }, content: [{ type: "text", text: "Check this" }] }]
+        }
+      ]
+    });
+  });
+
+  it("preserves figure asset references while stripping preview src from SDoc", () => {
+    const document = toSdocDocument(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "figure",
+            attrs: {
+              id: "blk_figure",
+              assetId: "asset_diagram.png",
+              alt: "Diagram",
+              src: "data:image/png;base64,preview"
+            },
+            content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "Architecture diagram" }] }]
+          }
+        ]
+      },
+      "doc_figure"
+    );
+
+    expect(document.content[0].attrs).toEqual({
+      id: "blk_figure",
+      assetId: "asset_diagram.png",
+      alt: "Diagram"
+    });
+    expect(validateDocument(document).ok).toBe(true);
+    expect(fromSdocDocument(document, { "asset_diagram.png": "blob:asset_diagram" })).toEqual({
+      type: "doc",
+      content: [
+        {
+          type: "figure",
+          attrs: {
+            id: "blk_figure",
+            assetId: "asset_diagram.png",
+            alt: "Diagram",
+            src: "blob:asset_diagram"
+          },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "Architecture diagram" }] }]
         }
       ]
     });
@@ -250,6 +294,33 @@ describe("BlockIdExtension", () => {
     editor.destroy();
 
     expect(document.content[0].attrs?.anchor).toBe("overview");
+  });
+
+  it("assigns ids to figure blocks and captions in editor state", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, FigureNode, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "figure",
+            attrs: { assetId: "asset_diagram.png", alt: "Diagram", src: "blob:asset_diagram" },
+            content: [{ type: "paragraph", content: [{ type: "text", text: "Architecture diagram" }] }]
+          }
+        ]
+      }
+    });
+
+    const repaired = repairEditorBlockIds(editor);
+    const ids = collectJsonBlockIds(editor.getJSON());
+    const document = toSdocDocument(editor.getJSON(), "doc_figure");
+    editor.destroy();
+
+    expect(repaired).toBe(true);
+    expect(ids).toHaveLength(2);
+    expect(ids.every((id) => id.startsWith("blk_"))).toBe(true);
+    expect(document.content[0].attrs).not.toHaveProperty("src");
+    expect(validateDocument(document).ok).toBe(true);
   });
 });
 

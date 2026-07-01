@@ -5,6 +5,8 @@ interface JsonNode {
   type?: unknown;
   attrs?: {
     id?: unknown;
+    assetId?: unknown;
+    alt?: unknown;
     kind?: unknown;
     level?: unknown;
   };
@@ -31,9 +33,9 @@ const blockToolbarCases: BlockToolbarCase[] = [
   { button: "Warning callout", topType: "callout", attrs: { kind: "warning" } }
 ];
 
-test("loads the Phase 1 playground and exercises preview/export basics", async ({ page }) => {
+test("loads the Phase 2 playground and exercises preview/export basics", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Phase 1 Playground")).toBeVisible();
+  await expect(page.getByText("Phase 2 Playground")).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
   await expect(page.getByRole("button", { name: "Heading 1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download .sdoc" })).toBeVisible();
@@ -71,7 +73,7 @@ test("round-trips a downloaded .sdoc through the browser open flow", async ({ pa
   await page.getByRole("button", { name: "New document" }).click();
   await expect(page.getByLabel("Title")).toHaveValue("Untitled");
 
-  await page.locator("input[type='file']").setInputFiles(sdocPath);
+  await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Round Trip E2E.sdoc");
   await expect(page.getByLabel("Title")).toHaveValue("Round Trip E2E");
   await expect(page.getByLabel("Author")).toHaveValue("QA");
@@ -83,13 +85,66 @@ test("round-trips a downloaded .sdoc through the browser open flow", async ({ pa
   await expect(page.locator(".preview-output")).toContainText('"anchor": "overview"');
 });
 
+test("inserts an image figure and round-trips .sdoc assets", async ({ page }, testInfo) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  const imagePath = testInfo.outputPath("architecture-diagram.png");
+  await writeFile(
+    imagePath,
+    Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+      "base64"
+    )
+  );
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+  await page.getByRole("button", { name: "Insert image" }).click();
+  await page.getByLabel("Insert image file").setInputFiles(imagePath);
+
+  await expect(page.locator(".status-note")).toContainText("Inserted image architecture-diagram.png");
+  await expect(page.locator('.editor-surface figure[data-type="figure"] img')).toBeVisible();
+
+  const insertedDocument = await readPreviewDocument(page);
+  const insertedFigure = findFirstNodeByType(insertedDocument, "figure");
+  expect(insertedFigure.attrs?.assetId).toEqual(expect.stringMatching(/^asset_[a-z0-9]+\.png$/));
+  expect(insertedFigure.attrs?.alt).toBe("architecture diagram");
+  expect(JSON.stringify(insertedDocument)).not.toContain("data:image/png");
+  expectUniqueIds(collectBlockIds(insertedDocument));
+  await expect(page.getByText("Valid")).toBeVisible();
+
+  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await expect(page.locator(".preview-output")).toContainText("_Figure: architecture diagram_");
+  await expect(page.locator(".preview-output")).toContainText("](assets/");
+
+  const sdocDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  const sdocDownload = await sdocDownloadPromise;
+  const sdocPath = testInfo.outputPath("Figure Round Trip.sdoc");
+  await sdocDownload.saveAs(sdocPath);
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.getByLabel("Open document file").setInputFiles(sdocPath);
+  await expect(page.locator(".status-note")).toContainText("Opened Figure Round Trip.sdoc");
+  await expect(page.locator('.editor-surface figure[data-type="figure"] img')).toBeVisible();
+  await expect(page.locator(".editor-surface")).toContainText("architecture diagram");
+
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const reopenedDocument = await readPreviewDocument(page);
+  const reopenedFigure = findFirstNodeByType(reopenedDocument, "figure");
+  expect(reopenedFigure.attrs?.assetId).toBe(insertedFigure.attrs?.assetId);
+  expect(JSON.stringify(reopenedDocument)).not.toContain("data:image/png");
+  expectUniqueIds(collectBlockIds(reopenedDocument));
+});
+
 test("reports unsupported files without replacing the current document", async ({ page }, testInfo) => {
   await page.goto("/");
 
   const invalidPath = testInfo.outputPath("notes.txt");
   await writeFile(invalidPath, "not an sdoc document", "utf8");
 
-  await page.locator("input[type='file']").setInputFiles(invalidPath);
+  await page.getByLabel("Open document file").setInputFiles(invalidPath);
 
   await expect(page.locator(".status-note")).toContainText("Unsupported file type: notes.txt");
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
@@ -186,7 +241,7 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await expect(page.getByText("Phase 1 Playground")).toBeVisible();
+  await expect(page.getByText("Phase 2 Playground")).toBeVisible();
   await expect(page.getByRole("button", { name: "Open .sdoc or document.json" })).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
 
@@ -395,6 +450,36 @@ function findTextNodeOrNull(node: JsonNode, text: string): JsonNode | null {
 
   for (const child of node.content ?? []) {
     const match = findTextNodeOrNull(child, text);
+    if (match) {
+      return match;
+    }
+  }
+
+  return null;
+}
+
+function findFirstNodeByType(node: JsonNode, type: string): JsonNode {
+  if (node.type === type) {
+    return node;
+  }
+
+  for (const child of node.content ?? []) {
+    const match = findFirstNodeByTypeOrNull(child, type);
+    if (match) {
+      return match;
+    }
+  }
+
+  throw new Error(`missing node type ${type}`);
+}
+
+function findFirstNodeByTypeOrNull(node: JsonNode, type: string): JsonNode | null {
+  if (node.type === type) {
+    return node;
+  }
+
+  for (const child of node.content ?? []) {
+    const match = findFirstNodeByTypeOrNull(child, type);
     if (match) {
       return match;
     }

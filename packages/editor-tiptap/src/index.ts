@@ -1,6 +1,6 @@
 import { Extension, mergeAttributes, Node, type JSONContent } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { createBlockId, type SDocDocument, type SDocNode } from "@sdoc/schema";
+import { createBlockId, type JsonValue, type SDocDocument, type SDocNode } from "@sdoc/schema";
 
 export const BLOCK_TYPES_WITH_IDS = [
   "paragraph",
@@ -10,7 +10,8 @@ export const BLOCK_TYPES_WITH_IDS = [
   "bulletList",
   "orderedList",
   "listItem",
-  "callout"
+  "callout",
+  "figure"
 ] as const;
 
 const blockTypeSet = new Set<string>(BLOCK_TYPES_WITH_IDS);
@@ -94,6 +95,57 @@ export const CalloutNode = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     return ["div", mergeAttributes(HTMLAttributes, { "data-type": "callout" }), 0];
+  }
+});
+
+export const FigureNode = Node.create({
+  name: "figure",
+  group: "block",
+  content: "paragraph",
+  defining: true,
+  isolating: true,
+
+  addAttributes() {
+    return {
+      assetId: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-asset-id") ?? element.querySelector("img")?.getAttribute("data-asset-id") ?? null,
+        renderHTML: () => ({})
+      },
+      alt: {
+        default: "",
+        parseHTML: (element) => element.querySelector("img")?.getAttribute("alt") ?? "",
+        renderHTML: () => ({})
+      },
+      src: {
+        default: null,
+        parseHTML: (element) => element.querySelector("img")?.getAttribute("src") ?? null,
+        renderHTML: () => ({})
+      }
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "figure[data-type='figure']", contentElement: "figcaption" }];
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    const imageAttributes: Record<string, string> = {
+      "data-asset-id": String(node.attrs.assetId ?? ""),
+      alt: String(node.attrs.alt ?? "")
+    };
+
+    if (typeof node.attrs.src === "string" && node.attrs.src.length > 0) {
+      imageAttributes.src = node.attrs.src;
+    }
+
+    return [
+      "figure",
+      mergeAttributes(HTMLAttributes, { "data-type": "figure" }),
+      ["img", imageAttributes],
+      ["figcaption", 0]
+    ];
   }
 });
 
@@ -276,10 +328,10 @@ export function toSdocDocument(content: JSONContent, documentId = "doc_playgroun
   };
 }
 
-export function fromSdocDocument(document: SDocDocument): JSONContent {
+export function fromSdocDocument(document: SDocDocument, assetSources: Record<string, string> = {}): JSONContent {
   return {
     type: "doc",
-    content: document.content.map(fromSdocNode)
+    content: document.content.map((node) => fromSdocNode(node, assetSources))
   };
 }
 
@@ -292,8 +344,9 @@ function toSdocNode(node: JSONContent): SDocNode {
     sdocNode.text = node.text;
   }
 
-  if (node.attrs && Object.keys(node.attrs).length > 0) {
-    sdocNode.attrs = node.attrs as Record<string, never>;
+  const attrs = getCanonicalAttrs(node);
+  if (attrs && Object.keys(attrs).length > 0) {
+    sdocNode.attrs = attrs;
   }
 
   if (node.marks && node.marks.length > 0) {
@@ -310,7 +363,7 @@ function toSdocNode(node: JSONContent): SDocNode {
   return sdocNode;
 }
 
-function fromSdocNode(node: SDocNode): JSONContent {
+function fromSdocNode(node: SDocNode, assetSources: Record<string, string>): JSONContent {
   const content: JSONContent = {
     type: node.type
   };
@@ -319,8 +372,9 @@ function fromSdocNode(node: SDocNode): JSONContent {
     content.text = node.text;
   }
 
-  if (node.attrs && Object.keys(node.attrs).length > 0) {
-    content.attrs = node.attrs;
+  const attrs = getEditorAttrs(node, assetSources);
+  if (attrs && Object.keys(attrs).length > 0) {
+    content.attrs = attrs;
   }
 
   if (node.marks && node.marks.length > 0) {
@@ -331,10 +385,38 @@ function fromSdocNode(node: SDocNode): JSONContent {
   }
 
   if (node.content && node.content.length > 0) {
-    content.content = node.content.map(fromSdocNode);
+    content.content = node.content.map((child) => fromSdocNode(child, assetSources));
   }
 
   return content;
+}
+
+function getCanonicalAttrs(node: JSONContent): Record<string, JsonValue> | undefined {
+  if (!node.attrs || Object.keys(node.attrs).length === 0) {
+    return undefined;
+  }
+
+  const attrs = { ...(node.attrs as Record<string, JsonValue>) };
+  if (node.type === "figure") {
+    delete attrs.src;
+  }
+  return attrs;
+}
+
+function getEditorAttrs(node: SDocNode, assetSources: Record<string, string>): Record<string, JsonValue> | undefined {
+  if (!node.attrs || Object.keys(node.attrs).length === 0) {
+    return undefined;
+  }
+
+  const attrs = { ...node.attrs };
+  if (node.type === "figure") {
+    const assetId = typeof attrs.assetId === "string" ? attrs.assetId : undefined;
+    const src = assetId ? assetSources[assetId] : undefined;
+    if (src) {
+      attrs.src = src;
+    }
+  }
+  return attrs;
 }
 
 function removeEmptyCollections(content: JSONContent): JSONContent {

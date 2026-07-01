@@ -18,6 +18,7 @@ import {
   FolderOpen,
   Heading1,
   Heading2,
+  Image as ImageIcon,
   Info,
   Italic,
   List,
@@ -29,10 +30,11 @@ import {
 import { diffDocuments, renderReadableDiffEvents } from "@sdoc/diff";
 import { exportMarkdown } from "@sdoc/export";
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
-import { createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
+import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
 import {
   BlockIdExtension,
   CalloutNode,
+  FigureNode,
   fromSdocDocument,
   initialContent,
   moveSelectedTopLevelBlock,
@@ -40,7 +42,7 @@ import {
   toSdocDocument,
   type BlockMoveDirection
 } from "@sdoc/editor-tiptap";
-import { createMarkdownPayload, createSdocPayload, openDocumentInput } from "./documentIo";
+import { createMarkdownPayload, createSdocPayload, openDocumentInput, type SDocAssets } from "./documentIo";
 import {
   getFileLabel,
   getSavedLabel,
@@ -60,7 +62,7 @@ const initialMetadata: SDocMetadata = {
   version: "0.1"
 };
 
-const sdocExtensions = [CalloutNode, BlockIdExtension] as unknown as AnyExtension[];
+const sdocExtensions = [FigureNode, CalloutNode, BlockIdExtension] as unknown as AnyExtension[];
 
 export function App() {
   const [activeTab, setActiveTab] = useState<PreviewTab>("json");
@@ -70,9 +72,11 @@ export function App() {
   const [metadata, setMetadata] = useState<SDocMetadata>(initialMetadata);
   const [baselineDocument, setBaselineDocument] = useState<SDocDocument>(initialDocument);
   const [baselineMetadata, setBaselineMetadata] = useState<SDocMetadata>(initialMetadata);
+  const [assets, setAssets] = useState<SDocAssets>({});
   const [currentFilename, setCurrentFilename] = useState<string | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -120,7 +124,7 @@ export function App() {
     }
 
     try {
-      const payload = await createSdocPayload(document, metadata);
+      const payload = await createSdocPayload(document, metadata, new Date(), assets);
       const blobPart = payload.bytes.buffer.slice(payload.bytes.byteOffset, payload.bytes.byteOffset + payload.bytes.byteLength) as ArrayBuffer;
       downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), payload.filename);
       setBaselineDocument(document);
@@ -166,8 +170,9 @@ export function App() {
         return;
       }
 
-      editor.commands.setContent(fromSdocDocument(loaded.document), { emitUpdate: true });
+      editor.commands.setContent(fromSdocDocument(loaded.document, createAssetSourceMap(loaded.assets)), { emitUpdate: true });
       repairEditorBlockIds(editor);
+      setAssets(loaded.assets);
       setDocumentId(loaded.document.attrs.id);
       const appliedDocument = toSdocDocument(editor.getJSON(), loaded.document.attrs.id);
       const nextMetadata = {
@@ -229,6 +234,7 @@ export function App() {
     setMetadata(nextMetadata);
     setBaselineDocument(appliedDocument);
     setBaselineMetadata(nextMetadata);
+    setAssets({});
     setCurrentFilename(null);
     setActiveTab("json");
     setSavedAt("Not saved");
@@ -250,6 +256,56 @@ export function App() {
     setStatusMessage(applied ? `Applied ${kind} callout` : `Cannot apply ${kind} callout`);
   }
 
+  async function insertImageFile(file: File) {
+    try {
+      if (file.type && !file.type.startsWith("image/")) {
+        setStatusMessage(`Unsupported image type: ${file.type}`);
+        return;
+      }
+
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const assetId = createImageAssetId(file.name, file.type);
+      const caption = captionFromFilename(file.name);
+      const src = await readFileAsDataUrl(file);
+
+      const inserted = editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: "figure",
+          attrs: {
+            id: createBlockId(),
+            assetId,
+            alt: caption,
+            src
+          },
+          content: [
+            {
+              type: "paragraph",
+              attrs: { id: createBlockId() },
+              content: [{ type: "text", text: caption }]
+            }
+          ]
+        })
+        .run();
+
+      if (!inserted) {
+        setStatusMessage(`Cannot insert image: ${file.name}`);
+        return;
+      }
+
+      setAssets((current) => ({ ...current, [assetId]: bytes }));
+      setActiveTab("json");
+      setStatusMessage(`Inserted image ${file.name}`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (imageInputRef.current) {
+        imageInputRef.current.value = "";
+      }
+    }
+  }
+
   if (!editor) {
     return null;
   }
@@ -261,7 +317,7 @@ export function App() {
           <FileJson size={22} />
           <div>
             <strong>SDoc</strong>
-            <span>Phase 1 Playground</span>
+            <span>Phase 2 Playground</span>
           </div>
         </div>
 
@@ -331,6 +387,9 @@ export function App() {
           <ToolbarButton title="Code block" active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
             <Code2 size={18} />
           </ToolbarButton>
+          <ToolbarButton title="Insert image" active={editor.isActive("figure")} onClick={() => imageInputRef.current?.click()}>
+            <ImageIcon size={18} />
+          </ToolbarButton>
           <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
             <Info size={18} />
           </ToolbarButton>
@@ -348,11 +407,25 @@ export function App() {
             ref={fileInputRef}
             className="file-input"
             type="file"
+            aria-label="Open document file"
             accept=".sdoc,.json,application/json"
             onChange={(event) => {
               const file = event.target.files?.[0];
               if (file) {
                 void openFile(file);
+              }
+            }}
+          />
+          <input
+            ref={imageInputRef}
+            className="file-input"
+            type="file"
+            aria-label="Insert image file"
+            accept="image/*"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                void insertImageFile(file);
               }
             }}
           />
@@ -438,4 +511,82 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function createImageAssetId(filename: string, mimeType: string): string {
+  return `${createAssetId()}${getImageExtension(filename, mimeType)}`;
+}
+
+function getImageExtension(filename: string, mimeType: string): string {
+  const extension = filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+  if (extension && ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) {
+    return `.${extension}`;
+  }
+
+  switch (mimeType) {
+    case "image/png":
+      return ".png";
+    case "image/jpeg":
+      return ".jpg";
+    case "image/gif":
+      return ".gif";
+    case "image/webp":
+      return ".webp";
+    case "image/svg+xml":
+      return ".svg";
+    default:
+      return ".bin";
+  }
+}
+
+function captionFromFilename(filename: string): string {
+  const withoutExtension = filename.replace(/\.[^.]+$/, "");
+  const caption = withoutExtension.replace(/[_-]+/g, " ").trim();
+  return caption.length > 0 ? caption : "Image caption";
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error(`Failed to read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+function createAssetSourceMap(assets: SDocAssets): Record<string, string> {
+  return Object.fromEntries(Object.entries(assets).map(([assetId, bytes]) => [assetId, bytesToDataUrl(assetId, bytes)]));
+}
+
+function bytesToDataUrl(assetId: string, bytes: Uint8Array): string {
+  return `data:${mimeTypeFromAssetId(assetId)};base64,${bytesToBase64(bytes)}`;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.slice(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function mimeTypeFromAssetId(assetId: string): string {
+  const extension = assetId.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+  switch (extension) {
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "svg":
+      return "image/svg+xml";
+    default:
+      return "application/octet-stream";
+  }
 }

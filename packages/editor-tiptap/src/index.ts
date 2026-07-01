@@ -15,6 +15,29 @@ export const BLOCK_TYPES_WITH_IDS = [
 
 const blockTypeSet = new Set<string>(BLOCK_TYPES_WITH_IDS);
 
+export interface EditorBlockIdTarget {
+  state: {
+    doc: BlockIdDocument;
+    tr: BlockIdTransaction;
+  };
+  view: {
+    dispatch: (transaction: any) => void;
+  };
+}
+
+interface BlockIdNode {
+  type: { name: string };
+  attrs: Record<string, unknown>;
+}
+
+interface BlockIdDocument {
+  descendants: (callback: (node: BlockIdNode, pos: number) => boolean) => void;
+}
+
+interface BlockIdTransaction {
+  setNodeMarkup: (pos: number, type?: any, attrs?: Record<string, unknown>) => unknown;
+}
+
 export const CalloutNode = Node.create({
   name: "callout",
   group: "block",
@@ -63,24 +86,7 @@ export const BlockIdExtension = Extension.create({
       new Plugin({
         key: new PluginKey("sdocBlockIds"),
         appendTransaction: (_transactions, _oldState, newState) => {
-          const seen = new Set<string>();
-          const updates: Array<{ pos: number; attrs: Record<string, unknown> }> = [];
-
-          newState.doc.descendants((node, pos) => {
-            if (!blockTypeSet.has(node.type.name)) {
-              return true;
-            }
-
-            const id = typeof node.attrs.id === "string" && node.attrs.id.length > 0 ? node.attrs.id : undefined;
-            if (!id || seen.has(id)) {
-              updates.push({ pos, attrs: { ...node.attrs, id: createBlockId() } });
-              return true;
-            }
-
-            seen.add(id);
-            return true;
-          });
-
+          const updates = findBlockIdUpdates(newState.doc);
           if (updates.length === 0) {
             return null;
           }
@@ -95,6 +101,20 @@ export const BlockIdExtension = Extension.create({
     ];
   }
 });
+
+export function repairEditorBlockIds(editor: EditorBlockIdTarget): boolean {
+  const updates = findBlockIdUpdates(editor.state.doc);
+  if (updates.length === 0) {
+    return false;
+  }
+
+  const transaction = editor.state.tr;
+  updates.forEach((update) => {
+    transaction.setNodeMarkup(update.pos, undefined, update.attrs);
+  });
+  editor.view.dispatch(transaction);
+  return true;
+}
 
 export const initialContent: JSONContent = {
   type: "doc",
@@ -261,3 +281,24 @@ function removeEmptyCollections(content: JSONContent): JSONContent {
   return cleaned;
 }
 
+function findBlockIdUpdates(doc: BlockIdDocument): Array<{ pos: number; attrs: Record<string, unknown> }> {
+  const seen = new Set<string>();
+  const updates: Array<{ pos: number; attrs: Record<string, unknown> }> = [];
+
+  doc.descendants((node, pos) => {
+    if (!blockTypeSet.has(node.type.name)) {
+      return true;
+    }
+
+    const id = typeof node.attrs.id === "string" && node.attrs.id.length > 0 ? node.attrs.id : undefined;
+    if (!id || seen.has(id)) {
+      updates.push({ pos, attrs: { ...node.attrs, id: createBlockId() } });
+      return true;
+    }
+
+    seen.add(id);
+    return true;
+  });
+
+  return updates;
+}

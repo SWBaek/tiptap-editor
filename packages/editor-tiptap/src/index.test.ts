@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { JSONContent } from "@tiptap/core";
+import { Editor, type JSONContent } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
 import { validateDocument } from "@sdoc/schema";
-import { collectJsonBlockIds, fromSdocDocument, repairJsonBlockIds, toSdocDocument } from "./index";
+import {
+  BlockIdExtension,
+  CalloutNode,
+  collectJsonBlockIds,
+  fromSdocDocument,
+  repairJsonBlockIds,
+  repairEditorBlockIds,
+  toSdocDocument
+} from "./index";
 
 describe("repairJsonBlockIds", () => {
   it("preserves first-seen ids and assigns missing block ids", () => {
@@ -93,3 +102,67 @@ describe("SDoc conversion", () => {
   });
 });
 
+describe("BlockIdExtension", () => {
+  it("repairs missing and duplicate ids in a real Tiptap editor transaction", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_initial" }, content: [{ type: "text", text: "Initial" }] }]
+      }
+    });
+
+    editor.commands.setContent({
+      type: "doc",
+      content: [
+        { type: "paragraph", attrs: { id: "blk_keep" }, content: [{ type: "text", text: "Keep" }] },
+        { type: "paragraph", attrs: { id: "blk_keep" }, content: [{ type: "text", text: "Duplicate" }] },
+        { type: "paragraph", content: [{ type: "text", text: "Missing" }] }
+      ]
+    });
+    const repaired = repairEditorBlockIds(editor);
+
+    const ids = collectJsonBlockIds(editor.getJSON());
+    editor.destroy();
+
+    expect(repaired).toBe(true);
+    expect(ids).toHaveLength(3);
+    expect(ids[0]).toBe("blk_keep");
+    expect(new Set(ids).size).toBe(3);
+    expect(ids.every((id) => id.startsWith("blk_"))).toBe(true);
+  });
+
+  it("assigns ids to nested list blocks in editor state", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_initial" }, content: [{ type: "text", text: "Initial" }] }]
+      }
+    });
+
+    editor.commands.setContent({
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [
+            {
+              type: "listItem",
+              content: [{ type: "paragraph", content: [{ type: "text", text: "List item" }] }]
+            }
+          ]
+        }
+      ]
+    });
+    const repaired = repairEditorBlockIds(editor);
+
+    const ids = collectJsonBlockIds(editor.getJSON());
+    editor.destroy();
+
+    expect(repaired).toBe(true);
+    expect(ids).toHaveLength(3);
+    expect(ids.every((id) => id.startsWith("blk_"))).toBe(true);
+    expect(new Set(ids).size).toBe(3);
+  });
+});

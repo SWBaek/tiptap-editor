@@ -25,7 +25,14 @@ import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
 import { exportMarkdown } from "@sdoc/export";
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
 import { type SDocDocument, validateDocument } from "@sdoc/schema";
-import { BlockIdExtension, CalloutNode, fromSdocDocument, initialContent, toSdocDocument } from "@sdoc/editor-tiptap";
+import {
+  BlockIdExtension,
+  CalloutNode,
+  fromSdocDocument,
+  initialContent,
+  repairEditorBlockIds,
+  toSdocDocument
+} from "@sdoc/editor-tiptap";
 import { createSdocPayload, openDocumentInput } from "./documentIo";
 
 type PreviewTab = "json" | "markdown" | "diff";
@@ -106,6 +113,7 @@ export function App() {
       }
 
       editor.commands.setContent(fromSdocDocument(loaded.document), { emitUpdate: true });
+      repairEditorBlockIds(editor);
       setDocumentId(loaded.document.attrs.id);
       setMetadata((current) => ({
         ...current,

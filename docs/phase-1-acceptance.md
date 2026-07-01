@@ -45,7 +45,7 @@ The automated smoke tests in `apps/web-playground/e2e/phase1-smoke.spec.ts` veri
 
 ## Remaining Risk
 
-The browser smoke tests cover core happy/error paths and desktop/mobile toolbar commands, but they do not yet automate drag/drop because no dedicated drag handle exists yet.
+No open Phase 1 acceptance risk remains. Drag/drop is deferred until a dedicated drag handle or block outline UI exists; Phase 1 reordering is covered by move up/down toolbar tests.
 
 ## Phase 1 Boundary
 

@@ -1,4 +1,5 @@
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
+import type { ValidationResult } from "@sdoc/schema";
 
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
   return stableStringify(current) !== stableStringify(baseline);
@@ -10,6 +11,16 @@ export function getSavedLabel(savedAt: string, hasUnsavedChanges: boolean): stri
 
 export function getFileLabel(filename: string | null, metadata: SDocMetadata): string {
   return filename ?? `${metadata.title.trim() || "Untitled"}.sdoc`;
+}
+
+export function getValidationFailureMessage(validation: ValidationResult, action: string): string | null {
+  if (validation.ok) {
+    return null;
+  }
+
+  const issue = validation.issues[0];
+  const detail = issue ? `${issue.path}: ${issue.message}` : "schema validation failed";
+  return `Cannot ${action}: ${detail}`;
 }
 
 export function renderMetadataDiff(current: SDocMetadata, baseline: SDocMetadata): string[] {

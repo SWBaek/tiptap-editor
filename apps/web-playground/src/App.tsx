@@ -40,7 +40,14 @@ import {
   type BlockMoveDirection
 } from "@sdoc/editor-tiptap";
 import { createMarkdownPayload, createSdocPayload, openDocumentInput } from "./documentIo";
-import { getFileLabel, getSavedLabel, isMetadataDirty, renderDiffPreview, renderMetadataDiff } from "./documentState";
+import {
+  getFileLabel,
+  getSavedLabel,
+  getValidationFailureMessage,
+  isMetadataDirty,
+  renderDiffPreview,
+  renderMetadataDiff
+} from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
 
@@ -104,22 +111,38 @@ export function App() {
   const preview = activeTab === "json" ? json : activeTab === "markdown" ? markdown : diffPreview;
 
   async function downloadSdoc() {
-    const payload = await createSdocPayload(document, metadata);
-    const blobPart = payload.bytes.buffer.slice(payload.bytes.byteOffset, payload.bytes.byteOffset + payload.bytes.byteLength) as ArrayBuffer;
-    downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), payload.filename);
-    setBaselineDocument(document);
-    setBaselineMetadata(metadata);
-    setCurrentFilename(payload.filename);
-    markSaved("Saved .sdoc");
+    if (!requireValidDocument("save .sdoc")) {
+      return;
+    }
+
+    try {
+      const payload = await createSdocPayload(document, metadata);
+      const blobPart = payload.bytes.buffer.slice(payload.bytes.byteOffset, payload.bytes.byteOffset + payload.bytes.byteLength) as ArrayBuffer;
+      downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), payload.filename);
+      setBaselineDocument(document);
+      setBaselineMetadata(metadata);
+      setCurrentFilename(payload.filename);
+      markSaved("Saved .sdoc");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
   }
 
   function downloadJson() {
+    if (!requireValidDocument("export document.json")) {
+      return;
+    }
+
     downloadBlob(new Blob([json], { type: "application/json" }), "document.json");
     setBaselineDocument(document);
     markSaved("Saved document.json");
   }
 
   function downloadMarkdown() {
+    if (!requireValidDocument("export Markdown")) {
+      return;
+    }
+
     const payload = createMarkdownPayload(document, metadata);
     downloadBlob(new Blob([payload.text], { type: "text/markdown" }), payload.filename);
     setStatusMessage("Exported Markdown");
@@ -169,9 +192,23 @@ export function App() {
   }
 
   function markCurrentAsBaseline() {
+    if (!requireValidDocument("mark saved")) {
+      return;
+    }
+
     setBaselineDocument(document);
     setBaselineMetadata(metadata);
     markSaved("Marked current state as saved");
+  }
+
+  function requireValidDocument(action: string): boolean {
+    const message = getValidationFailureMessage(validation, action);
+    if (message) {
+      setStatusMessage(message);
+      return false;
+    }
+
+    return true;
   }
 
   function createNewDocument() {

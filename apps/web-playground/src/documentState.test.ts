@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getFileLabel, getSavedLabel, isMetadataDirty, renderDiffPreview, renderMetadataDiff } from "./documentState";
+import {
+  getFileLabel,
+  getSavedLabel,
+  getValidationFailureMessage,
+  isMetadataDirty,
+  renderDiffPreview,
+  renderMetadataDiff
+} from "./documentState";
 
 describe("document state helpers", () => {
   it("detects metadata changes with stable key ordering", () => {
@@ -16,6 +23,16 @@ describe("document state helpers", () => {
     expect(getFileLabel("Opened.sdoc", { title: "Draft" })).toBe("Opened.sdoc");
     expect(getFileLabel(null, { title: "Draft" })).toBe("Draft.sdoc");
     expect(getFileLabel(null, { title: "   " })).toBe("Untitled.sdoc");
+  });
+
+  it("formats validation failures for export actions", () => {
+    expect(getValidationFailureMessage({ ok: true, issues: [] }, "save .sdoc")).toBeNull();
+    expect(
+      getValidationFailureMessage(
+        { ok: false, issues: [{ path: "$.content[0].type", message: "unsupported node type: figure" }] },
+        "export Markdown"
+      )
+    ).toBe("Cannot export Markdown: $.content[0].type: unsupported node type: figure");
   });
 
   it("renders metadata changes by field", () => {

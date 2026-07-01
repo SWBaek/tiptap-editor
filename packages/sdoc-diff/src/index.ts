@@ -154,6 +154,23 @@ export function renderDiffEvents(events: SDocDiffEvent[]): string[] {
   });
 }
 
+export function renderReadableDiffEvents(events: SDocDiffEvent[]): string[] {
+  return events.map((event) => {
+    switch (event.kind) {
+      case "added":
+        return `Added ${formatReadableSubject(event)} at ${event.path}`;
+      case "deleted":
+        return `Deleted ${formatReadableSubject(event)} from ${event.path}`;
+      case "moved":
+        return `Moved ${formatReadableSubject(event)} from ${event.fromPath} to ${event.toPath}`;
+      case "modified":
+        return `Modified ${formatReadableSubject(event)} at ${event.path}: ${event.changes.join("; ")}`;
+      case "reference-broken":
+        return `Broken ${humanizeNodeType(event.nodeType)} ${event.label} (${event.id}) at ${event.path}: missing ${event.targetId}`;
+    }
+  });
+}
+
 function flattenBlocks(document: SDocDocument): Map<string, BlockInfo> {
   const blocks = new Map<string, BlockInfo>();
   const rootId = document.attrs.id;
@@ -351,6 +368,14 @@ function getBlockLabel(node: SDocNode): string {
   }
 
   return quote(String(node.attrs?.anchor ?? node.attrs?.id ?? node.type));
+}
+
+function formatReadableSubject(event: Extract<SDocDiffEvent, { nodeType: string; label: string; id: string }>): string {
+  return `${humanizeNodeType(event.nodeType)} ${event.label} (${event.id})`;
+}
+
+function humanizeNodeType(nodeType: string): string {
+  return nodeType.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 }
 
 function omitId(attrs: Record<string, unknown>): Record<string, unknown> {

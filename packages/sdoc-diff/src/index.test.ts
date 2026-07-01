@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diffDocuments, renderDiffEvents } from "./index";
+import { diffDocuments, renderDiffEvents, renderReadableDiffEvents } from "./index";
 import type { SDocDocument } from "@sdoc/schema";
 
 const oldDocument: SDocDocument = {
@@ -184,5 +184,41 @@ describe("diffDocuments", () => {
       .map((event) => event.id);
 
     expect(addedIds).toEqual(["blk_callout"]);
+  });
+});
+
+describe("renderReadableDiffEvents", () => {
+  it("renders review-friendly event lines", () => {
+    expect(
+      renderReadableDiffEvents([
+        {
+          kind: "added",
+          id: "blk_add",
+          nodeType: "codeBlock",
+          path: "doc[0]/blk_add",
+          label: '"New code"'
+        },
+        {
+          kind: "moved",
+          id: "blk_move",
+          nodeType: "heading",
+          fromPath: "doc[2]/blk_move",
+          toPath: "doc[1]/blk_move",
+          label: '"Moved heading"'
+        },
+        {
+          kind: "reference-broken",
+          id: "ref_missing",
+          nodeType: "crossReference",
+          path: "0.1",
+          label: '"Missing section"',
+          targetId: "blk_missing"
+        }
+      ])
+    ).toEqual([
+      'Added code block "New code" (blk_add) at doc[0]/blk_add',
+      'Moved heading "Moved heading" (blk_move) from doc[2]/blk_move to doc[1]/blk_move',
+      'Broken cross reference "Missing section" (ref_missing) at 0.1: missing blk_missing'
+    ]);
   });
 });

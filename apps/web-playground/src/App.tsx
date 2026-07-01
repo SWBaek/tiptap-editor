@@ -23,7 +23,7 @@ import {
   Save,
   Underline as UnderlineIcon
 } from "lucide-react";
-import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
+import { diffDocuments, renderReadableDiffEvents } from "@sdoc/diff";
 import { exportMarkdown } from "@sdoc/export";
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
 import { type SDocDocument, validateDocument } from "@sdoc/schema";
@@ -38,7 +38,7 @@ import {
   type BlockMoveDirection
 } from "@sdoc/editor-tiptap";
 import { createSdocPayload, openDocumentInput } from "./documentIo";
-import { getSavedLabel, isMetadataDirty } from "./documentState";
+import { getSavedLabel, isMetadataDirty, renderDiffPreview, renderMetadataDiff } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
 
@@ -89,12 +89,15 @@ export function App() {
   const validation = validateDocument(document);
   const json = stableStringify(document);
   const markdown = exportMarkdown(document);
-  const diffLines = renderDiffEvents(diffDocuments(baselineDocument, document));
-  const hasDocumentChanges = diffLines.length > 0;
+  const documentDiffEvents = diffDocuments(baselineDocument, document);
+  const documentDiffLines = renderReadableDiffEvents(documentDiffEvents);
+  const metadataDiffLines = renderMetadataDiff(metadata, baselineMetadata);
+  const diffPreview = renderDiffPreview(documentDiffLines, metadataDiffLines);
+  const hasDocumentChanges = documentDiffEvents.length > 0;
   const hasMetadataChanges = isMetadataDirty(metadata, baselineMetadata);
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges;
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
-  const preview = activeTab === "json" ? json : activeTab === "markdown" ? markdown : diffLines.join("\n") || "NO_CHANGES\n";
+  const preview = activeTab === "json" ? json : activeTab === "markdown" ? markdown : diffPreview;
 
   async function downloadSdoc() {
     const payload = await createSdocPayload(document, metadata);

@@ -63,4 +63,11 @@ MOVED paragraph blk_2 from blk_parent[0]/blk_2 to blk_parent[3]/blk_2
 BROKEN_REF crossReference ref_4 target blk_missing
 ```
 
+Core rendering exposes two levels:
+
+- `renderDiffEvents`: compact debug/CLI lines that preserve event kind, id, and path.
+- `renderReadableDiffEvents`: review-friendly lines for editor preview surfaces.
+
+Metadata changes are rendered outside semantic document diff. They may appear in UI as a separate metadata section, but they are not part of `document.json` block matching.
+
 나중에 visual diff UI는 같은 event model을 사용한다. UI 전용 포맷을 별도로 만들지 않는다.

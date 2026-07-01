@@ -1,0 +1,25 @@
+{
+  "name": "tiptap-editor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "npm run build && vitest run",
+    "sdoc": "node packages/sdoc-cli/dist/index.js",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.7",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
+

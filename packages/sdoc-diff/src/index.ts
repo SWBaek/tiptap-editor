@@ -1,0 +1,382 @@
+import { stableStringify, normalizeDocument } from "@sdoc/format";
+import { getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocNode } from "@sdoc/schema";
+
+export type SDocDiffEvent =
+  | {
+      kind: "added";
+      id: string;
+      nodeType: string;
+      path: string;
+      label: string;
+    }
+  | {
+      kind: "deleted";
+      id: string;
+      nodeType: string;
+      path: string;
+      label: string;
+    }
+  | {
+      kind: "moved";
+      id: string;
+      nodeType: string;
+      fromPath: string;
+      toPath: string;
+      label: string;
+    }
+  | {
+      kind: "modified";
+      id: string;
+      nodeType: string;
+      path: string;
+      label: string;
+      changes: string[];
+    }
+  | {
+      kind: "reference-broken";
+      id: string;
+      nodeType: "crossReference";
+      path: string;
+      label: string;
+      targetId: string;
+    };
+
+interface BlockInfo {
+  id: string;
+  node: SDocNode;
+  path: string;
+  parentId: string;
+  index: number;
+  ancestorIds: string[];
+  label: string;
+  fingerprint: string;
+}
+
+export function diffDocuments(oldDocument: SDocDocument, newDocument: SDocDocument): SDocDiffEvent[] {
+  const oldBlocks = flattenBlocks(normalizeDocument(oldDocument));
+  const newBlocks = flattenBlocks(normalizeDocument(newDocument));
+  const events: SDocDiffEvent[] = [];
+
+  for (const oldBlock of oldBlocks.values()) {
+    if (!newBlocks.has(oldBlock.id)) {
+      if (hasMissingAncestor(oldBlock, newBlocks)) {
+        continue;
+      }
+
+      events.push({
+        kind: "deleted",
+        id: oldBlock.id,
+        nodeType: oldBlock.node.type,
+        path: oldBlock.path,
+        label: oldBlock.label
+      });
+    }
+  }
+
+  for (const newBlock of newBlocks.values()) {
+    const oldBlock = oldBlocks.get(newBlock.id);
+    if (!oldBlock) {
+      if (hasMissingAncestor(newBlock, oldBlocks)) {
+        continue;
+      }
+
+      events.push({
+        kind: "added",
+        id: newBlock.id,
+        nodeType: newBlock.node.type,
+        path: newBlock.path,
+        label: newBlock.label
+      });
+      continue;
+    }
+
+    if (oldBlock.parentId !== newBlock.parentId) {
+      events.push({
+        kind: "moved",
+        id: newBlock.id,
+        nodeType: newBlock.node.type,
+        fromPath: oldBlock.path,
+        toPath: newBlock.path,
+        label: newBlock.label
+      });
+    }
+
+    if (oldBlock.fingerprint !== newBlock.fingerprint) {
+      events.push({
+        kind: "modified",
+        id: newBlock.id,
+        nodeType: newBlock.node.type,
+        path: newBlock.path,
+        label: newBlock.label,
+        changes: summarizeChanges(oldBlock.node, newBlock.node)
+      });
+    }
+  }
+
+  for (const movedId of findSiblingReorders(oldBlocks, newBlocks)) {
+    const oldBlock = oldBlocks.get(movedId);
+    const newBlock = newBlocks.get(movedId);
+    if (!oldBlock || !newBlock || oldBlock.parentId !== newBlock.parentId) {
+      continue;
+    }
+
+    events.push({
+      kind: "moved",
+      id: newBlock.id,
+      nodeType: newBlock.node.type,
+      fromPath: oldBlock.path,
+      toPath: newBlock.path,
+      label: newBlock.label
+    });
+  }
+
+  for (const brokenRef of findBrokenReferences(newDocument, newBlocks)) {
+    events.push(brokenRef);
+  }
+
+  return sortEvents(events);
+}
+
+export function renderDiffEvents(events: SDocDiffEvent[]): string[] {
+  return events.map((event) => {
+    switch (event.kind) {
+      case "added":
+        return `ADDED ${event.nodeType} ${event.id} at ${event.path}: ${event.label}`;
+      case "deleted":
+        return `DELETED ${event.nodeType} ${event.id} at ${event.path}: ${event.label}`;
+      case "moved":
+        return `MOVED ${event.nodeType} ${event.id} from ${event.fromPath} to ${event.toPath}: ${event.label}`;
+      case "modified":
+        return `MODIFIED ${event.nodeType} ${event.id} at ${event.path}: ${event.changes.join("; ")}`;
+      case "reference-broken":
+        return `BROKEN_REF ${event.nodeType} ${event.id} at ${event.path}: missing ${event.targetId}`;
+    }
+  });
+}
+
+function flattenBlocks(document: SDocDocument): Map<string, BlockInfo> {
+  const blocks = new Map<string, BlockInfo>();
+  const rootId = document.attrs.id;
+
+  function visit(node: SDocNode, parentId: string, index: number, ancestorIds: string[]): void {
+    if (isBlockNode(node)) {
+      const id = getNodeId(node);
+      if (id) {
+        blocks.set(id, {
+          id,
+          node,
+          path: `${parentId}[${index}]/${id}`,
+          parentId,
+          index,
+          ancestorIds,
+          label: getBlockLabel(node),
+          fingerprint: fingerprintBlock(node)
+        });
+      }
+
+      const nextParentId = id ?? parentId;
+      const nextAncestorIds = id ? [...ancestorIds, id] : ancestorIds;
+      let childBlockIndex = 0;
+      node.content?.forEach((child) => {
+        if (isBlockNode(child)) {
+          visit(child, nextParentId, childBlockIndex, nextAncestorIds);
+          childBlockIndex += 1;
+        } else {
+          visitInline(child);
+        }
+      });
+
+      return;
+    }
+
+    visitInline(node);
+  }
+
+  function visitInline(node: SDocNode): void {
+    node.content?.forEach(visitInline);
+  }
+
+  document.content.forEach((node, index) => visit(node, rootId, index, []));
+  return blocks;
+}
+
+function hasMissingAncestor(block: BlockInfo, otherBlocks: Map<string, BlockInfo>): boolean {
+  return block.ancestorIds.some((ancestorId) => !otherBlocks.has(ancestorId));
+}
+
+function findSiblingReorders(oldBlocks: Map<string, BlockInfo>, newBlocks: Map<string, BlockInfo>): Set<string> {
+  const oldByParent = groupByParent(oldBlocks);
+  const newByParent = groupByParent(newBlocks);
+  const moved = new Set<string>();
+
+  for (const [parentId, oldSequence] of oldByParent) {
+    const newSequence = newByParent.get(parentId);
+    if (!newSequence) {
+      continue;
+    }
+
+    const oldCommon = oldSequence.filter((id) => newBlocks.has(id) && newBlocks.get(id)?.parentId === parentId);
+    const newCommon = newSequence.filter((id) => oldBlocks.has(id) && oldBlocks.get(id)?.parentId === parentId);
+    const stable = new Set(longestCommonSubsequence(oldCommon, newCommon));
+
+    for (const id of oldCommon) {
+      if (!stable.has(id)) {
+        moved.add(id);
+      }
+    }
+  }
+
+  return moved;
+}
+
+function groupByParent(blocks: Map<string, BlockInfo>): Map<string, string[]> {
+  const groups = new Map<string, BlockInfo[]>();
+  for (const block of blocks.values()) {
+    const group = groups.get(block.parentId) ?? [];
+    group.push(block);
+    groups.set(block.parentId, group);
+  }
+
+  const result = new Map<string, string[]>();
+  for (const [parentId, group] of groups) {
+    result.set(
+      parentId,
+      group.sort((a, b) => a.index - b.index).map((block) => block.id)
+    );
+  }
+
+  return result;
+}
+
+function longestCommonSubsequence(left: string[], right: string[]): string[] {
+  const lengths = Array.from({ length: left.length + 1 }, () => Array<number>(right.length + 1).fill(0));
+
+  for (let i = left.length - 1; i >= 0; i -= 1) {
+    for (let j = right.length - 1; j >= 0; j -= 1) {
+      lengths[i][j] =
+        left[i] === right[j] ? lengths[i + 1][j + 1] + 1 : Math.max(lengths[i + 1][j], lengths[i][j + 1]);
+    }
+  }
+
+  const sequence: string[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) {
+      sequence.push(left[i]);
+      i += 1;
+      j += 1;
+    } else if (lengths[i + 1][j] >= lengths[i][j + 1]) {
+      i += 1;
+    } else {
+      j += 1;
+    }
+  }
+
+  return sequence;
+}
+
+function fingerprintBlock(node: SDocNode): string {
+  return stableStringify(stripNestedBlocks(node));
+}
+
+function stripNestedBlocks(node: SDocNode): SDocNode {
+  const stripped: SDocNode = {
+    type: node.type,
+    attrs: node.attrs,
+    text: node.text,
+    marks: node.marks
+  };
+
+  const inlineContent = node.content?.filter((child) => !isBlockNode(child)).map(stripNestedBlocks);
+  if (inlineContent && inlineContent.length > 0) {
+    stripped.content = inlineContent;
+  }
+
+  return stripped;
+}
+
+function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
+  const changes: string[] = [];
+
+  if (oldNode.type !== newNode.type) {
+    changes.push(`type changed ${oldNode.type} -> ${newNode.type}`);
+  }
+
+  const oldText = getPlainText(oldNode);
+  const newText = getPlainText(newNode);
+  if (oldText !== newText) {
+    changes.push(`text changed ${quote(oldText)} -> ${quote(newText)}`);
+  }
+
+  const oldAttrs = stableStringify(omitId(oldNode.attrs ?? {}));
+  const newAttrs = stableStringify(omitId(newNode.attrs ?? {}));
+  if (oldAttrs !== newAttrs) {
+    changes.push("attrs changed");
+  }
+
+  return changes.length > 0 ? changes : ["content changed"];
+}
+
+function findBrokenReferences(document: SDocDocument, blocks: Map<string, BlockInfo>): SDocDiffEvent[] {
+  const events: SDocDiffEvent[] = [];
+
+  function visit(node: SDocNode, path: number[]): void {
+    if (node.type === "crossReference") {
+      const targetId = node.attrs?.targetId;
+      const refId = node.attrs?.id;
+      if (typeof targetId === "string" && !blocks.has(targetId)) {
+        events.push({
+          kind: "reference-broken",
+          id: typeof refId === "string" ? refId : `ref@${path.join(".")}`,
+          nodeType: "crossReference",
+          path: path.join("."),
+          label: getPlainText(node),
+          targetId
+        });
+      }
+    }
+
+    node.content?.forEach((child, index) => visit(child, [...path, index]));
+  }
+
+  document.content.forEach((node, index) => visit(node, [index]));
+  return events;
+}
+
+function getBlockLabel(node: SDocNode): string {
+  const text = getPlainText(node).trim();
+  if (text.length > 0) {
+    return quote(text.length > 80 ? `${text.slice(0, 77)}...` : text);
+  }
+
+  return quote(String(node.attrs?.anchor ?? node.attrs?.id ?? node.type));
+}
+
+function omitId(attrs: Record<string, unknown>): Record<string, unknown> {
+  const { id: _id, ...rest } = attrs;
+  return rest;
+}
+
+function quote(value: string): string {
+  return `"${value.replaceAll('"', '\\"')}"`;
+}
+
+function sortEvents(events: SDocDiffEvent[]): SDocDiffEvent[] {
+  const priority: Record<SDocDiffEvent["kind"], number> = {
+    deleted: 0,
+    added: 1,
+    moved: 2,
+    modified: 3,
+    "reference-broken": 4
+  };
+
+  return [...events].sort((a, b) => {
+    const priorityDiff = priority[a.kind] - priority[b.kind];
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+
+    return "path" in a && "path" in b ? a.path.localeCompare(b.path) : a.id.localeCompare(b.id);
+  });
+}

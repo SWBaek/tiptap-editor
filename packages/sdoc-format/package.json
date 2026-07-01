@@ -1,0 +1,18 @@
+{
+  "name": "@sdoc/format",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@sdoc/schema": "0.0.0",
+    "jszip": "^3.10.1"
+  }
+}
+

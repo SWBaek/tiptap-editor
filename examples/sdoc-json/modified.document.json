@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "type": "doc",
+  "attrs": {
+    "id": "doc_sample"
+  },
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {
+        "id": "blk_overview",
+        "level": 1,
+        "anchor": "overview"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Architecture Overview"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "attrs": {
+        "id": "blk_intro"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "This document describes the normalized SDoc architecture."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "attrs": {
+        "id": "blk_reference"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "See "
+        },
+        {
+          "type": "crossReference",
+          "attrs": {
+            "id": "ref_overview",
+            "targetId": "blk_overview"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "overview"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " for context."
+        }
+      ]
+    }
+  ]
+}
+

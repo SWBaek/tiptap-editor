@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "type": "doc",
+  "attrs": {
+    "id": "doc_sample"
+  },
+  "content": [
+    {
+      "type": "paragraph",
+      "attrs": {
+        "id": "blk_intro"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "This document describes the initial architecture."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "attrs": {
+        "id": "blk_overview",
+        "level": 1,
+        "anchor": "overview"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "System Overview"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "attrs": {
+        "id": "blk_note",
+        "kind": "warning"
+      },
+      "content": [
+        {
+          "type": "paragraph",
+          "attrs": {
+            "id": "blk_note_body"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Derived outputs are disposable."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

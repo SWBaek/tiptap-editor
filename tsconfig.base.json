@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@sdoc/schema": ["packages/sdoc-schema/src/index.ts"],
+      "@sdoc/format": ["packages/sdoc-format/src/index.ts"],
+      "@sdoc/diff": ["packages/sdoc-diff/src/index.ts"],
+      "@sdoc/export": ["packages/sdoc-export/src/index.ts"]
+    }
+  }
+}
+

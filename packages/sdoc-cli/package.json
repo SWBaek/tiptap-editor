@@ -1,0 +1,17 @@
+{
+  "name": "@sdoc/cli",
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "sdoc": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "@sdoc/diff": "0.0.0",
+    "@sdoc/export": "0.0.0",
+    "@sdoc/format": "0.0.0",
+    "@sdoc/schema": "0.0.0"
+  }
+}
+

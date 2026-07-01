@@ -24,6 +24,7 @@ Run these before declaring Phase 1 closed:
 
 ```text
 npm test
+npm run test:e2e
 npm run build
 ```
 
@@ -33,7 +34,7 @@ Then verify the running playground at `http://127.0.0.1:6280`:
 Invoke-WebRequest -Uri http://127.0.0.1:6280 -UseBasicParsing
 ```
 
-Manual browser smoke:
+The automated smoke test in `apps/web-playground/e2e/phase1-smoke.spec.ts` verifies the playground loads, Markdown/Diff previews update, Markdown download works, and the rendered page is non-empty. For release candidates, also run this manual browser smoke:
 
 1. Create a new document.
 2. Edit heading, paragraph, list, blockquote, code block, note callout, and warning callout.
@@ -44,7 +45,7 @@ Manual browser smoke:
 
 ## Remaining Risk
 
-There is no automated browser E2E test yet. Unit tests cover the editor-core and file I/O logic, while final Phase 1 closure still requires the manual smoke path above or a future Playwright test.
+The browser smoke test covers the happy path only. It does not yet automate reopening the downloaded `.sdoc`, invalid-file UX, or mobile viewport behavior.
 
 ## Phase 1 Boundary
 

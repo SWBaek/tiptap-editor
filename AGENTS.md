@@ -57,6 +57,8 @@ Use npm workspaces from the repository root.
 - `npm run build`: compile packages and build the browser playground.
 - `npm run build:packages`: compile only the TypeScript packages.
 - `npm test`: build packages and run unit tests with Vitest.
+- `npx playwright install chromium`: install the browser runtime needed for E2E checks.
+- `npm run test:e2e`: run the Playwright browser smoke test for the Phase 1 playground.
 - `npm run sdoc -- validate examples/sdoc-json/basic.document.json`: validate a `.sdoc`, `document.json`, or unpacked `.sdoc` folder.
 - `npm run sdoc -- diff examples/sdoc-json/basic.document.json examples/sdoc-json/modified.document.json`: run the Phase 0 semantic diff CLI.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json markdown`: export a sample document to Markdown.
@@ -73,7 +75,7 @@ Keep editor extensions small and focused. Name extension files by feature, for e
 
 ## Testing Guidelines
 
-Vitest is configured for Phase 0 package tests. Place unit tests next to source files as `*.test.ts` or under `tests/` for integration coverage.
+Vitest is configured for package and app logic tests. Playwright is configured for browser-level smoke coverage under `apps/web-playground/e2e/`. Place unit tests next to source files as `*.test.ts`; place browser flows as `*.spec.ts`.
 
 Highest-priority tests:
 

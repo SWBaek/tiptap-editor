@@ -236,6 +236,21 @@ describe("BlockIdExtension", () => {
     expect(new Set(ids).size).toBe(3);
     expect(ids.every((id) => id.startsWith("blk_"))).toBe(true);
   });
+
+  it("preserves heading anchors in a real Tiptap editor state", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "heading", attrs: { id: "blk_heading", level: 1, anchor: "overview" }, content: [{ type: "text", text: "Overview" }] }]
+      }
+    });
+
+    const document = toSdocDocument(editor.getJSON(), "doc_anchor");
+    editor.destroy();
+
+    expect(document.content[0].attrs?.anchor).toBe("overview");
+  });
 });
 
 describe("moveSelectedTopLevelBlock", () => {

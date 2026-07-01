@@ -119,6 +119,16 @@ export const BlockIdExtension = Extension.create({
             renderHTML: (attributes) => (attributes.id ? { "data-id": attributes.id } : {})
           }
         }
+      },
+      {
+        types: ["heading"],
+        attributes: {
+          anchor: {
+            default: null,
+            parseHTML: (element) => element.getAttribute("data-anchor"),
+            renderHTML: (attributes) => (attributes.anchor ? { "data-anchor": attributes.anchor } : {})
+          }
+        }
       }
     ];
   },

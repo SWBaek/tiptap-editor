@@ -12,6 +12,7 @@
     "build:packages": "tsc -b",
     "dev:web": "npm run dev -w apps/web-playground",
     "test": "npm run build:packages && vitest run",
+    "test:e2e": "playwright test",
     "sdoc": "node packages/sdoc-cli/dist/index.js",
     "clean": "tsc -b --clean && npm run clean -w apps/web-playground --if-present"
   },
@@ -27,6 +28,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^24.0.7",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

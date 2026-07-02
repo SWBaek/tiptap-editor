@@ -45,6 +45,8 @@ Full file and folder exploration belongs to the Tauri desktop phase, where nativ
 - Activity Bar buttons should use icons with accessible labels and tooltips.
 - The editor must remain usable when the side panel is collapsed.
 
+`docs/git-integration-boundary.md` records the browser, CLI, and future Tauri boundary for Git-oriented review workflows.
+
 ## Implementation Order
 
 1. Introduce `ActivityBar` and `SidePanel` components without changing document behavior.

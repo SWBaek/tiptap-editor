@@ -93,6 +93,9 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("Total");
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("Metadata");
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("1");
+  await expect(reviewPanel.getByLabel("Git integration boundary")).toContainText("Git is optional");
+  await reviewPanel.getByRole("button", { name: "Copy semantic diff command" }).click();
+  await expect(page.locator(".status-note")).toContainText('npm run sdoc -- diff "old.document.json" "new.document.json"');
 
   await reviewPanel.getByRole("button", { name: "Show diff" }).click();
   await expect(page.locator(".diff-review-base")).toContainText("Saved baseline");

@@ -674,6 +674,7 @@ export function App() {
               onShowDiff={() => setActiveTab("diff")}
               onCompareSavedBaseline={compareSavedBaseline}
               onMarkSaved={markCurrentAsBaseline}
+              onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
 
@@ -1152,7 +1153,8 @@ function ReviewPanel({
   hasUnsavedChanges,
   onShowDiff,
   onCompareSavedBaseline,
-  onMarkSaved
+  onMarkSaved,
+  onCopyDeveloperCommand
 }: {
   review: ChangeReviewModel;
   baseLabel: string;
@@ -1161,8 +1163,10 @@ function ReviewPanel({
   onShowDiff: () => void;
   onCompareSavedBaseline: () => void;
   onMarkSaved: () => void;
+  onCopyDeveloperCommand: (command: string) => void;
 }) {
   const isHistoryBase = baseLabel !== "Saved baseline";
+  const semanticDiffCommand = 'npm run sdoc -- diff "old.document.json" "new.document.json"';
 
   return (
     <div className="side-panel-section review-panel">
@@ -1205,6 +1209,17 @@ function ReviewPanel({
       <button type="button" onClick={onMarkSaved}>
         Mark saved
       </button>
+
+      <section className="git-workflow" aria-label="Git integration boundary">
+        <h3>Git workflow</h3>
+        <div className="workspace-boundary">
+          <strong>Git is optional</strong>
+          <span>Use semantic diff or unpacked folders for developer review; normal authors do not need Git.</span>
+        </div>
+        <button type="button" onClick={() => onCopyDeveloperCommand(semanticDiffCommand)}>
+          Copy semantic diff command
+        </button>
+      </section>
     </div>
   );
 }

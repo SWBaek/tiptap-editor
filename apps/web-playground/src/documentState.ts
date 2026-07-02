@@ -51,6 +51,13 @@ export interface ReferenceDiagnosticsModel {
   staleReferences: StaleReferenceLabel[];
 }
 
+export interface SectionFoldRange {
+  headingId: string;
+  headingLevel: number;
+  title: string;
+  hiddenBlockIds: string[];
+}
+
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
   return stableStringify(current) !== stableStringify(baseline);
 }
@@ -186,6 +193,60 @@ export function createReferenceDiagnostics(document: SDocDocument): ReferenceDia
     brokenReferences,
     staleReferences
   };
+}
+
+export function createSectionFoldRanges(document: SDocDocument): SectionFoldRange[] {
+  const ranges: SectionFoldRange[] = [];
+
+  for (let index = 0; index < document.content.length; index += 1) {
+    const node = document.content[index];
+    if (node.type !== "heading") {
+      continue;
+    }
+
+    const headingId = getNodeId(node);
+    const headingLevel = typeof node.attrs?.level === "number" ? node.attrs.level : null;
+    if (!headingId || headingLevel === null) {
+      continue;
+    }
+
+    const hiddenBlockIds: string[] = [];
+    for (let childIndex = index + 1; childIndex < document.content.length; childIndex += 1) {
+      const candidate = document.content[childIndex];
+      if (candidate.type === "heading") {
+        const candidateLevel = typeof candidate.attrs?.level === "number" ? candidate.attrs.level : null;
+        if (candidateLevel !== null && candidateLevel <= headingLevel) {
+          break;
+        }
+      }
+
+      const blockId = getNodeId(candidate);
+      if (blockId) {
+        hiddenBlockIds.push(blockId);
+      }
+    }
+
+    if (hiddenBlockIds.length > 0) {
+      ranges.push({
+        headingId,
+        headingLevel,
+        title: getPlainText(node).trim() || headingId,
+        hiddenBlockIds
+      });
+    }
+  }
+
+  return ranges;
+}
+
+export function pruneCollapsedHeadingIds(collapsedHeadingIds: Set<string>, ranges: SectionFoldRange[]): Set<string> {
+  const foldableIds = new Set(ranges.map((range) => range.headingId));
+  const nextIds = new Set([...collapsedHeadingIds].filter((id) => foldableIds.has(id)));
+  if (nextIds.size === collapsedHeadingIds.size && [...nextIds].every((id) => collapsedHeadingIds.has(id))) {
+    return collapsedHeadingIds;
+  }
+
+  return nextIds;
 }
 
 export function updateCrossReferenceLabel(document: SDocDocument, referenceId: string, label: string): SDocDocument {

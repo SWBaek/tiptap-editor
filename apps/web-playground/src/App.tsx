@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AnyExtension } from "@tiptap/core";
+import type { AnyExtension, Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -12,6 +12,8 @@ import {
   ArrowDown,
   ArrowUp,
   Bold,
+  ChevronDown,
+  ChevronRight,
   Braces,
   Code2,
   Columns3,
@@ -75,11 +77,13 @@ import {
   createChangeReview,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
+  createSectionFoldRanges,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
   isMetadataDirty,
   parseLocalHistory,
+  pruneCollapsedHeadingIds,
   renderDiffPreview,
   renderMetadataDiff,
   removeLocalHistoryEntry,
@@ -89,7 +93,8 @@ import {
   type LocalHistoryEntry,
   type ChangeReviewModel,
   type ReferenceDiagnosticsModel,
-  type ReferenceTargetSummary
+  type ReferenceTargetSummary,
+  type SectionFoldRange
 } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
@@ -153,6 +158,7 @@ export function App() {
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [highlightOverlay, setHighlightOverlay] = useState<EditorHighlightOverlay | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
+  const [collapsedHeadingIds, setCollapsedHeadingIds] = useState<Set<string>>(() => new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const editorPaneRef = useRef<HTMLElement>(null);
@@ -191,6 +197,13 @@ export function App() {
   const document = useMemo(() => {
     return editor ? toSdocDocument(editor.getJSON(), documentId) : initialDocument;
   }, [documentId, editor, editorRevision]);
+  const sectionFoldRanges = useMemo(() => createSectionFoldRanges(document), [document]);
+  const hiddenByFoldNodeIds = useMemo(() => collectHiddenFoldNodeIds(sectionFoldRanges, collapsedHeadingIds), [collapsedHeadingIds, sectionFoldRanges]);
+  const foldRuntimeCss = useMemo(() => renderFoldRuntimeCss(hiddenByFoldNodeIds, collapsedHeadingIds), [collapsedHeadingIds, hiddenByFoldNodeIds]);
+
+  useEffect(() => {
+    setCollapsedHeadingIds((current) => pruneCollapsedHeadingIds(current, sectionFoldRanges));
+  }, [sectionFoldRanges]);
 
   const validation = validateDocument(document);
   const json = stableStringify(document);
@@ -309,6 +322,7 @@ export function App() {
       setBaselineDocument(appliedDocument);
       setBaselineMetadata(nextMetadata);
       setSelectedHistoryId(null);
+      setCollapsedHeadingIds(new Set());
       setCurrentFilename(file.name);
       addRecentFile(file.name, nextMetadata.title || file.name, "opened");
       setActiveTab("json");
@@ -464,6 +478,7 @@ export function App() {
     setBaselineMetadata(nextMetadata);
     setAssets({});
     setSelectedHistoryId(null);
+    setCollapsedHeadingIds(new Set());
     setCurrentFilename(null);
     setActiveTab("json");
     setSavedAt("Not saved");
@@ -501,6 +516,37 @@ export function App() {
     const applied = setSelectedTableCellsAlignment(editor, align);
     setActiveTab("json");
     setStatusMessage(applied ? `Aligned table cell ${align}` : `Cannot align table cell ${align}`);
+  }
+
+  function foldSelectedSection() {
+    const range = getSelectedSectionFoldRange(editor, sectionFoldRanges);
+    if (!range) {
+      setStatusMessage("Select a heading with content to fold");
+      return;
+    }
+
+    const nextHeadingIds = new Set(collapsedHeadingIds).add(range.headingId);
+    setCollapsedHeadingIds(nextHeadingIds);
+    setStatusMessage(`Folded section: ${range.title}`);
+  }
+
+  function unfoldSelectedSection() {
+    const headingId = getSelectedHeadingId(editor);
+    if (!headingId) {
+      setStatusMessage("Select a folded heading to unfold");
+      return;
+    }
+
+    const nextHeadingIds = new Set(collapsedHeadingIds);
+    nextHeadingIds.delete(headingId);
+    setCollapsedHeadingIds(nextHeadingIds);
+    setStatusMessage("Unfolded section");
+  }
+
+  function unfoldAllSections() {
+    const nextHeadingIds = new Set<string>();
+    setCollapsedHeadingIds(nextHeadingIds);
+    setStatusMessage("Unfolded all sections");
   }
 
   function openReferencePicker() {
@@ -756,6 +802,15 @@ export function App() {
           <ToolbarButton title="Heading 2" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
             <Heading2 size={18} />
           </ToolbarButton>
+          <ToolbarButton title="Fold section" onClick={foldSelectedSection}>
+            <ChevronRight size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Unfold section" onClick={unfoldSelectedSection}>
+            <ChevronDown size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Unfold all sections" active={collapsedHeadingIds.size > 0} onClick={unfoldAllSections}>
+            <List size={18} />
+          </ToolbarButton>
           <ToolbarButton title="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
             <Bold size={18} />
           </ToolbarButton>
@@ -883,6 +938,7 @@ export function App() {
 
         <div className="editor-grid">
           <section className="editor-pane" ref={editorPaneRef}>
+            {foldRuntimeCss && <style data-sdoc-fold-runtime>{foldRuntimeCss}</style>}
             <EditorContent editor={editor} />
             {highlightOverlay && (
               <div
@@ -1641,6 +1697,56 @@ function getActivityPanelLabel(panel: ActivityPanel): string {
     settings: "Settings"
   };
   return labels[panel];
+}
+
+function getSelectedSectionFoldRange(editor: Editor, ranges: SectionFoldRange[]): SectionFoldRange | null {
+  const headingId = getSelectedHeadingId(editor);
+  if (!headingId) {
+    return null;
+  }
+
+  return ranges.find((range) => range.headingId === headingId) ?? null;
+}
+
+function getSelectedHeadingId(editor: Editor): string | null {
+  const { $from } = editor.state.selection;
+  for (let depth = $from.depth; depth >= 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (node.type.name === "heading" && typeof node.attrs.id === "string" && node.attrs.id.length > 0) {
+      return node.attrs.id;
+    }
+  }
+
+  return null;
+}
+
+function collectHiddenFoldNodeIds(ranges: SectionFoldRange[], collapsedHeadingIds: Set<string>): Set<string> {
+  const hiddenIds = new Set<string>();
+  for (const range of ranges) {
+    if (collapsedHeadingIds.has(range.headingId)) {
+      range.hiddenBlockIds.forEach((id) => hiddenIds.add(id));
+    }
+  }
+
+  return hiddenIds;
+}
+
+function renderFoldRuntimeCss(hiddenNodeIds: Set<string>, collapsedHeadingIds: Set<string>): string {
+  const rules: string[] = [];
+  for (const id of hiddenNodeIds) {
+    rules.push(`.editor-surface [data-id="${escapeCssAttributeValue(id)}"]{display:none!important;}`);
+  }
+  for (const id of collapsedHeadingIds) {
+    const selector = `.editor-surface [data-id="${escapeCssAttributeValue(id)}"]`;
+    rules.push(`${selector}{padding-bottom:6px;border-bottom:1px dashed #92a4b4;}`);
+    rules.push(`${selector}::after{content:" collapsed";margin-left:8px;color:#6f7f8e;font-size:12px;font-weight:500;}`);
+  }
+
+  return rules.join("\n");
+}
+
+function escapeCssAttributeValue(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 function findEditorElementByDataId(nodeId: string): HTMLElement | null {

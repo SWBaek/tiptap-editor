@@ -4,11 +4,13 @@ import {
   createChangeReview,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
+  createSectionFoldRanges,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
   isMetadataDirty,
   parseLocalHistory,
+  pruneCollapsedHeadingIds,
   renameLocalHistoryEntry,
   removeLocalHistoryEntry,
   renderDiffPreview,
@@ -142,6 +144,37 @@ describe("document state helpers", () => {
     ]);
 
     expect(createReferenceDiagnostics(updateCrossReferenceLabel(document, "ref_target", "Updated Target")).staleCount).toBe(0);
+  });
+
+  it("derives section fold ranges from heading levels and stable heading ids", () => {
+    const document: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_fold" },
+      content: [
+        { type: "heading", attrs: { id: "h1", level: 1 }, content: [{ type: "text", text: "Overview" }] },
+        { type: "paragraph", attrs: { id: "p1" }, content: [{ type: "text", text: "Intro" }] },
+        { type: "heading", attrs: { id: "h2", level: 2 }, content: [{ type: "text", text: "Details" }] },
+        { type: "paragraph", attrs: { id: "p2" }, content: [{ type: "text", text: "Detail" }] },
+        { type: "heading", attrs: { id: "h1_next", level: 1 }, content: [{ type: "text", text: "Next" }] },
+        { type: "paragraph", attrs: { id: "p3" }, content: [{ type: "text", text: "Next body" }] }
+      ]
+    };
+
+    expect(createSectionFoldRanges(document)).toEqual([
+      { headingId: "h1", headingLevel: 1, title: "Overview", hiddenBlockIds: ["p1", "h2", "p2"] },
+      { headingId: "h2", headingLevel: 2, title: "Details", hiddenBlockIds: ["p2"] },
+      { headingId: "h1_next", headingLevel: 1, title: "Next", hiddenBlockIds: ["p3"] }
+    ]);
+  });
+
+  it("keeps stale collapsed section state out of the active fold set", () => {
+    const ranges = [
+      { headingId: "h1", headingLevel: 1, title: "Overview", hiddenBlockIds: ["p1"] },
+      { headingId: "h2", headingLevel: 2, title: "Details", hiddenBlockIds: ["p2"] }
+    ];
+
+    expect([...pruneCollapsedHeadingIds(new Set(["h1", "missing"]), ranges)]).toEqual(["h1"]);
   });
 
   it("creates and caps local history snapshots", () => {

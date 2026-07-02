@@ -109,6 +109,31 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(page.locator(".diff-empty")).toContainText("No changes");
 });
 
+test("folds editor sections without storing runtime state in document.json", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const beforeFold = await readPreviewDocument(page);
+
+  await page.locator('.editor-surface [data-id="blk_overview"]').click();
+  await page.getByRole("button", { name: "Fold section", exact: true }).click();
+  await expect(page.locator(".status-note")).toContainText("Folded section: System Overview");
+  await expect(page.locator('.editor-surface [data-id="blk_intro"]')).toBeHidden();
+  await expect(page.locator('.editor-surface [data-id="blk_overview"]')).toBeVisible();
+
+  const afterFold = await readPreviewDocument(page);
+  expect(afterFold).toEqual(beforeFold);
+  expect(JSON.stringify(afterFold)).not.toContain("collapsed");
+  expect(JSON.stringify(afterFold)).not.toContain("fold");
+
+  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await expect(page.locator(".preview-output")).toContainText("This document describes the initial SDoc editor shell.");
+
+  await page.getByRole("button", { name: "Unfold all sections", exact: true }).click();
+  await expect(page.locator(".status-note")).toContainText("Unfolded all sections");
+  await expect(page.locator("style[data-sdoc-fold-runtime]")).toHaveCount(0);
+  await expect(page.locator('.editor-surface [data-id="blk_intro"]')).toBeVisible();
+});
+
 test("tracks browser recent files in the Files side panel", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Files panel" }).click();

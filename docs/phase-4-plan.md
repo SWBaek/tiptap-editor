@@ -89,12 +89,18 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Prefer a boundary document before implementing fold controls or persisted outline state.
 - Use `docs/section-folding-boundary.md` as the boundary document.
 
-## Current Slice: Section Folding Runtime Controls
+## Completed Slice: Section Folding Runtime Controls
 
 - Derive foldable ranges from heading levels and stable heading block IDs.
 - Add browser-local fold/unfold controls without changing `document.json`.
 - Ensure exports, validation, semantic diff, references, and AI/RAG derived outputs still include folded content.
 - Add unit and Playwright coverage proving fold state is runtime-only.
+
+## Current Slice: Native PPTX Slide Export Boundary
+
+- Decide whether native PPTX export should be implemented directly, generated from HTML, or deferred to a dedicated renderer.
+- Keep slide output a derived projection from `document.json`; do not introduce slide-only canonical state without a boundary decision.
+- Define CLI, browser, and future Tauri responsibilities before adding implementation.
 
 ## Acceptance Evidence
 
@@ -111,6 +117,8 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Unit tests cover table cell alignment validation, Markdown/HTML export, semantic diff summaries, and advanced table command wrappers.
 - Playwright covers row/column insertion, header column toggling, cell alignment, stable IDs, and absence of transient table UI state in `document.json`.
 - `docs/section-folding-boundary.md` records that section folding is derived from headings and that collapsed state is runtime-only.
+- Unit tests cover heading-derived fold ranges and stale collapsed heading pruning.
+- Playwright verifies section fold/unfold controls hide editor DOM only while `document.json` and Markdown output retain folded content.
 
 ## Boundaries
 

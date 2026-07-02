@@ -79,7 +79,7 @@
 
 ## Phase 4: Publishing & Advanced Features
 
-상태: started on 2026-07-03. HTML export, print stylesheet, CLI PDF export, browser PDF UX boundary, slide export boundary, Draw.io integration boundary, Draw.io minimal asset model, advanced table editing boundary, advanced table editing minimal controls, section folding boundary가 완료되었고, 현재는 `docs/phase-4-plan.md`의 Section Folding Runtime Controls이다.
+상태: started on 2026-07-03. HTML export, print stylesheet, CLI PDF export, browser PDF UX boundary, slide export boundary, Draw.io integration boundary, Draw.io minimal asset model, advanced table editing boundary, advanced table editing minimal controls, section folding boundary, section folding runtime controls가 완료되었고, 현재는 `docs/phase-4-plan.md`의 Native PPTX Slide Export Boundary이다.
 
 목표는 배포 가능한 기술 문서 제작 도구로 확장하는 것이다.
 

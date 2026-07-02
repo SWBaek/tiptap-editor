@@ -9,6 +9,7 @@ import {
   getValidationFailureMessage,
   isMetadataDirty,
   parseLocalHistory,
+  renameLocalHistoryEntry,
   removeLocalHistoryEntry,
   renderDiffPreview,
   renderMetadataDiff,
@@ -163,6 +164,19 @@ describe("document state helpers", () => {
 
     expect(removeLocalHistoryEntry([first, second], "hist_first")).toEqual([second]);
     expect(removeLocalHistoryEntry([first], "hist_missing")).toEqual([first]);
+  });
+
+  it("renames local history snapshots without changing snapshot content", () => {
+    const entry = createLocalHistoryEntry(historyDocument, { title: "Original" }, new Date("2026-07-02T00:00:00.000Z"), "hist_original");
+    const renamed = renameLocalHistoryEntry([entry], "hist_original", "  Review Baseline  ");
+
+    expect(renamed[0]).toEqual({
+      ...entry,
+      title: "Review Baseline"
+    });
+    expect(renamed[0].document).toBe(entry.document);
+    expect(renamed[0].metadata).toBe(entry.metadata);
+    expect(renameLocalHistoryEntry(renamed, "hist_original", "   ")[0].title).toBe("Untitled");
   });
 
   it("round-trips valid local history and ignores malformed storage", () => {

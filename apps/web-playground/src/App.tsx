@@ -73,6 +73,7 @@ import {
   renderDiffPreview,
   renderMetadataDiff,
   removeLocalHistoryEntry,
+  renameLocalHistoryEntry,
   serializeLocalHistory,
   updateCrossReferenceLabel,
   type LocalHistoryEntry,
@@ -325,6 +326,18 @@ export function App() {
       setSelectedHistoryId(null);
     }
     setStatusMessage(`Deleted history snapshot: ${entry.title}`);
+  }
+
+  function renameHistorySnapshot(entryId: string, title: string) {
+    if (!historyEntries.some((entry) => entry.id === entryId)) {
+      setStatusMessage("History snapshot is no longer available");
+      return;
+    }
+
+    const nextEntries = renameLocalHistoryEntry(historyEntries, entryId, title);
+    const nextEntry = nextEntries.find((entry) => entry.id === entryId);
+    persistHistory(nextEntries);
+    setStatusMessage(`Renamed history snapshot: ${nextEntry?.title ?? "Untitled"}`);
   }
 
   function persistHistory(entries: LocalHistoryEntry[]) {
@@ -736,6 +749,7 @@ export function App() {
                 onSaveSnapshot={saveHistorySnapshot}
                 onCompareSnapshot={compareHistorySnapshot}
                 onDeleteSnapshot={deleteHistorySnapshot}
+                onRenameSnapshot={renameHistorySnapshot}
                 onCompareSavedBaseline={compareSavedBaseline}
               />
             ) : activeTab === "references" ? (
@@ -826,6 +840,7 @@ function HistoryPanel({
   onSaveSnapshot,
   onCompareSnapshot,
   onDeleteSnapshot,
+  onRenameSnapshot,
   onCompareSavedBaseline
 }: {
   entries: LocalHistoryEntry[];
@@ -833,6 +848,7 @@ function HistoryPanel({
   onSaveSnapshot: () => void;
   onCompareSnapshot: (entryId: string) => void;
   onDeleteSnapshot: (entryId: string) => void;
+  onRenameSnapshot: (entryId: string, title: string) => void;
   onCompareSavedBaseline: () => void;
 }) {
   return (
@@ -855,30 +871,89 @@ function HistoryPanel({
       ) : (
         <div className="history-list">
           {entries.map((entry) => (
-            <article className={entry.id === selectedId ? "history-item selected" : "history-item"} key={entry.id}>
-              <div>
-                <strong>{entry.title}</strong>
-                <span>{formatHistoryTime(entry.createdAt)}</span>
-              </div>
-              <div className="history-actions">
-                <button type="button" onClick={() => onCompareSnapshot(entry.id)}>
-                  Compare
-                </button>
-                <button
-                  className="history-delete"
-                  type="button"
-                  title={`Delete ${entry.title}`}
-                  aria-label={`Delete history snapshot ${entry.title}`}
-                  onClick={() => onDeleteSnapshot(entry.id)}
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            </article>
+            <HistoryEntryCard
+              entry={entry}
+              key={entry.id}
+              selected={entry.id === selectedId}
+              onCompareSnapshot={onCompareSnapshot}
+              onDeleteSnapshot={onDeleteSnapshot}
+              onRenameSnapshot={onRenameSnapshot}
+            />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function HistoryEntryCard({
+  entry,
+  selected,
+  onCompareSnapshot,
+  onDeleteSnapshot,
+  onRenameSnapshot
+}: {
+  entry: LocalHistoryEntry;
+  selected: boolean;
+  onCompareSnapshot: (entryId: string) => void;
+  onDeleteSnapshot: (entryId: string) => void;
+  onRenameSnapshot: (entryId: string, title: string) => void;
+}) {
+  const [draftTitle, setDraftTitle] = useState(entry.title);
+  const skipCommitRef = useRef(false);
+
+  useEffect(() => {
+    setDraftTitle(entry.title);
+  }, [entry.id, entry.title]);
+
+  function commitRename() {
+    if (skipCommitRef.current) {
+      skipCommitRef.current = false;
+      return;
+    }
+
+    if (draftTitle !== entry.title) {
+      onRenameSnapshot(entry.id, draftTitle);
+    }
+  }
+
+  return (
+    <article className={selected ? "history-item selected" : "history-item"}>
+      <div className="history-entry-main">
+        <input
+          aria-label="Snapshot name"
+          className="history-title-input"
+          value={draftTitle}
+          onBlur={commitRename}
+          onChange={(event) => setDraftTitle(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.currentTarget.blur();
+            }
+            if (event.key === "Escape") {
+              skipCommitRef.current = true;
+              setDraftTitle(entry.title);
+              event.currentTarget.blur();
+            }
+          }}
+        />
+        <span>{formatHistoryTime(entry.createdAt)}</span>
+      </div>
+      <div className="history-actions">
+        <button type="button" onClick={() => onCompareSnapshot(entry.id)}>
+          Compare
+        </button>
+        <button
+          className="history-delete"
+          type="button"
+          title={`Delete ${entry.title}`}
+          aria-label={`Delete history snapshot ${entry.title}`}
+          onClick={() => onDeleteSnapshot(entry.id)}
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+    </article>
   );
 }
 

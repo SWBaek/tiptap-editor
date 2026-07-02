@@ -199,7 +199,7 @@ export function createLocalHistoryEntry(
   now = new Date(),
   id = createLocalHistoryId(now)
 ): LocalHistoryEntry {
-  const title = typeof metadata.title === "string" && metadata.title.trim().length > 0 ? metadata.title.trim() : "Untitled";
+  const title = normalizeLocalHistoryTitle(typeof metadata.title === "string" ? metadata.title : "");
   return {
     id,
     createdAt: now.toISOString(),
@@ -215,6 +215,11 @@ export function addLocalHistoryEntry(entries: LocalHistoryEntry[], entry: LocalH
 
 export function removeLocalHistoryEntry(entries: LocalHistoryEntry[], entryId: string): LocalHistoryEntry[] {
   return entries.filter((entry) => entry.id !== entryId);
+}
+
+export function renameLocalHistoryEntry(entries: LocalHistoryEntry[], entryId: string, title: string): LocalHistoryEntry[] {
+  const nextTitle = normalizeLocalHistoryTitle(title);
+  return entries.map((entry) => (entry.id === entryId ? { ...entry, title: nextTitle } : entry));
 }
 
 export function serializeLocalHistory(entries: LocalHistoryEntry[]): string {
@@ -244,6 +249,10 @@ function renderSection(title: string, lines: string[]): string {
 
 function createLocalHistoryId(now: Date): string {
   return `hist_${now.getTime().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeLocalHistoryTitle(title: string): string {
+  return title.trim() || "Untitled";
 }
 
 function getReferenceTargetLabel(node: SDocNode): string {

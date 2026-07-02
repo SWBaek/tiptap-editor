@@ -728,24 +728,47 @@ button {
   box-shadow: inset 3px 0 0 #4c95a3;
 }
 
-.history-item strong,
+.history-entry-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.history-title-input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  color: #17212b;
+  background: #f7f9fb;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  outline: none;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+}
+
+.history-title-input:hover {
+  border-color: #d7e1e7;
+}
+
+.history-title-input:focus {
+  background: #ffffff;
+  border-color: #4c95a3;
+  box-shadow: 0 0 0 3px rgba(76, 149, 163, 0.14);
+}
+
 .history-item span {
   display: block;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.history-item strong {
-  color: #17212b;
-  font-size: 13px;
-}
-
-.history-item span {
   margin-top: 4px;
+  overflow: hidden;
   color: #657484;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reference-panel {

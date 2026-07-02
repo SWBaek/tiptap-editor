@@ -46,20 +46,28 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Let users reveal broken inline reference nodes from diagnostics.
 - Scroll the editor to the selected node and apply a short visual highlight.
 
-## Current Slice: Reference Label Sync
+## Completed Slice: Reference Label Sync
 
 - Detect references whose `targetId` resolves but whose inline label no longer matches the target block label.
 - Show stale reference labels separately from broken references.
 - Let users update a stale reference label to the current target label from the References panel.
 
+## Current Slice: Local History Rename
+
+- Let users rename browser-local history snapshots from the History panel.
+- Keep rename operations local to the snapshot label; do not change the captured document or metadata.
+- Persist renamed snapshot labels in localStorage and use them in compare/delete UI.
+
 ## Acceptance Evidence
 
 - Unit tests cover the structured review summary model.
 - Unit tests cover local history snapshot creation, capping, serialization, and malformed storage handling.
+- Unit tests cover local history snapshot renaming without changing captured content.
 - Unit tests cover reference diagnostics for valid and missing targets.
 - Playwright verifies that metadata changes appear in the visual review list and that `Mark saved` clears the review state.
 - Playwright verifies that a history snapshot can be saved, used as a comparison target, and survives page reload.
 - Playwright verifies that deleting a selected history snapshot clears it from comparison and persists after reload.
+- Playwright verifies that a history snapshot can be renamed and that the label survives reload.
 - Playwright verifies that a reference can be inserted from the target picker and that imported missing-target references are reported.
 - Playwright verifies that reference targets and broken inline references can be revealed in the editor.
 - Playwright verifies that stale reference labels can be detected and updated after a target heading changes.

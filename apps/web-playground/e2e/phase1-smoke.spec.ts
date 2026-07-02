@@ -75,20 +75,26 @@ test("stores local history snapshots and compares them with the current document
 
   await page.getByRole("button", { name: "Save history snapshot" }).click();
   await expect(page.locator(".status-note")).toContainText("Saved history snapshot: Playground Document");
-  await expect(page.locator(".history-item")).toContainText("Playground Document");
+  const historyItem = page.locator(".history-item");
+  await expect(historyItem.getByLabel("Snapshot name")).toHaveValue("Playground Document");
+
+  await historyItem.getByLabel("Snapshot name").fill("Review Baseline");
+  await historyItem.getByLabel("Snapshot name").press("Enter");
+  await expect(page.locator(".status-note")).toContainText("Renamed history snapshot: Review Baseline");
+  await expect(historyItem.getByLabel("Snapshot name")).toHaveValue("Review Baseline");
 
   await page.getByLabel("Title").fill("History Spec");
-  await page.locator(".history-item").filter({ hasText: "Playground Document" }).getByRole("button", { name: "Compare" }).click();
-  await expect(page.locator(".status-note")).toContainText("Comparing with history snapshot: Playground Document");
-  await expect(page.locator(".diff-review-base")).toContainText("History: Playground Document");
+  await historyItem.getByRole("button", { name: "Compare" }).click();
+  await expect(page.locator(".status-note")).toContainText("Comparing with history snapshot: Review Baseline");
+  await expect(page.locator(".diff-review-base")).toContainText("History: Review Baseline");
   await expect(page.locator(".status-block").filter({ hasText: "Review" })).toContainText("1 change");
   await expect(page.locator(".diff-review-section").filter({ hasText: "Metadata changes" })).toContainText(
     'Metadata title changed: "Playground Document" -> "History Spec"'
   );
 
   await page.locator(".tabs").getByRole("button", { name: "History" }).click();
-  await page.getByRole("button", { name: "Delete history snapshot Playground Document" }).click();
-  await expect(page.locator(".status-note")).toContainText("Deleted history snapshot: Playground Document");
+  await page.getByRole("button", { name: "Delete history snapshot Review Baseline" }).click();
+  await expect(page.locator(".status-note")).toContainText("Deleted history snapshot: Review Baseline");
   await expect(page.locator(".history-empty")).toContainText("No snapshots");
 
   await page.locator(".tabs").getByRole("button", { name: "Diff" }).click();
@@ -104,10 +110,12 @@ test("persists local history snapshots across reloads", async ({ page }) => {
   await page.goto("/");
   await page.locator(".tabs").getByRole("button", { name: "History" }).click();
   await page.getByRole("button", { name: "Save history snapshot" }).click();
+  await page.locator(".history-item").getByLabel("Snapshot name").fill("Reload Baseline");
+  await page.locator(".history-item").getByLabel("Snapshot name").press("Enter");
 
   await page.reload();
   await page.locator(".tabs").getByRole("button", { name: "History" }).click();
-  await expect(page.locator(".history-item")).toContainText("Playground Document");
+  await expect(page.locator(".history-item").getByLabel("Snapshot name")).toHaveValue("Reload Baseline");
 });
 
 test("inserts cross references from the target picker", async ({ page }) => {

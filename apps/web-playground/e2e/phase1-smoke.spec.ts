@@ -129,11 +129,21 @@ test("inserts cross references from the target picker", async ({ page }) => {
   await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("References OK");
   await expect(page.locator(".reference-summary")).toContainText("References");
 
+  await page.locator(".editor-surface h1").click({ clickCount: 3 });
+  await page.keyboard.type("Platform Overview");
+  await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("1 stale");
+  await expect(page.locator(".reference-stale-list")).toContainText("System Overview");
+  await expect(page.locator(".reference-stale-list")).toContainText("Platform Overview");
+
+  await page.getByRole("button", { name: "Update label for System Overview" }).click();
+  await expect(page.locator(".status-note")).toContainText("Updated reference label: Platform Overview");
+  await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("References OK");
+
   await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
   const document = await readPreviewDocument(page);
   const reference = findFirstNodeByType(document, "crossReference");
   expect(reference.attrs?.targetId).toBe("blk_overview");
-  expect(findTextNode(reference, "System Overview").text).toBe("System Overview");
+  expect(findTextNode(reference, "Platform Overview").text).toBe("Platform Overview");
   expectUniqueIds(collectBlockIds(document));
   await expect(page.getByText("Valid")).toBeVisible();
 });

@@ -36,13 +36,19 @@ export interface BrokenReference {
   path: string;
 }
 
+export interface StaleReferenceLabel extends BrokenReference {
+  targetLabel: string;
+}
+
 export interface ReferenceDiagnosticsModel {
   targetCount: number;
   referenceCount: number;
   brokenCount: number;
+  staleCount: number;
   label: string;
   targets: ReferenceTargetSummary[];
   brokenReferences: BrokenReference[];
+  staleReferences: StaleReferenceLabel[];
 }
 
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
@@ -128,20 +134,21 @@ export function createChangeReview(documentLines: string[], metadataLines: strin
 
 export function createReferenceDiagnostics(document: SDocDocument): ReferenceDiagnosticsModel {
   const targets: ReferenceTargetSummary[] = [];
-  const targetIds = new Set<string>();
+  const targetById = new Map<string, ReferenceTargetSummary>();
   const references: BrokenReference[] = [];
 
   function visit(node: SDocNode, path: string): void {
     if (isBlockNode(node)) {
       const id = getNodeId(node);
       if (id) {
-        targetIds.add(id);
-        targets.push({
+        const target = {
           id,
           type: node.type,
           label: getReferenceTargetLabel(node),
           anchor: getNodeAnchor(node)
-        });
+        };
+        targetById.set(id, target);
+        targets.push(target);
       }
     }
 
@@ -160,15 +167,30 @@ export function createReferenceDiagnostics(document: SDocDocument): ReferenceDia
 
   document.content.forEach((node, index) => visit(node, `${index}`));
 
-  const brokenReferences = references.filter((reference) => !targetIds.has(reference.targetId));
+  const brokenReferences = references.filter((reference) => !targetById.has(reference.targetId));
+  const staleReferences = references.flatMap((reference) => {
+    const target = targetById.get(reference.targetId);
+    if (!target || reference.label === target.label) {
+      return [];
+    }
+
+    return [{ ...reference, targetLabel: target.label }];
+  });
   return {
     targetCount: targets.length,
     referenceCount: references.length,
     brokenCount: brokenReferences.length,
-    label: brokenReferences.length === 0 ? "References OK" : `${brokenReferences.length} broken`,
+    staleCount: staleReferences.length,
+    label: formatReferenceDiagnosticsLabel(brokenReferences.length, staleReferences.length),
     targets,
-    brokenReferences
+    brokenReferences,
+    staleReferences
   };
+}
+
+export function updateCrossReferenceLabel(document: SDocDocument, referenceId: string, label: string): SDocDocument {
+  const nextContent = document.content.map((node) => updateCrossReferenceLabelInNode(node, referenceId, label));
+  return { ...document, content: nextContent };
 }
 
 export function createLocalHistoryEntry(
@@ -231,6 +253,31 @@ function getReferenceTargetLabel(node: SDocNode): string {
   }
 
   return getNodeAnchor(node) ?? getNodeId(node) ?? node.type;
+}
+
+function formatReferenceDiagnosticsLabel(brokenCount: number, staleCount: number): string {
+  if (brokenCount === 0 && staleCount === 0) {
+    return "References OK";
+  }
+
+  return [
+    brokenCount > 0 ? `${brokenCount} broken` : "",
+    staleCount > 0 ? `${staleCount} stale` : ""
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function updateCrossReferenceLabelInNode(node: SDocNode, referenceId: string, label: string): SDocNode {
+  const content = node.content?.map((child) => updateCrossReferenceLabelInNode(child, referenceId, label));
+  if (node.type === "crossReference" && node.attrs?.id === referenceId) {
+    return {
+      ...node,
+      content: [{ type: "text", text: label }]
+    };
+  }
+
+  return content ? { ...node, content } : node;
 }
 
 function isLocalHistoryEntry(value: unknown): value is LocalHistoryEntry {

@@ -74,6 +74,7 @@ import {
   renderMetadataDiff,
   removeLocalHistoryEntry,
   serializeLocalHistory,
+  updateCrossReferenceLabel,
   type LocalHistoryEntry,
   type ChangeReviewModel,
   type ReferenceDiagnosticsModel,
@@ -401,6 +402,20 @@ export function App() {
     setStatusMessage(inserted ? `Inserted reference to ${target.label}` : `Cannot insert reference to ${target.label}`);
   }
 
+  function updateReferenceLabel(referenceId: string) {
+    const reference = referenceDiagnostics.staleReferences.find((current) => current.id === referenceId);
+    if (!reference) {
+      setStatusMessage(`Reference label is already current: ${referenceId}`);
+      return;
+    }
+
+    const nextDocument = updateCrossReferenceLabel(document, reference.id, reference.targetLabel);
+    editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
+    repairEditorBlockIds(editor);
+    setActiveTab("references");
+    setStatusMessage(`Updated reference label: ${reference.targetLabel}`);
+  }
+
   function revealEditorNode(nodeId: string, label: string) {
     const element = findEditorElementByDataId(nodeId);
     if (!element) {
@@ -550,7 +565,7 @@ export function App() {
         </div>
         <div className="status-block">
           <span>References</span>
-          <strong className={referenceDiagnostics.brokenCount > 0 ? "error" : "ok"}>{referenceDiagnostics.label}</strong>
+          <strong className={getReferenceStatusClass(referenceDiagnostics)}>{referenceDiagnostics.label}</strong>
         </div>
         <div className="status-block">
           <span>File</span>
@@ -729,6 +744,7 @@ export function App() {
                 highlightedNodeId={highlightedNodeId}
                 onInsertReference={insertCrossReferenceToTarget}
                 onRevealNode={revealEditorNode}
+                onUpdateReferenceLabel={updateReferenceLabel}
               />
             ) : (
               <pre className="preview-output">{preview}</pre>
@@ -870,12 +886,14 @@ function ReferencePanel({
   diagnostics,
   highlightedNodeId,
   onInsertReference,
-  onRevealNode
+  onRevealNode,
+  onUpdateReferenceLabel
 }: {
   diagnostics: ReferenceDiagnosticsModel;
   highlightedNodeId: string | null;
   onInsertReference: (targetId: string) => void;
   onRevealNode: (nodeId: string, label: string) => void;
+  onUpdateReferenceLabel: (referenceId: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
@@ -897,14 +915,18 @@ function ReferencePanel({
           <span>Broken</span>
           <strong className={diagnostics.brokenCount > 0 ? "error" : "ok"}>{diagnostics.brokenCount}</strong>
         </div>
+        <div>
+          <span>Stale</span>
+          <strong className={diagnostics.staleCount > 0 ? "warning" : "ok"}>{diagnostics.staleCount}</strong>
+        </div>
       </div>
 
-      {diagnostics.brokenReferences.length === 0 ? (
+      {diagnostics.brokenReferences.length === 0 && diagnostics.staleReferences.length === 0 ? (
         <div className="reference-empty">
           <Link2 size={22} />
           <span>All references resolve</span>
         </div>
-      ) : (
+      ) : diagnostics.brokenReferences.length > 0 ? (
         <section className="reference-section">
           <h3>Broken references</h3>
           <ul className="reference-issue-list">
@@ -920,6 +942,31 @@ function ReferencePanel({
                 <button type="button" onClick={() => onRevealNode(reference.id, `reference ${reference.label}`)}>
                   Show
                 </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {diagnostics.staleReferences.length > 0 && (
+        <section className="reference-section">
+          <h3>Stale labels</h3>
+          <ul className="reference-stale-list">
+            {diagnostics.staleReferences.map((reference) => (
+              <li className={highlightedNodeId === reference.id ? "selected" : undefined} key={`${reference.path}-${reference.id}`}>
+                <Info size={16} />
+                <div>
+                  <strong>{reference.label}</strong>
+                  <span>Target label is {reference.targetLabel}</span>
+                </div>
+                <div className="reference-stale-actions">
+                  <button type="button" onClick={() => onRevealNode(reference.id, `reference ${reference.label}`)}>
+                    Show
+                  </button>
+                  <button type="button" aria-label={`Update label for ${reference.label}`} onClick={() => onUpdateReferenceLabel(reference.id)}>
+                    Update
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -968,6 +1015,14 @@ function ReferencePanel({
 
 function targetMatchesReferenceQuery(target: ReferenceTargetSummary, query: string): boolean {
   return [target.id, target.type, target.label, target.anchor ?? ""].some((value) => value.toLowerCase().includes(query));
+}
+
+function getReferenceStatusClass(diagnostics: ReferenceDiagnosticsModel): string {
+  if (diagnostics.brokenCount > 0) {
+    return "error";
+  }
+
+  return diagnostics.staleCount > 0 ? "warning" : "ok";
 }
 
 function findEditorElementByDataId(nodeId: string): HTMLElement | null {

@@ -12,7 +12,8 @@ import {
   removeLocalHistoryEntry,
   renderDiffPreview,
   renderMetadataDiff,
-  serializeLocalHistory
+  serializeLocalHistory,
+  updateCrossReferenceLabel
 } from "./documentState";
 import type { SDocDocument } from "@sdoc/schema";
 
@@ -107,13 +108,39 @@ describe("document state helpers", () => {
       targetCount: 2,
       referenceCount: 2,
       brokenCount: 1,
+      staleCount: 0,
       label: "1 broken",
       targets: [
         { id: "blk_target", type: "heading", label: "Target", anchor: "target" },
         { id: "blk_refs", type: "paragraph", label: "Target and Missing", anchor: undefined }
       ],
-      brokenReferences: [{ id: "ref_missing", targetId: "blk_missing", label: "Missing", path: "1.2" }]
+      brokenReferences: [{ id: "ref_missing", targetId: "blk_missing", label: "Missing", path: "1.2" }],
+      staleReferences: []
     });
+  });
+
+  it("detects and updates stale cross reference labels", () => {
+    const document: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_stale_reference" },
+      content: [
+        { type: "heading", attrs: { id: "blk_target", level: 1 }, content: [{ type: "text", text: "Updated Target" }] },
+        {
+          type: "paragraph",
+          attrs: { id: "blk_refs" },
+          content: [
+            { type: "crossReference", attrs: { id: "ref_target", targetId: "blk_target" }, content: [{ type: "text", text: "Old Target" }] }
+          ]
+        }
+      ]
+    };
+
+    expect(createReferenceDiagnostics(document).staleReferences).toEqual([
+      { id: "ref_target", targetId: "blk_target", label: "Old Target", targetLabel: "Updated Target", path: "1.0" }
+    ]);
+
+    expect(createReferenceDiagnostics(updateCrossReferenceLabel(document, "ref_target", "Updated Target")).staleCount).toBe(0);
   });
 
   it("creates and caps local history snapshots", () => {

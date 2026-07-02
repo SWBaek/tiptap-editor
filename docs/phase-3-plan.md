@@ -40,11 +40,17 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Insert references using the selected target block id and a human-readable label.
 - Keep missing-target diagnostics available for imported or edited `document.json` files.
 
-## Current Slice: Reference Navigation
+## Completed Slice: Reference Navigation
 
 - Let users reveal target blocks from the References panel.
 - Let users reveal broken inline reference nodes from diagnostics.
 - Scroll the editor to the selected node and apply a short visual highlight.
+
+## Current Slice: Reference Label Sync
+
+- Detect references whose `targetId` resolves but whose inline label no longer matches the target block label.
+- Show stale reference labels separately from broken references.
+- Let users update a stale reference label to the current target label from the References panel.
 
 ## Acceptance Evidence
 
@@ -56,6 +62,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that deleting a selected history snapshot clears it from comparison and persists after reload.
 - Playwright verifies that a reference can be inserted from the target picker and that imported missing-target references are reported.
 - Playwright verifies that reference targets and broken inline references can be revealed in the editor.
+- Playwright verifies that stale reference labels can be detected and updated after a target heading changes.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

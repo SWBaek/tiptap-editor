@@ -759,7 +759,7 @@ button {
 
 .reference-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
   background: #dfe5ea;
   border-bottom: 1px solid #dfe5ea;
@@ -795,6 +795,10 @@ button {
 
 .reference-summary strong.error {
   color: #a33a32;
+}
+
+.reference-summary strong.warning {
+  color: #9c6a12;
 }
 
 .reference-empty {
@@ -845,6 +849,7 @@ button {
 }
 
 .reference-issue-list,
+.reference-stale-list,
 .reference-target-list {
   display: grid;
   gap: 10px;
@@ -867,30 +872,36 @@ button {
 }
 
 .reference-issue-list li.selected,
+.reference-stale-list li.selected,
 .reference-target-list li.selected {
   border-color: #4c95a3;
   box-shadow: inset 3px 0 0 #4c95a3;
 }
 
 .reference-issue-list strong,
-.reference-issue-list span {
+.reference-issue-list span,
+.reference-stale-list strong,
+.reference-stale-list span {
   display: block;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.reference-issue-list strong {
+.reference-issue-list strong,
+.reference-stale-list strong {
   color: #17212b;
   font-size: 13px;
 }
 
 .reference-issue-list span,
+.reference-stale-list span,
 .reference-muted {
   color: #657484;
   font-size: 12px;
 }
 
 .reference-issue-list button,
+.reference-stale-list button,
 .reference-target-list button {
   display: inline-flex;
   gap: 6px;
@@ -903,6 +914,26 @@ button {
   border: 1px solid #cfd7df;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.reference-stale-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 10px;
+  color: #7a5210;
+  background: #fffaf0;
+  border: 1px solid #ecd8a9;
+  border-radius: 6px;
+}
+
+.reference-stale-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .reference-target-list li {

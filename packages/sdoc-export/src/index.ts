@@ -637,4 +637,57 @@ const PUBLISH_HTML_CSS = `    :root {
 
     .sdoc-missing-reference {
       color: #a33a32;
+    }
+
+    @media print {
+      :root {
+        color: #000000;
+        background: #ffffff;
+        font-size: 11pt;
+      }
+
+      @page {
+        margin: 18mm 16mm;
+      }
+
+      body {
+        padding: 0;
+        background: #ffffff;
+      }
+
+      .sdoc-document {
+        width: auto;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      h1, h2, h3, h4, h5, h6 {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      figure,
+      table,
+      pre,
+      blockquote,
+      .sdoc-callout,
+      .sdoc-equation-block,
+      .sdoc-diagram {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      a[href^="http"]::after,
+      a[href^="https"]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.85em;
+      }
+
+      pre,
+      code {
+        white-space: pre-wrap;
+      }
     }`;

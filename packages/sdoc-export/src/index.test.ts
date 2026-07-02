@@ -126,6 +126,15 @@ describe("exportHtml", () => {
     expect(html).toContain(".sdoc-document");
   });
 
+  it("includes print stylesheet rules for PDF-friendly output", () => {
+    const html = exportHtml(document);
+
+    expect(html).toContain("@media print");
+    expect(html).toContain("@page");
+    expect(html).toContain("break-inside: avoid;");
+    expect(html).toContain('a[href^="http"]::after');
+  });
+
   it("escapes HTML text and blocks unsafe link hrefs", () => {
     const unsafeDocument: SDocDocument = {
       schemaVersion: 1,

@@ -47,3 +47,7 @@ Semantic diff should remain table-level for v1 advanced editing. It may summariz
 - persistent column width/layout storage
 - structural table merge conflict resolution
 - spreadsheet-like selection model in canonical data
+
+## Minimal Controls Implementation
+
+The first implementation slice adds rectangular table controls for adding rows/columns after the current cell, deleting the current row/column, toggling header row/column, and setting cell alignment. `attrs.align` is canonical only for `tableCell` and `tableHeader`, and validation accepts `left`, `center`, or `right`. Markdown export maps alignment to pipe-table separators, HTML export renders deterministic text alignment, and semantic diff summarizes role/alignment changes at the table block.

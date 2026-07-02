@@ -6,11 +6,15 @@ import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
   AlertTriangle,
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   ArrowDown,
   ArrowUp,
   Bold,
   Braces,
   Code2,
+  Columns3,
   Download,
   FileJson,
   FilePlus,
@@ -26,6 +30,7 @@ import {
   List,
   ListOrdered,
   Quote,
+  Rows3,
   Save,
   Search,
   Settings,
@@ -56,9 +61,13 @@ import {
   insertSimpleTable,
   moveSelectedTopLevelBlock,
   repairEditorBlockIds,
+  runAdvancedTableCommand,
+  setSelectedTableCellsAlignment,
   TableExtensions,
   toSdocDocument,
-  type BlockMoveDirection
+  type AdvancedTableCommand,
+  type BlockMoveDirection,
+  type TableCellAlignment
 } from "@sdoc/editor-tiptap";
 import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
 import {
@@ -482,6 +491,18 @@ export function App() {
     setStatusMessage(inserted ? "Inserted table" : "Cannot insert table");
   }
 
+  function runTableCommand(command: AdvancedTableCommand, successMessage: string) {
+    const applied = runAdvancedTableCommand(editor, command);
+    setActiveTab("json");
+    setStatusMessage(applied ? successMessage : `Cannot ${successMessage.toLowerCase()}`);
+  }
+
+  function alignTableCells(align: TableCellAlignment) {
+    const applied = setSelectedTableCellsAlignment(editor, align);
+    setActiveTab("json");
+    setStatusMessage(applied ? `Aligned table cell ${align}` : `Cannot align table cell ${align}`);
+  }
+
   function openReferencePicker() {
     openActivityPanel("references");
     setStatusMessage("Choose a reference target");
@@ -764,6 +785,33 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={insertTable}>
             <TableIcon size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Add row after" active={editor.isActive("table")} onClick={() => runTableCommand("addRowAfter", "Added table row")}>
+            <Rows3 size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Add column after" active={editor.isActive("table")} onClick={() => runTableCommand("addColumnAfter", "Added table column")}>
+            <Columns3 size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Delete row" active={editor.isActive("table")} onClick={() => runTableCommand("deleteRow", "Deleted table row")}>
+            <Rows3 size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Delete column" active={editor.isActive("table")} onClick={() => runTableCommand("deleteColumn", "Deleted table column")}>
+            <Columns3 size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Toggle header row" active={editor.isActive("table")} onClick={() => runTableCommand("toggleHeaderRow", "Toggled header row")}>
+            <TableIcon size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Toggle header column" active={editor.isActive("table")} onClick={() => runTableCommand("toggleHeaderColumn", "Toggled header column")}>
+            <TableIcon size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Align table cell left" active={editor.isActive("tableCell", { align: "left" }) || editor.isActive("tableHeader", { align: "left" })} onClick={() => alignTableCells("left")}>
+            <AlignLeft size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Align table cell center" active={editor.isActive("tableCell", { align: "center" }) || editor.isActive("tableHeader", { align: "center" })} onClick={() => alignTableCells("center")}>
+            <AlignCenter size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Align table cell right" active={editor.isActive("tableCell", { align: "right" }) || editor.isActive("tableHeader", { align: "right" })} onClick={() => alignTableCells("right")}>
+            <AlignRight size={18} />
           </ToolbarButton>
           <ToolbarButton title="Insert inline equation" active={editor.isActive("equation")} onClick={insertInlineEquationFromPrompt}>
             <Sigma size={18} />

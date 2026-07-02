@@ -102,6 +102,13 @@ describe("exportMarkdown", () => {
     expect(exportMarkdown(withTable)).toContain("| Name | Status |\n| --- | --- |\n| API | Ready |");
   });
 
+  it("exports table cell alignment to Markdown and HTML", () => {
+    const withAlignedTable = createTableDocument("Ready", "center");
+
+    expect(exportMarkdown(withAlignedTable)).toContain("| Name | Status |\n| --- | :---: |\n| API | Ready |");
+    expect(exportHtml(withAlignedTable)).toContain('<td style="text-align: center"><p>Ready</p></td>');
+  });
+
   it("exports inline and block equations as Markdown math", () => {
     const markdown = exportMarkdown(createEquationDocument("E=mc^2", "a^2+b^2=c^2"));
 
@@ -329,7 +336,7 @@ function createEquationDocument(inlineLatex: string, blockLatex: string): SDocDo
   };
 }
 
-function createTableDocument(status: string): SDocDocument {
+function createTableDocument(status: string, statusAlign?: "left" | "center" | "right"): SDocDocument {
   return {
     schemaVersion: 1,
     type: "doc",
@@ -352,7 +359,7 @@ function createTableDocument(status: string): SDocDocument {
             attrs: { id: "blk_row_body" },
             content: [
               createTableCell("tableCell", "blk_cell_api", "blk_cell_api_text", "API"),
-              createTableCell("tableCell", "blk_cell_ready", "blk_cell_ready_text", status)
+              createTableCell("tableCell", "blk_cell_ready", "blk_cell_ready_text", status, statusAlign)
             ]
           }
         ]
@@ -361,10 +368,16 @@ function createTableDocument(status: string): SDocDocument {
   };
 }
 
-function createTableCell(type: "tableCell" | "tableHeader", id: string, paragraphId: string, text: string) {
+function createTableCell(
+  type: "tableCell" | "tableHeader",
+  id: string,
+  paragraphId: string,
+  text: string,
+  align?: "left" | "center" | "right"
+) {
   return {
     type,
-    attrs: { id },
+    attrs: { id, ...(align ? { align } : {}) },
     content: [{ type: "paragraph", attrs: { id: paragraphId }, content: [{ type: "text", text }] }]
   };
 }

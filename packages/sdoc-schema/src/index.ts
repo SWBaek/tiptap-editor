@@ -68,6 +68,8 @@ export const MARK_TYPES = new Set([
   "highlight"
 ]);
 
+const TABLE_CELL_ALIGNMENTS = new Set(["left", "center", "right"]);
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -265,6 +267,11 @@ function validateNode(
   if (typedNode.type === "tableCell" || typedNode.type === "tableHeader") {
     if (!Array.isArray(typedNode.content) || typedNode.content.length === 0) {
       issues.push({ path: `${path}.content`, message: `${typedNode.type} content is required` });
+    }
+
+    const align = typedNode.attrs?.align;
+    if (align !== undefined && (typeof align !== "string" || !TABLE_CELL_ALIGNMENTS.has(align))) {
+      issues.push({ path: `${path}.attrs.align`, message: `${typedNode.type} align must be left, center, or right` });
     }
   }
 

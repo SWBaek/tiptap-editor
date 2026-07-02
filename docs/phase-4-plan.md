@@ -75,12 +75,18 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Prefer a boundary document before expanding schema or Tiptap table behavior.
 - Use `docs/advanced-table-editing-boundary.md` as the boundary document.
 
-## Current Slice: Advanced Table Editing Minimal Controls
+## Completed Slice: Advanced Table Editing Minimal Controls
 
 - Add table commands for row/column insert/delete, header row/column toggles, and cell alignment while keeping tables rectangular.
 - Preserve stable IDs for unchanged table blocks and generate fresh IDs for new rows/cells.
 - Extend schema/export/diff only for semantic table attributes such as cell alignment; do not store selection or column width state.
 - Add focused unit tests and Playwright coverage for the browser editing workflow.
+
+## Current Slice: Section Folding Boundary
+
+- Decide whether section folding is pure editor UI state, document outline metadata, or a canonical section node change.
+- Keep collapsed/expanded state out of `document.json` unless it represents authored document semantics.
+- Prefer a boundary document before implementing fold controls or persisted outline state.
 
 ## Acceptance Evidence
 
@@ -94,6 +100,8 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - `docs/drawio-integration-boundary.md` records that Draw.io source is stored as an asset-backed diagram source and defers embedded editing until the asset lifecycle is proven.
 - Unit tests cover Draw.io schema validation, asset-backed `.sdoc` round trip, export fallback, semantic diff summaries, editor conversion, and browser save/export asset selection.
 - `docs/advanced-table-editing-boundary.md` records that v1 advanced tables stay rectangular, source-preserving, and free of transient UI layout state.
+- Unit tests cover table cell alignment validation, Markdown/HTML export, semantic diff summaries, and advanced table command wrappers.
+- Playwright covers row/column insertion, header column toggling, cell alignment, stable IDs, and absence of transient table UI state in `document.json`.
 
 ## Boundaries
 
@@ -107,4 +115,4 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Embedded Draw.io editor integration
 - Draw.io structural diff
 - Merged table cells
-- Section folding
+- Section folding implementation

@@ -106,6 +106,66 @@ describe("validateDocument", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("accepts semantic table cell alignment", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_table_align" },
+      content: [
+        {
+          type: "table",
+          attrs: { id: "blk_table" },
+          content: [
+            {
+              type: "tableRow",
+              attrs: { id: "blk_row" },
+              content: [
+                {
+                  type: "tableCell",
+                  attrs: { id: "blk_cell", align: "center" },
+                  content: [{ type: "paragraph", attrs: { id: "blk_cell_text" }, content: [{ type: "text", text: "Centered" }] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
+  it("rejects unsupported table cell alignment", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_table_align_bad" },
+      content: [
+        {
+          type: "table",
+          attrs: { id: "blk_table" },
+          content: [
+            {
+              type: "tableRow",
+              attrs: { id: "blk_row" },
+              content: [
+                {
+                  type: "tableHeader",
+                  attrs: { id: "blk_cell", align: "justify" },
+                  content: [{ type: "paragraph", attrs: { id: "blk_cell_text" }, content: [{ type: "text", text: "Bad" }] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("tableHeader align must be left, center, or right"))).toBe(true);
+  });
+
   it("rejects malformed table structure", () => {
     const document = {
       schemaVersion: 1,

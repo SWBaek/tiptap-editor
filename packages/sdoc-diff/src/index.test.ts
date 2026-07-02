@@ -205,6 +205,18 @@ describe("diffDocuments", () => {
     expect(renderReadableDiffEvents(events)).toContain('Modified table "table 2x2" (blk_table) at doc_table[0]/blk_table: cell 2,2 changed "Draft" -> "Ready"');
   });
 
+  it("summarizes table header role and alignment changes at the table block", () => {
+    const oldTableDocument = createTableDocument("Ready");
+    const newTableDocument = createTableDocument("Ready", { statusAlign: "right", firstBodyCellType: "tableHeader" });
+    const modified = diffDocuments(oldTableDocument, newTableDocument).find(
+      (event) => event.kind === "modified" && event.id === "blk_table"
+    );
+
+    expect(modified?.kind).toBe("modified");
+    expect(modified?.kind === "modified" ? modified.changes : []).toContain("cell 2,1 role changed tableCell -> tableHeader");
+    expect(modified?.kind === "modified" ? modified.changes : []).toContain('cell 2,2 alignment changed "" -> "right"');
+  });
+
   it("summarizes block equation source changes", () => {
     const oldEquationDocument = createEquationDocument("E=mc^2");
     const newEquationDocument = createEquationDocument("F=ma");
@@ -278,7 +290,10 @@ describe("renderReadableDiffEvents", () => {
   });
 });
 
-function createTableDocument(status: string): SDocDocument {
+function createTableDocument(
+  status: string,
+  options: { statusAlign?: "left" | "center" | "right"; firstBodyCellType?: "tableCell" | "tableHeader" } = {}
+): SDocDocument {
   return {
     schemaVersion: 1,
     type: "doc",
@@ -300,8 +315,8 @@ function createTableDocument(status: string): SDocDocument {
             type: "tableRow",
             attrs: { id: "blk_row_body" },
             content: [
-              createTableCell("tableCell", "blk_cell_api", "blk_cell_api_text", "API"),
-              createTableCell("tableCell", "blk_cell_status", "blk_cell_status_text", status)
+              createTableCell(options.firstBodyCellType ?? "tableCell", "blk_cell_api", "blk_cell_api_text", "API"),
+              createTableCell("tableCell", "blk_cell_status", "blk_cell_status_text", status, options.statusAlign)
             ]
           }
         ]
@@ -310,10 +325,16 @@ function createTableDocument(status: string): SDocDocument {
   };
 }
 
-function createTableCell(type: "tableCell" | "tableHeader", id: string, paragraphId: string, text: string) {
+function createTableCell(
+  type: "tableCell" | "tableHeader",
+  id: string,
+  paragraphId: string,
+  text: string,
+  align?: "left" | "center" | "right"
+) {
   return {
     type,
-    attrs: { id },
+    attrs: { id, ...(align ? { align } : {}) },
     content: [{ type: "paragraph", attrs: { id: paragraphId }, content: [{ type: "text", text }] }]
   };
 }

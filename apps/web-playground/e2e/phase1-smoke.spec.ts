@@ -460,6 +460,45 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 
+test("uses advanced table controls without storing transient table UI state", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+  await page.getByRole("button", { name: "Insert table" }).click();
+  await fillTableCell(page, "th", 0, "Name");
+  await fillTableCell(page, "th", 1, "Status");
+  await fillTableCell(page, "td", 0, "API");
+  await fillTableCell(page, "td", 1, "Ready");
+
+  await page.getByRole("button", { name: "Align table cell center" }).click();
+  await expect(page.locator(".status-note")).toContainText("Aligned table cell center");
+  await page.getByRole("button", { name: "Add column after" }).click();
+  await expect(page.locator(".status-note")).toContainText("Added table column");
+  await page.getByRole("button", { name: "Add row after" }).click();
+  await expect(page.locator(".status-note")).toContainText("Added table row");
+  await page.getByRole("button", { name: "Toggle header column" }).click();
+  await expect(page.locator(".status-note")).toContainText("Toggled header column");
+
+  await expect.poll(async () => {
+    const table = findFirstNodeByType(await readPreviewDocument(page), "table");
+    return table.content?.length;
+  }).toBe(4);
+
+  const document = await readPreviewDocument(page);
+  const table = findFirstNodeByType(document, "table");
+  expect(table.content).toHaveLength(4);
+  expect(table.content?.every((row: JsonNode) => row.content?.length === 3)).toBe(true);
+  expect(JSON.stringify(table)).toContain('"align":"center"');
+  expect(JSON.stringify(table)).not.toContain("colwidth");
+  expect(JSON.stringify(table)).not.toContain("selectedCell");
+  expectUniqueIds(collectBlockIds(document));
+
+  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await expect(page.locator(".preview-output")).toContainText(":---:");
+});
+
 test("inserts inline and block equations and round-trips through .sdoc", async ({ page }, testInfo) => {
   await page.goto("/");
   await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();

@@ -26,6 +26,7 @@ const blockTypeSet = new Set<string>(BLOCK_TYPES_WITH_IDS);
 const BLOCK_ID_REPAIR_META = "sdocBlockIdRepair";
 
 export type BlockMoveDirection = "up" | "down";
+export type TableCellAlignment = "left" | "center" | "right";
 
 export interface EditorBlockIdTarget {
   state: {
@@ -339,23 +340,97 @@ export const TableNode = Table.configure({
 });
 
 export const TableRowNode = TableRow;
-export const TableCellNode = TableCell;
-export const TableHeaderNode = TableHeader;
+export const TableCellNode = TableCell.extend({
+  addAttributes() {
+    return {
+      ...(this.parent?.() ?? {}),
+      ...tableCellAlignmentAttribute()
+    };
+  }
+});
+export const TableHeaderNode = TableHeader.extend({
+  addAttributes() {
+    return {
+      ...(this.parent?.() ?? {}),
+      ...tableCellAlignmentAttribute()
+    };
+  }
+});
 export const TableExtensions = [TableNode, TableRowNode, TableHeaderNode, TableCellNode] as const;
 
 export interface TableInsertTarget {
   chain: () => unknown;
+  commands?: Record<string, (...args: never[]) => boolean>;
 }
 
 interface TableChain {
   focus: () => {
     insertTable: (options: { rows: number; cols: number; withHeaderRow: boolean }) => { run: () => boolean };
+    addRowBefore: () => { run: () => boolean };
+    addRowAfter: () => { run: () => boolean };
+    addColumnBefore: () => { run: () => boolean };
+    addColumnAfter: () => { run: () => boolean };
+    deleteRow: () => { run: () => boolean };
+    deleteColumn: () => { run: () => boolean };
+    toggleHeaderRow: () => { run: () => boolean };
+    toggleHeaderColumn: () => { run: () => boolean };
+    setCellAttribute: (name: string, value: unknown) => { run: () => boolean };
   };
 }
 
 export function insertSimpleTable(editor: TableInsertTarget, rows = 3, cols = 2): boolean {
   const chain = editor.chain() as TableChain;
   return chain.focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+}
+
+export type AdvancedTableCommand =
+  | "addRowBefore"
+  | "addRowAfter"
+  | "addColumnBefore"
+  | "addColumnAfter"
+  | "deleteRow"
+  | "deleteColumn"
+  | "toggleHeaderRow"
+  | "toggleHeaderColumn";
+
+export function runAdvancedTableCommand(editor: TableInsertTarget, command: AdvancedTableCommand): boolean {
+  const directCommand = editor.commands?.[command];
+  if (directCommand?.()) {
+    return true;
+  }
+
+  const focused = (editor.chain() as TableChain).focus();
+  return focused[command]().run();
+}
+
+export function setSelectedTableCellsAlignment(editor: TableInsertTarget, align: TableCellAlignment): boolean {
+  const directCommand = editor.commands?.setCellAttribute as ((name: string, value: unknown) => boolean) | undefined;
+  if (directCommand?.("align", align)) {
+    return true;
+  }
+
+  const chain = editor.chain() as TableChain;
+  return chain.focus().setCellAttribute("align", align).run();
+}
+
+function tableCellAlignmentAttribute() {
+  return {
+    align: {
+      default: null,
+      parseHTML: (element: HTMLElement) => {
+        const align = element.getAttribute("data-align") ?? element.style.textAlign;
+        return isTableCellAlignment(align) ? align : null;
+      },
+      renderHTML: (attributes: Record<string, unknown>) => {
+        const align = attributes.align;
+        return isTableCellAlignment(align) ? { "data-align": align, style: `text-align: ${align}` } : {};
+      }
+    }
+  };
+}
+
+function isTableCellAlignment(value: unknown): value is TableCellAlignment {
+  return value === "left" || value === "center" || value === "right";
 }
 
 export interface EquationInsertTarget {

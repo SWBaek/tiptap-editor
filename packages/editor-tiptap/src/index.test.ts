@@ -20,6 +20,8 @@ import {
   moveSelectedTopLevelBlock,
   repairJsonBlockIds,
   repairEditorBlockIds,
+  runAdvancedTableCommand,
+  setSelectedTableCellsAlignment,
   TableExtensions,
   toSdocDocument
 } from "./index";
@@ -573,6 +575,34 @@ describe("BlockIdExtension", () => {
     expect(validateDocument(document).ok).toBe(true);
   });
 
+  it("runs advanced table commands while keeping canonical table ids valid", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, ...TableExtensions, FigureNode, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_initial" }, content: [{ type: "text", text: "Initial" }] }]
+      }
+    });
+
+    editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: true });
+    editor.commands.setTextSelection(firstTableCellTextPosition(editor));
+    const beforeIds = collectJsonBlockIds(editor.getJSON());
+    const rowAdded = runAdvancedTableCommand(editor, "addRowAfter");
+    const columnAdded = runAdvancedTableCommand(editor, "addColumnAfter");
+    const aligned = setSelectedTableCellsAlignment(editor, "center");
+    const document = toSdocDocument(editor.getJSON(), "doc_table_advanced");
+    const afterIds = collectJsonBlockIds(editor.getJSON());
+    editor.destroy();
+
+    expect(rowAdded).toBe(true);
+    expect(columnAdded).toBe(true);
+    expect(aligned).toBe(true);
+    expect(afterIds.length).toBeGreaterThan(beforeIds.length);
+    expect(new Set(afterIds).size).toBe(afterIds.length);
+    expect(JSON.stringify(document)).toContain('"align":"center"');
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
   it("inserts inline and block equations with preserved latex source", () => {
     const editor = new Editor({
       extensions: [StarterKit, InlineEquationNode, EquationBlockNode, ...TableExtensions, FigureNode, CalloutNode, BlockIdExtension],
@@ -738,4 +768,29 @@ function topLevelTextPositionById(editor: Editor, id: string): number {
   }
 
   throw new Error(`missing top-level block ${id}`);
+}
+
+function firstTableCellTextPosition(editor: Editor): number {
+  let position: number | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (position !== null) {
+      return false;
+    }
+
+    if (node.type.name === "paragraph") {
+      const parent = editor.state.doc.resolve(pos).parent;
+      if (parent.type.name === "tableCell") {
+        position = pos + 1;
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  if (position === null) {
+    throw new Error("missing table cell text position");
+  }
+
+  return position;
 }

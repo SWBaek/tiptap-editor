@@ -418,7 +418,9 @@ function renderHtmlTable(node: SDocNode, references: Map<string, ReferenceTarget
       const htmlCells = cells
         .map((cell) => {
           const tag = cell.type === "tableHeader" ? "th" : "td";
-          return `<${tag}>${renderHtmlChildrenAsBlocks(cell, references, options, 0)}</${tag}>`;
+          const align = getTableCellAlign(cell);
+          const alignAttribute = align ? ` style="text-align: ${align}"` : "";
+          return `<${tag}${alignAttribute}>${renderHtmlChildrenAsBlocks(cell, references, options, 0)}</${tag}>`;
         })
         .join("");
       return `  <tr>${htmlCells}</tr>`;
@@ -434,10 +436,11 @@ ${htmlRows}
 
 function renderMarkdownTable(node: SDocNode, references: Map<string, ReferenceTarget>): string {
   const rows = (node.content ?? []).filter((child) => child.type === "tableRow");
-  const cells = rows.map((row) =>
-    (row.content ?? [])
-      .filter((child) => child.type === "tableCell" || child.type === "tableHeader")
-      .map((cell) => escapeMarkdownTableCell(renderInlineChildren(cell, references).trim()))
+  const tableCells = rows.map((row) =>
+    (row.content ?? []).filter((child) => child.type === "tableCell" || child.type === "tableHeader")
+  );
+  const cells = tableCells.map((row) =>
+    row.map((cell) => escapeMarkdownTableCell(renderInlineChildren(cell, references).trim()))
   );
   const columnCount = Math.max(0, ...cells.map((row) => row.length));
   if (cells.length === 0 || columnCount === 0) {
@@ -446,12 +449,43 @@ function renderMarkdownTable(node: SDocNode, references: Map<string, ReferenceTa
 
   const normalizedRows = cells.map((row) => [...row, ...Array<string>(columnCount - row.length).fill("")]);
   const [header, ...body] = normalizedRows;
-  const separator = Array<string>(columnCount).fill("---");
+  const separator = Array.from({ length: columnCount }, (_value, columnIndex) =>
+    markdownAlignmentSeparator(getColumnAlign(tableCells, columnIndex))
+  );
   return [header, separator, ...body].map((row) => `| ${row.join(" | ")} |`).join("\n");
 }
 
 function escapeMarkdownTableCell(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll("|", "\\|").replace(/\s*\n+\s*/g, "<br>");
+}
+
+function getColumnAlign(rows: SDocNode[][], columnIndex: number): "left" | "center" | "right" | undefined {
+  for (const row of rows) {
+    const align = getTableCellAlign(row[columnIndex]);
+    if (align) {
+      return align;
+    }
+  }
+
+  return undefined;
+}
+
+function getTableCellAlign(node: SDocNode | undefined): "left" | "center" | "right" | undefined {
+  const align = node?.attrs?.align;
+  return align === "left" || align === "center" || align === "right" ? align : undefined;
+}
+
+function markdownAlignmentSeparator(align: "left" | "center" | "right" | undefined): string {
+  switch (align) {
+    case "left":
+      return ":---";
+    case "center":
+      return ":---:";
+    case "right":
+      return "---:";
+    default:
+      return "---";
+  }
 }
 
 function collectReferenceTargets(document: SDocDocument): Map<string, ReferenceTarget> {

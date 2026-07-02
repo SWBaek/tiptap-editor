@@ -113,7 +113,7 @@ Draw.io diagrams use the same `diagram` node, but the editable Draw.io source is
 
 ## Phase 2 Table Shape
 
-Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tableCell` nodes. Each table node still carries a stable `attrs.id`; semantic diff reports cell text changes at the table block.
+Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tableCell` nodes. Each table node still carries a stable `attrs.id`; semantic diff reports cell text changes at the table block. `tableCell` and `tableHeader` may store semantic text alignment in `attrs.align` with `left`, `center`, or `right`. Column widths, selection, hover, and resize state are editor runtime state and must not be stored.
 
 ```json
 {
@@ -126,7 +126,7 @@ Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tab
       "content": [
         {
           "type": "tableHeader",
-          "attrs": { "id": "blk_header_name" },
+          "attrs": { "id": "blk_header_name", "align": "left" },
           "content": [{ "type": "paragraph", "attrs": { "id": "blk_header_name_text" }, "content": [{ "type": "text", "text": "Name" }] }]
         }
       ]

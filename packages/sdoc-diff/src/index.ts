@@ -52,6 +52,12 @@ interface BlockInfo {
   fingerprint: string;
 }
 
+interface TableCellSnapshot {
+  type: string;
+  text: string;
+  align: string;
+}
+
 export function diffDocuments(oldDocument: SDocDocument, newDocument: SDocDocument): SDocDiffEvent[] {
   const oldBlocks = flattenBlocks(normalizeDocument(oldDocument));
   const newBlocks = flattenBlocks(normalizeDocument(newDocument));
@@ -302,7 +308,7 @@ function fingerprintBlock(node: SDocNode): string {
     return stableStringify({
       type: node.type,
       attrs: omitId(node.attrs ?? {}),
-      rows: getTableRows(node)
+      rows: getTableSnapshot(node)
     });
   }
 
@@ -402,8 +408,8 @@ function summarizeDiagramChanges(oldNode: SDocNode, newNode: SDocNode): string[]
 }
 
 function summarizeTableChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
-  const oldRows = getTableRows(oldNode);
-  const newRows = getTableRows(newNode);
+  const oldRows = getTableSnapshot(oldNode);
+  const newRows = getTableSnapshot(newNode);
   const changes: string[] = [];
   const oldColumnCount = getMaxColumnCount(oldRows);
   const newColumnCount = getMaxColumnCount(newRows);
@@ -421,9 +427,21 @@ function summarizeTableChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
   for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
     for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
       const oldValue = oldRows[rowIndex]?.[columnIndex] ?? "";
-      const newValue = newRows[rowIndex]?.[columnIndex] ?? "";
-      if (oldValue !== newValue) {
-        changes.push(`cell ${rowIndex + 1},${columnIndex + 1} changed ${quote(oldValue)} -> ${quote(newValue)}`);
+      const newValue = newRows[rowIndex]?.[columnIndex];
+      if (!oldValue || !newValue) {
+        continue;
+      }
+
+      if (oldValue.type !== newValue.type) {
+        changes.push(`cell ${rowIndex + 1},${columnIndex + 1} role changed ${oldValue.type} -> ${newValue.type}`);
+      }
+
+      if (oldValue.align !== newValue.align) {
+        changes.push(`cell ${rowIndex + 1},${columnIndex + 1} alignment changed ${quote(oldValue.align)} -> ${quote(newValue.align)}`);
+      }
+
+      if (oldValue.text !== newValue.text) {
+        changes.push(`cell ${rowIndex + 1},${columnIndex + 1} changed ${quote(oldValue.text)} -> ${quote(newValue.text)}`);
       }
     }
   }
@@ -432,16 +450,29 @@ function summarizeTableChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
 }
 
 function getTableRows(node: SDocNode): string[][] {
+  return getTableSnapshot(node).map((row) => row.map((cell) => cell.text));
+}
+
+function getTableSnapshot(node: SDocNode): TableCellSnapshot[][] {
   return (node.content ?? [])
     .filter((row) => row.type === "tableRow")
     .map((row) =>
       (row.content ?? [])
         .filter((cell) => cell.type === "tableCell" || cell.type === "tableHeader")
-        .map((cell) => getPlainText(cell).trim())
+        .map((cell) => ({
+          type: cell.type,
+          text: getPlainText(cell).trim(),
+          align: getTableCellAlign(cell)
+        }))
     );
 }
 
-function getMaxColumnCount(rows: string[][]): number {
+function getTableCellAlign(node: SDocNode): string {
+  const align = node.attrs?.align;
+  return typeof align === "string" ? align : "";
+}
+
+function getMaxColumnCount(rows: unknown[][]): number {
   return Math.max(0, ...rows.map((row) => row.length));
 }
 

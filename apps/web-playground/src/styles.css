@@ -239,8 +239,19 @@ button {
 }
 
 .editor-pane {
+  position: relative;
   overflow: auto;
   padding: 28px;
+}
+
+.editor-node-highlight {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  background: rgba(76, 149, 163, 0.14);
+  border: 2px solid #4c95a3;
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px rgba(76, 149, 163, 0.12);
 }
 
 .editor-surface {
@@ -844,7 +855,7 @@ button {
 
 .reference-issue-list li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   align-items: start;
   min-width: 0;
@@ -853,6 +864,12 @@ button {
   background: #fff8f6;
   border: 1px solid #f0cdc7;
   border-radius: 6px;
+}
+
+.reference-issue-list li.selected,
+.reference-target-list li.selected {
+  border-color: #4c95a3;
+  box-shadow: inset 3px 0 0 #4c95a3;
 }
 
 .reference-issue-list strong,
@@ -871,6 +888,21 @@ button {
 .reference-muted {
   color: #657484;
   font-size: 12px;
+}
+
+.reference-issue-list button,
+.reference-target-list button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 10px;
+  color: #244b55;
+  background: #ffffff;
+  border: 1px solid #cfd7df;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .reference-target-list li {
@@ -907,20 +939,13 @@ button {
   font-size: 12px;
 }
 
-.reference-target-list button {
+.reference-target-actions {
   display: inline-flex;
   grid-column: 3;
   grid-row: 1;
   gap: 6px;
   align-items: center;
-  justify-content: center;
-  height: 30px;
-  padding: 0 10px;
-  color: #244b55;
-  background: #ffffff;
-  border: 1px solid #cfd7df;
-  border-radius: 6px;
-  cursor: pointer;
+  justify-content: flex-end;
 }
 
 @media (max-width: 980px) {

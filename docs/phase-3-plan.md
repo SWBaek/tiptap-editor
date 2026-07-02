@@ -33,12 +33,18 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Show a References panel with target, reference, and broken-reference counts.
 - Flag references whose `targetId` does not match any current block id.
 
-## Current Slice: Cross Reference Target Picker
+## Completed Slice: Cross Reference Target Picker
 
 - Replace prompt-based reference insertion with a References panel picker.
 - Filter target blocks by label, id, type, or anchor.
 - Insert references using the selected target block id and a human-readable label.
 - Keep missing-target diagnostics available for imported or edited `document.json` files.
+
+## Current Slice: Reference Navigation
+
+- Let users reveal target blocks from the References panel.
+- Let users reveal broken inline reference nodes from diagnostics.
+- Scroll the editor to the selected node and apply a short visual highlight.
 
 ## Acceptance Evidence
 
@@ -49,6 +55,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that a history snapshot can be saved, used as a comparison target, and survives page reload.
 - Playwright verifies that deleting a selected history snapshot clears it from comparison and persists after reload.
 - Playwright verifies that a reference can be inserted from the target picker and that imported missing-target references are reported.
+- Playwright verifies that reference targets and broken inline references can be revealed in the editor.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

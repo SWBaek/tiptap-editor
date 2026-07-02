@@ -117,7 +117,13 @@ test("inserts cross references from the target picker", async ({ page }) => {
   await page.getByRole("button", { name: "Insert reference" }).click();
   await expect(page.locator(".status-note")).toContainText("Choose a reference target");
   await page.getByLabel("Filter reference targets").fill("overview");
-  await page.getByRole("button", { name: "Insert reference to System Overview" }).click();
+  const overviewTarget = page.locator(".reference-target-list li").filter({ hasText: "System Overview" });
+
+  await overviewTarget.getByRole("button", { name: "Show" }).click();
+  await expect(page.locator(".status-note")).toContainText("Focused target System Overview");
+  await expect(page.locator('.editor-node-highlight[data-highlighted-node-id="blk_overview"]')).toBeVisible();
+
+  await overviewTarget.getByRole("button", { name: "Insert reference to System Overview" }).click();
 
   await expect(page.locator(".status-note")).toContainText("Inserted reference to System Overview");
   await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("References OK");
@@ -168,6 +174,11 @@ test("detects broken cross references in the playground", async ({ page }, testI
   await expect(page.locator(".reference-summary")).toContainText("Broken");
   await expect(page.locator(".reference-issue-list")).toContainText("blk_missing");
   await expect(page.locator(".reference-target-list")).toContainText("blk_overview");
+
+  const brokenItem = page.locator(".reference-issue-list li").filter({ hasText: "ref_missing" });
+  await brokenItem.getByRole("button", { name: "Show" }).click();
+  await expect(page.locator(".status-note")).toContainText("Focused reference Missing section");
+  await expect(page.locator('.editor-node-highlight[data-highlighted-node-id="ref_missing"]')).toBeVisible();
 
   await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
   const document = await readPreviewDocument(page);

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AnyExtension } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -82,6 +82,14 @@ import {
 
 type PreviewTab = "json" | "markdown" | "diff" | "history" | "references";
 type CalloutKind = "note" | "warning";
+interface EditorHighlightOverlay {
+  nodeId: string;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
 
 const initialDocument = toSdocDocument(initialContent);
@@ -114,9 +122,13 @@ export function App() {
   const [currentFilename, setCurrentFilename] = useState<string | null>(null);
   const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>(loadStoredHistory);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  const [highlightOverlay, setHighlightOverlay] = useState<EditorHighlightOverlay | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const editorPaneRef = useRef<HTMLElement>(null);
+  const highlightTimeoutRef = useRef<number | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -139,6 +151,14 @@ export function App() {
     },
     onUpdate: () => setEditorRevision((revision) => revision + 1)
   });
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const document = useMemo(() => {
     return editor ? toSdocDocument(editor.getJSON(), documentId) : initialDocument;
@@ -379,6 +399,40 @@ export function App() {
     const inserted = insertCrossReference(editor, target.id, undefined, target.label);
     setActiveTab("references");
     setStatusMessage(inserted ? `Inserted reference to ${target.label}` : `Cannot insert reference to ${target.label}`);
+  }
+
+  function revealEditorNode(nodeId: string, label: string) {
+    const element = findEditorElementByDataId(nodeId);
+    if (!element) {
+      setStatusMessage(`Cannot find editor node: ${nodeId}`);
+      return;
+    }
+
+    editor.commands.focus();
+    setHighlightedNodeId(nodeId);
+    if (highlightTimeoutRef.current !== null) {
+      window.clearTimeout(highlightTimeoutRef.current);
+    }
+    window.requestAnimationFrame(() => {
+      const currentElement = findEditorElementByDataId(nodeId);
+      if (!currentElement) {
+        return;
+      }
+
+      currentElement.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+      window.requestAnimationFrame(() => {
+        const overlay = measureEditorHighlightOverlay(currentElement, editorPaneRef.current);
+        if (overlay) {
+          setHighlightOverlay({ ...overlay, nodeId });
+        }
+      });
+    });
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightOverlay((current) => (current?.nodeId === nodeId ? null : current));
+      setHighlightedNodeId((current) => (current === nodeId ? null : current));
+      highlightTimeoutRef.current = null;
+    }, 2200);
+    setStatusMessage(`Focused ${label}`);
   }
 
   function insertInlineEquationFromPrompt() {
@@ -634,8 +688,20 @@ export function App() {
         </div>
 
         <div className="editor-grid">
-          <section className="editor-pane">
+          <section className="editor-pane" ref={editorPaneRef}>
             <EditorContent editor={editor} />
+            {highlightOverlay && (
+              <div
+                className="editor-node-highlight"
+                data-highlighted-node-id={highlightOverlay.nodeId}
+                style={{
+                  top: highlightOverlay.top,
+                  left: highlightOverlay.left,
+                  width: highlightOverlay.width,
+                  height: highlightOverlay.height
+                }}
+              />
+            )}
           </section>
 
           <section className="preview-pane">
@@ -658,7 +724,12 @@ export function App() {
                 onCompareSavedBaseline={compareSavedBaseline}
               />
             ) : activeTab === "references" ? (
-              <ReferencePanel diagnostics={referenceDiagnostics} onInsertReference={insertCrossReferenceToTarget} />
+              <ReferencePanel
+                diagnostics={referenceDiagnostics}
+                highlightedNodeId={highlightedNodeId}
+                onInsertReference={insertCrossReferenceToTarget}
+                onRevealNode={revealEditorNode}
+              />
             ) : (
               <pre className="preview-output">{preview}</pre>
             )}
@@ -797,10 +868,14 @@ function HistoryPanel({
 
 function ReferencePanel({
   diagnostics,
-  onInsertReference
+  highlightedNodeId,
+  onInsertReference,
+  onRevealNode
 }: {
   diagnostics: ReferenceDiagnosticsModel;
+  highlightedNodeId: string | null;
   onInsertReference: (targetId: string) => void;
+  onRevealNode: (nodeId: string, label: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
@@ -834,7 +909,7 @@ function ReferencePanel({
           <h3>Broken references</h3>
           <ul className="reference-issue-list">
             {diagnostics.brokenReferences.map((reference) => (
-              <li key={`${reference.path}-${reference.id}`}>
+              <li className={highlightedNodeId === reference.id ? "selected" : undefined} key={`${reference.path}-${reference.id}`}>
                 <AlertTriangle size={16} />
                 <div>
                   <strong>{reference.label}</strong>
@@ -842,6 +917,9 @@ function ReferencePanel({
                     {reference.id} targets missing block {reference.targetId}
                   </span>
                 </div>
+                <button type="button" onClick={() => onRevealNode(reference.id, `reference ${reference.label}`)}>
+                  Show
+                </button>
               </li>
             ))}
           </ul>
@@ -866,14 +944,19 @@ function ReferencePanel({
         ) : (
           <ul className="reference-target-list">
             {filteredTargets.map((target) => (
-              <li key={target.id}>
+              <li className={highlightedNodeId === target.id ? "selected" : undefined} key={target.id}>
                 <span>{target.type}</span>
                 <strong>{target.label}</strong>
                 <code>{target.anchor ? `${target.id} / #${target.anchor}` : target.id}</code>
-                <button type="button" aria-label={`Insert reference to ${target.label}`} onClick={() => onInsertReference(target.id)}>
-                  <Link2 size={14} />
-                  <span>Insert</span>
-                </button>
+                <div className="reference-target-actions">
+                  <button type="button" onClick={() => onRevealNode(target.id, `target ${target.label}`)}>
+                    Show
+                  </button>
+                  <button type="button" aria-label={`Insert reference to ${target.label}`} onClick={() => onInsertReference(target.id)}>
+                    <Link2 size={14} />
+                    <span>Insert</span>
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -885,6 +968,32 @@ function ReferencePanel({
 
 function targetMatchesReferenceQuery(target: ReferenceTargetSummary, query: string): boolean {
   return [target.id, target.type, target.label, target.anchor ?? ""].some((value) => value.toLowerCase().includes(query));
+}
+
+function findEditorElementByDataId(nodeId: string): HTMLElement | null {
+  const surface = window.document.querySelector(".editor-surface");
+  if (!surface) {
+    return null;
+  }
+
+  return (
+    Array.from(surface.querySelectorAll<HTMLElement>("[data-id]")).find((element) => element.getAttribute("data-id") === nodeId) ?? null
+  );
+}
+
+function measureEditorHighlightOverlay(element: HTMLElement, editorPane: HTMLElement | null): Omit<EditorHighlightOverlay, "nodeId"> | null {
+  if (!editorPane) {
+    return null;
+  }
+
+  const elementRect = element.getBoundingClientRect();
+  const paneRect = editorPane.getBoundingClientRect();
+  return {
+    top: elementRect.top - paneRect.top + editorPane.scrollTop,
+    left: elementRect.left - paneRect.left + editorPane.scrollLeft,
+    width: Math.max(elementRect.width, 4),
+    height: Math.max(elementRect.height, 4)
+  };
 }
 
 function ToolbarButton({

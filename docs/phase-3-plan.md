@@ -65,12 +65,25 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Use `docs/ui-shell-plan.md` as the implementation reference for Files, Review, References, History, Export, and Settings panels.
 - Keep browser `Files` scope limited to current/recent documents and open/save actions until Tauri filesystem integration exists.
 
-## Current Slice: Activity Bar Shell
+## Completed Slice: Activity Bar Shell
 
 - Add a left Activity Bar with Files, Review, References, History, Export, and Settings buttons.
 - Let users toggle the side panel by clicking the active Activity Bar button.
 - Keep the existing Settings/status panel open by default so current metadata and validation workflows remain available.
 - Provide lightweight side-panel entry points for Files, Review, References, History, and Export before moving full workflows out of preview tabs.
+
+## Completed Slice: References SidePanel Migration
+
+- Move the full References workflow from a preview tab into the References Activity SidePanel.
+- Open the References SidePanel when users invoke the Insert Reference toolbar action.
+- Keep reference insertion, broken-reference reveal, target reveal, and stale-label update workflows intact in the side panel.
+- Remove the redundant References preview tab.
+
+## Current Slice: History SidePanel Migration
+
+- Move local history snapshot management from the preview tab into the History Activity SidePanel.
+- Keep compare/delete/rename/persist workflows intact.
+- Decide whether History remains available as a preview tab only for raw comparison context or is fully removed.
 
 ## Acceptance Evidence
 
@@ -87,6 +100,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that stale reference labels can be detected and updated after a target heading changes.
 - `docs/ui-shell-plan.md` records the VS Code-like Activity Bar and toggle sidebar direction.
 - Playwright verifies the Activity Bar default Settings panel, Files panel switch, and side panel collapse/restore behavior.
+- Playwright verifies that reference insertion and broken-reference diagnostics work from the References Activity SidePanel.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

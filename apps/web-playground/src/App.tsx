@@ -83,7 +83,7 @@ import {
   type ReferenceTargetSummary
 } from "./documentState";
 
-type PreviewTab = "json" | "markdown" | "diff" | "history" | "references";
+type PreviewTab = "json" | "markdown" | "diff" | "history";
 type ActivityPanel = "files" | "review" | "references" | "history" | "export" | "settings";
 type CalloutKind = "note" | "warning";
 interface EditorHighlightOverlay {
@@ -359,6 +359,11 @@ export function App() {
     setIsSidePanelOpen(true);
   }
 
+  function openActivityPanel(panel: ActivityPanel) {
+    setActivePanel(panel);
+    setIsSidePanelOpen(true);
+  }
+
   function requireValidDocument(action: string): boolean {
     const message = getValidationFailureMessage(validation, action);
     if (message) {
@@ -413,7 +418,7 @@ export function App() {
   }
 
   function openReferencePicker() {
-    setActiveTab("references");
+    openActivityPanel("references");
     setStatusMessage("Choose a reference target");
   }
 
@@ -425,7 +430,7 @@ export function App() {
     }
 
     const inserted = insertCrossReference(editor, target.id, undefined, target.label);
-    setActiveTab("references");
+    openActivityPanel("references");
     setStatusMessage(inserted ? `Inserted reference to ${target.label}` : `Cannot insert reference to ${target.label}`);
   }
 
@@ -439,7 +444,7 @@ export function App() {
     const nextDocument = updateCrossReferenceLabel(document, reference.id, reference.targetLabel);
     editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
     repairEditorBlockIds(editor);
-    setActiveTab("references");
+    openActivityPanel("references");
     setStatusMessage(`Updated reference label: ${reference.targetLabel}`);
   }
 
@@ -587,12 +592,14 @@ export function App() {
             <span>{activePanelLabel}</span>
           </div>
 
+          <div className="status-note">{statusMessage}</div>
+          <div className="status-block">
+            <span>Schema</span>
+            <strong className={validation.ok ? "ok" : "error"}>{validation.ok ? "Valid" : "Invalid"}</strong>
+          </div>
+
           {activePanel === "settings" && (
             <>
-              <div className="status-block">
-                <span>Schema</span>
-                <strong className={validation.ok ? "ok" : "error"}>{validation.ok ? "Valid" : "Invalid"}</strong>
-              </div>
               <div className="status-block">
                 <span>Saved</span>
                 <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
@@ -621,7 +628,6 @@ export function App() {
                 <span>Version</span>
                 <input value={String(metadata.version ?? "")} onChange={(event) => setMetadata({ ...metadata, version: event.target.value })} />
               </label>
-              <div className="status-note">{statusMessage}</div>
               {!validation.ok && (
                 <div className="issue-list">
                   {validation.issues.slice(0, 5).map((issue) => (
@@ -650,7 +656,6 @@ export function App() {
               <button type="button" onClick={downloadSdoc}>
                 Save .sdoc
               </button>
-              <div className="status-note">{statusMessage}</div>
             </div>
           )}
 
@@ -674,19 +679,13 @@ export function App() {
           )}
 
           {activePanel === "references" && (
-            <div className="side-panel-section">
-              <div className="status-block">
-                <span>References</span>
-                <strong className={getReferenceStatusClass(referenceDiagnostics)}>{referenceDiagnostics.label}</strong>
-              </div>
-              <div className="status-block">
-                <span>Targets</span>
-                <strong>{referenceDiagnostics.targetCount}</strong>
-              </div>
-              <button type="button" onClick={() => setActiveTab("references")}>
-                Open references
-              </button>
-            </div>
+            <ReferencePanel
+              diagnostics={referenceDiagnostics}
+              highlightedNodeId={highlightedNodeId}
+              onInsertReference={insertCrossReferenceToTarget}
+              onRevealNode={revealEditorNode}
+              onUpdateReferenceLabel={updateReferenceLabel}
+            />
           )}
 
           {activePanel === "history" && (
@@ -849,7 +848,6 @@ export function App() {
               <TabButton label="Markdown" value="markdown" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="Diff" value="diff" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="History" value="history" activeTab={activeTab} onSelect={setActiveTab} />
-              <TabButton label="References" value="references" activeTab={activeTab} onSelect={setActiveTab} />
             </div>
             {activeTab === "diff" ? (
               <DiffReview review={changeReview} rawPreview={diffPreview} baseLabel={reviewBaseLabel} onCompareSavedBaseline={compareSavedBaseline} />
@@ -862,14 +860,6 @@ export function App() {
                 onDeleteSnapshot={deleteHistorySnapshot}
                 onRenameSnapshot={renameHistorySnapshot}
                 onCompareSavedBaseline={compareSavedBaseline}
-              />
-            ) : activeTab === "references" ? (
-              <ReferencePanel
-                diagnostics={referenceDiagnostics}
-                highlightedNodeId={highlightedNodeId}
-                onInsertReference={insertCrossReferenceToTarget}
-                onRevealNode={revealEditorNode}
-                onUpdateReferenceLabel={updateReferenceLabel}
               />
             ) : (
               <pre className="preview-output">{preview}</pre>

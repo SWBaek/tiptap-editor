@@ -132,6 +132,8 @@ test("inserts cross references from the target picker", async ({ page }) => {
 
   await page.getByRole("button", { name: "Insert reference" }).click();
   await expect(page.locator(".status-note")).toContainText("Choose a reference target");
+  await expect(page.getByRole("button", { name: "References panel" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("complementary", { name: "References side panel" })).toBeVisible();
   await page.getByLabel("Filter reference targets").fill("overview");
   const overviewTarget = page.locator(".reference-target-list li").filter({ hasText: "System Overview" });
 
@@ -142,18 +144,18 @@ test("inserts cross references from the target picker", async ({ page }) => {
   await overviewTarget.getByRole("button", { name: "Insert reference to System Overview" }).click();
 
   await expect(page.locator(".status-note")).toContainText("Inserted reference to System Overview");
-  await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("References OK");
   await expect(page.locator(".reference-summary")).toContainText("References");
+  await expect(page.locator(".reference-empty")).toContainText("All references resolve");
 
   await page.locator(".editor-surface h1").click({ clickCount: 3 });
   await page.keyboard.type("Platform Overview");
-  await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("1 stale");
+  await expect(page.locator(".reference-summary")).toContainText("Stale");
   await expect(page.locator(".reference-stale-list")).toContainText("System Overview");
   await expect(page.locator(".reference-stale-list")).toContainText("Platform Overview");
 
   await page.getByRole("button", { name: "Update label for System Overview" }).click();
   await expect(page.locator(".status-note")).toContainText("Updated reference label: Platform Overview");
-  await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("References OK");
+  await expect(page.locator(".reference-empty")).toContainText("All references resolve");
 
   await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
   const document = await readPreviewDocument(page);
@@ -196,7 +198,8 @@ test("detects broken cross references in the playground", async ({ page }, testI
   await page.getByLabel("Open document file").setInputFiles(brokenReferencePath);
   await expect(page.locator(".status-note")).toContainText("Opened broken-reference.document.json");
   await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("1 broken");
-  await page.locator(".tabs").getByRole("button", { name: "References" }).click();
+  await page.getByRole("button", { name: "References panel" }).click();
+  await expect(page.getByRole("complementary", { name: "References side panel" })).toBeVisible();
   await expect(page.locator(".reference-summary")).toContainText("Broken");
   await expect(page.locator(".reference-issue-list")).toContainText("blk_missing");
   await expect(page.locator(".reference-target-list")).toContainText("blk_overview");

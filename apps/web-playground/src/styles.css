@@ -26,7 +26,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 54px 260px minmax(0, 1fr);
+  grid-template-columns: 54px 320px minmax(0, 1fr);
   width: 100%;
   max-width: 100vw;
   height: 100vh;
@@ -89,6 +89,10 @@ button {
   background: #17212b;
   color: #f7f9fb;
   border-right: 1px solid #0f151c;
+}
+
+.side-panel {
+  min-width: 0;
 }
 
 .side-panel-title {
@@ -853,6 +857,44 @@ button {
   background: #fbfcfd;
 }
 
+.side-panel .reference-panel {
+  margin: 0 -18px -18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.side-panel .reference-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.side-panel .reference-section {
+  padding: 14px;
+}
+
+.side-panel .reference-target-list li {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.side-panel .reference-target-list code,
+.side-panel .reference-target-actions {
+  grid-column: 1;
+  grid-row: auto;
+}
+
+.side-panel .reference-target-actions,
+.side-panel .reference-stale-actions {
+  justify-content: flex-start;
+}
+
+.side-panel .reference-issue-list li,
+.side-panel .reference-stale-list li {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.side-panel .reference-issue-list button,
+.side-panel .reference-stale-actions {
+  grid-column: 2;
+}
+
 .reference-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1077,7 +1119,7 @@ button {
 
 @media (max-width: 980px) {
   .app-shell {
-    grid-template-columns: 50px 240px minmax(0, 1fr);
+    grid-template-columns: 50px 300px minmax(0, 1fr);
   }
 
   .app-shell.side-panel-collapsed {

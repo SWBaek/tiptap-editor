@@ -79,11 +79,17 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Keep reference insertion, broken-reference reveal, target reveal, and stale-label update workflows intact in the side panel.
 - Remove the redundant References preview tab.
 
-## Current Slice: History SidePanel Migration
+## Completed Slice: History SidePanel Migration
 
 - Move local history snapshot management from the preview tab into the History Activity SidePanel.
 - Keep compare/delete/rename/persist workflows intact.
-- Decide whether History remains available as a preview tab only for raw comparison context or is fully removed.
+- Remove the redundant History preview tab; use the Diff preview for comparison output.
+
+## Current Slice: Review SidePanel Refinement
+
+- Keep the Diff preview as the main comparison workspace.
+- Expand the Review Activity SidePanel with review status, base selection, and review actions.
+- Avoid duplicating full diff content in the sidebar; keep the sidebar focused on navigation and workflow controls.
 
 ## Acceptance Evidence
 
@@ -101,6 +107,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - `docs/ui-shell-plan.md` records the VS Code-like Activity Bar and toggle sidebar direction.
 - Playwright verifies the Activity Bar default Settings panel, Files panel switch, and side panel collapse/restore behavior.
 - Playwright verifies that reference insertion and broken-reference diagnostics work from the References Activity SidePanel.
+- Playwright verifies that history save, rename, compare, delete, and reload workflows work from the History Activity SidePanel.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

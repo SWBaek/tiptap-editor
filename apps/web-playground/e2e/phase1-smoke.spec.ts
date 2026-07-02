@@ -78,11 +78,13 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
 
 test("stores local history snapshots and compares them with the current document", async ({ page }) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "History panel" }).click();
+  await expect(page.getByRole("complementary", { name: "History side panel" })).toBeVisible();
   await expect(page.locator(".history-empty")).toContainText("No snapshots");
 
   await page.getByRole("button", { name: "Save history snapshot" }).click();
   await expect(page.locator(".status-note")).toContainText("Saved history snapshot: Playground Document");
+  await expect(page.getByRole("button", { name: "History panel" })).toHaveAttribute("aria-pressed", "true");
   const historyItem = page.locator(".history-item");
   await expect(historyItem.getByLabel("Snapshot name")).toHaveValue("Playground Document");
 
@@ -91,38 +93,43 @@ test("stores local history snapshots and compares them with the current document
   await expect(page.locator(".status-note")).toContainText("Renamed history snapshot: Review Baseline");
   await expect(historyItem.getByLabel("Snapshot name")).toHaveValue("Review Baseline");
 
+  await page.getByRole("button", { name: "Settings panel" }).click();
   await page.getByLabel("Title").fill("History Spec");
-  await historyItem.getByRole("button", { name: "Compare" }).click();
+  await page.getByRole("button", { name: "History panel" }).click();
+  const renamedHistoryItem = page.locator(".history-item");
+  await expect(renamedHistoryItem.getByLabel("Snapshot name")).toHaveValue("Review Baseline");
+  await renamedHistoryItem.getByRole("button", { name: "Compare" }).click();
   await expect(page.locator(".status-note")).toContainText("Comparing with history snapshot: Review Baseline");
   await expect(page.locator(".diff-review-base")).toContainText("History: Review Baseline");
-  await expect(page.locator(".status-block").filter({ hasText: "Review" })).toContainText("1 change");
+  await expect(page.locator(".diff-review-summary")).toContainText("Total");
+  await expect(page.locator(".diff-review-summary")).toContainText("1");
   await expect(page.locator(".diff-review-section").filter({ hasText: "Metadata changes" })).toContainText(
     'Metadata title changed: "Playground Document" -> "History Spec"'
   );
 
-  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
   await page.getByRole("button", { name: "Delete history snapshot Review Baseline" }).click();
   await expect(page.locator(".status-note")).toContainText("Deleted history snapshot: Review Baseline");
   await expect(page.locator(".history-empty")).toContainText("No snapshots");
 
   await page.locator(".tabs").getByRole("button", { name: "Diff" }).click();
   await expect(page.locator(".diff-review-base")).toContainText("Saved baseline");
-  await expect(page.locator(".status-block").filter({ hasText: "Review" })).toContainText("1 change");
+  await expect(page.locator(".diff-review-summary")).toContainText("Total");
+  await expect(page.locator(".diff-review-summary")).toContainText("1");
 
   await page.reload();
-  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "History panel" }).click();
   await expect(page.locator(".history-empty")).toContainText("No snapshots");
 });
 
 test("persists local history snapshots across reloads", async ({ page }) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "History panel" }).click();
   await page.getByRole("button", { name: "Save history snapshot" }).click();
   await page.locator(".history-item").getByLabel("Snapshot name").fill("Reload Baseline");
   await page.locator(".history-item").getByLabel("Snapshot name").press("Enter");
 
   await page.reload();
-  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "History panel" }).click();
   await expect(page.locator(".history-item").getByLabel("Snapshot name")).toHaveValue("Reload Baseline");
 });
 

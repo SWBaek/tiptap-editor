@@ -83,7 +83,7 @@ import {
   type ReferenceTargetSummary
 } from "./documentState";
 
-type PreviewTab = "json" | "markdown" | "diff" | "history";
+type PreviewTab = "json" | "markdown" | "diff";
 type ActivityPanel = "files" | "review" | "references" | "history" | "export" | "settings";
 type CalloutKind = "note" | "warning";
 interface EditorHighlightOverlay {
@@ -295,7 +295,7 @@ export function App() {
     const nextEntries = addLocalHistoryEntry(historyEntries, entry);
     persistHistory(nextEntries);
     setSelectedHistoryId(entry.id);
-    setActiveTab("history");
+    openActivityPanel("history");
     setStatusMessage(`Saved history snapshot: ${entry.title}`);
   }
 
@@ -689,18 +689,15 @@ export function App() {
           )}
 
           {activePanel === "history" && (
-            <div className="side-panel-section">
-              <div className="status-block">
-                <span>Snapshots</span>
-                <strong>{historyEntries.length}</strong>
-              </div>
-              <button type="button" onClick={saveHistorySnapshot}>
-                Save snapshot
-              </button>
-              <button type="button" onClick={() => setActiveTab("history")}>
-                Open history
-              </button>
-            </div>
+            <HistoryPanel
+              entries={historyEntries}
+              selectedId={selectedHistoryId}
+              onSaveSnapshot={saveHistorySnapshot}
+              onCompareSnapshot={compareHistorySnapshot}
+              onDeleteSnapshot={deleteHistorySnapshot}
+              onRenameSnapshot={renameHistorySnapshot}
+              onCompareSavedBaseline={compareSavedBaseline}
+            />
           )}
 
           {activePanel === "export" && (
@@ -847,20 +844,9 @@ export function App() {
               <TabButton label="JSON" value="json" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="Markdown" value="markdown" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="Diff" value="diff" activeTab={activeTab} onSelect={setActiveTab} />
-              <TabButton label="History" value="history" activeTab={activeTab} onSelect={setActiveTab} />
             </div>
             {activeTab === "diff" ? (
               <DiffReview review={changeReview} rawPreview={diffPreview} baseLabel={reviewBaseLabel} onCompareSavedBaseline={compareSavedBaseline} />
-            ) : activeTab === "history" ? (
-              <HistoryPanel
-                entries={historyEntries}
-                selectedId={selectedHistoryId}
-                onSaveSnapshot={saveHistorySnapshot}
-                onCompareSnapshot={compareHistorySnapshot}
-                onDeleteSnapshot={deleteHistorySnapshot}
-                onRenameSnapshot={renameHistorySnapshot}
-                onCompareSavedBaseline={compareSavedBaseline}
-              />
             ) : (
               <pre className="preview-output">{preview}</pre>
             )}

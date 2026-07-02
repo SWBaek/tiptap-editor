@@ -848,6 +848,31 @@ button {
   white-space: nowrap;
 }
 
+.side-panel .history-panel {
+  margin: 0 -18px -18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.side-panel .history-toolbar {
+  padding: 10px 12px;
+}
+
+.side-panel .history-list {
+  padding: 12px;
+}
+
+.side-panel .history-item {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.side-panel .history-actions {
+  justify-content: flex-start;
+}
+
+.side-panel .history-empty {
+  min-height: 150px;
+}
+
 .reference-panel {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);

@@ -76,6 +76,31 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   expect(screenshot.length).toBeGreaterThan(1_000);
 });
 
+test("uses the Review side panel for diff workflow controls", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Title").fill("Review Panel Spec");
+
+  await page.getByRole("button", { name: "Review panel" }).click();
+  const reviewPanel = page.getByRole("complementary", { name: "Review side panel" });
+  await expect(reviewPanel).toBeVisible();
+  await expect(reviewPanel.locator(".status-block").filter({ hasText: "Review" })).toContainText("1 change");
+  await expect(reviewPanel.locator(".status-block").filter({ hasText: "Base" })).toContainText("Saved baseline");
+  await expect(reviewPanel.getByLabel("Review counts")).toContainText("Total");
+  await expect(reviewPanel.getByLabel("Review counts")).toContainText("Metadata");
+  await expect(reviewPanel.getByLabel("Review counts")).toContainText("1");
+
+  await reviewPanel.getByRole("button", { name: "Show diff" }).click();
+  await expect(page.locator(".diff-review-base")).toContainText("Saved baseline");
+  await expect(page.locator(".diff-review-section").filter({ hasText: "Metadata changes" })).toContainText(
+    'Metadata title changed: "Playground Document" -> "Review Panel Spec"'
+  );
+
+  await reviewPanel.getByRole("button", { name: "Mark saved" }).click();
+  await expect(page.locator(".status-note")).toContainText("Marked current state as saved");
+  await expect(reviewPanel.locator(".status-block").filter({ hasText: "Review" })).toContainText("No changes");
+  await expect(page.locator(".diff-empty")).toContainText("No changes");
+});
+
 test("stores local history snapshots and compares them with the current document", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "History panel" }).click();
@@ -107,6 +132,14 @@ test("stores local history snapshots and compares them with the current document
     'Metadata title changed: "Playground Document" -> "History Spec"'
   );
 
+  await page.getByRole("button", { name: "Review panel" }).click();
+  const historyReviewPanel = page.getByRole("complementary", { name: "Review side panel" });
+  await expect(historyReviewPanel.locator(".status-block").filter({ hasText: "Base" })).toContainText("History: Review Baseline");
+  await historyReviewPanel.getByRole("button", { name: "Use saved baseline" }).click();
+  await expect(page.locator(".status-note")).toContainText("Comparing with saved baseline");
+  await expect(historyReviewPanel.locator(".status-block").filter({ hasText: "Base" })).toContainText("Saved baseline");
+
+  await page.getByRole("button", { name: "History panel" }).click();
   await page.getByRole("button", { name: "Delete history snapshot Review Baseline" }).click();
   await expect(page.locator(".status-note")).toContainText("Deleted history snapshot: Review Baseline");
   await expect(page.locator(".history-empty")).toContainText("No snapshots");

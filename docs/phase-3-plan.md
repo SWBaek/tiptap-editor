@@ -85,11 +85,17 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Keep compare/delete/rename/persist workflows intact.
 - Remove the redundant History preview tab; use the Diff preview for comparison output.
 
-## Current Slice: Review SidePanel Refinement
+## Completed Slice: Review SidePanel Refinement
 
 - Keep the Diff preview as the main comparison workspace.
 - Expand the Review Activity SidePanel with review status, base selection, and review actions.
 - Avoid duplicating full diff content in the sidebar; keep the sidebar focused on navigation and workflow controls.
+
+## Current Slice: Browser Files Panel
+
+- Keep browser file operations honest: current file, new/open/save actions, and browser-local recent entries only.
+- Avoid pretending that the browser can browse arbitrary folders before Tauri filesystem integration exists.
+- Prepare the Files Activity SidePanel to become the bridge into recent files and later unpacked-folder workflows.
 
 ## Acceptance Evidence
 
@@ -108,6 +114,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies the Activity Bar default Settings panel, Files panel switch, and side panel collapse/restore behavior.
 - Playwright verifies that reference insertion and broken-reference diagnostics work from the References Activity SidePanel.
 - Playwright verifies that history save, rename, compare, delete, and reload workflows work from the History Activity SidePanel.
+- Playwright verifies that the Review Activity SidePanel shows review counts, opens the Diff preview, marks the current state saved, and switches from a history base back to the saved baseline.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

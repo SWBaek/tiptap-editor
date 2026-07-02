@@ -660,22 +660,15 @@ export function App() {
           )}
 
           {activePanel === "review" && (
-            <div className="side-panel-section">
-              <div className="status-block">
-                <span>Review</span>
-                <strong className={hasUnsavedChanges ? "warning" : "ok"}>{changeReview.label}</strong>
-              </div>
-              <div className="status-block">
-                <span>Saved</span>
-                <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
-              </div>
-              <button type="button" onClick={() => setActiveTab("diff")}>
-                Show diff
-              </button>
-              <button type="button" onClick={markCurrentAsBaseline}>
-                Mark saved
-              </button>
-            </div>
+            <ReviewPanel
+              review={changeReview}
+              baseLabel={reviewBaseLabel}
+              savedLabel={savedLabel}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onShowDiff={() => setActiveTab("diff")}
+              onCompareSavedBaseline={compareSavedBaseline}
+              onMarkSaved={markCurrentAsBaseline}
+            />
           )}
 
           {activePanel === "references" && (
@@ -913,6 +906,70 @@ function ActivityButton({
     >
       {children}
     </button>
+  );
+}
+
+function ReviewPanel({
+  review,
+  baseLabel,
+  savedLabel,
+  hasUnsavedChanges,
+  onShowDiff,
+  onCompareSavedBaseline,
+  onMarkSaved
+}: {
+  review: ChangeReviewModel;
+  baseLabel: string;
+  savedLabel: string;
+  hasUnsavedChanges: boolean;
+  onShowDiff: () => void;
+  onCompareSavedBaseline: () => void;
+  onMarkSaved: () => void;
+}) {
+  const isHistoryBase = baseLabel !== "Saved baseline";
+
+  return (
+    <div className="side-panel-section review-panel">
+      <div className="status-block">
+        <span>Review</span>
+        <strong className={hasUnsavedChanges ? "warning" : "ok"}>{review.label}</strong>
+      </div>
+      <div className="status-block">
+        <span>Base</span>
+        <strong title={baseLabel}>{baseLabel}</strong>
+      </div>
+      <div className="status-block">
+        <span>Saved</span>
+        <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
+      </div>
+
+      <div className="review-counts" aria-label="Review counts">
+        <div>
+          <span>Total</span>
+          <strong>{review.total}</strong>
+        </div>
+        <div>
+          <span>Document</span>
+          <strong>{review.documentCount}</strong>
+        </div>
+        <div>
+          <span>Metadata</span>
+          <strong>{review.metadataCount}</strong>
+        </div>
+      </div>
+
+      <button type="button" onClick={onShowDiff}>
+        Show diff
+      </button>
+      {isHistoryBase && (
+        <button type="button" onClick={onCompareSavedBaseline}>
+          Use saved baseline
+        </button>
+      )}
+      <button type="button" onClick={onMarkSaved}>
+        Mark saved
+      </button>
+    </div>
   );
 }
 

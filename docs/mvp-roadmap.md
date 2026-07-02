@@ -63,7 +63,7 @@
 
 ## Phase 3: Review & Integration
 
-상태: started on 2026-07-02. 현재 slice는 `docs/phase-3-plan.md`의 Review SidePanel refinement workflow다.
+상태: started on 2026-07-02. 현재 slice는 `docs/phase-3-plan.md`의 Browser Files Panel workflow다.
 
 목표는 diff와 개발자 workflow를 제품 가치로 만드는 것이다.
 

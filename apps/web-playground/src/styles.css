@@ -173,6 +173,50 @@ button {
   font-size: 13px;
 }
 
+.review-panel {
+  align-content: start;
+}
+
+.review-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+}
+
+.review-counts div {
+  min-width: 0;
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.review-counts div + div {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.review-counts span,
+.review-counts strong {
+  display: block;
+  text-align: center;
+}
+
+.review-counts span {
+  overflow: hidden;
+  color: #aeb8c2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.review-counts strong {
+  margin-top: 4px;
+  color: #f7f9fb;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
 .metadata-field {
   display: grid;
   gap: 6px;

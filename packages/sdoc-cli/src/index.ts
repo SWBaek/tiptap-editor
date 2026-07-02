@@ -47,18 +47,45 @@ async function runDiff(args: string[]): Promise<void> {
 async function runExport(args: string[]): Promise<void> {
   const [inputPath, ...rest] = args;
   if (!inputPath) {
-    throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|chunks|outline|references> [-o output]");
+    throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|pdf|chunks|outline|references> [-o output]");
   }
 
   const positionals = rest.filter((value) => !value.startsWith("-"));
   const format = getOption(rest, "--format") ?? positionals[0] ?? "markdown";
   const output = getOption(rest, "-o") ?? positionals[1];
+  if (format.toLowerCase() === "pdf") {
+    if (!output) {
+      throw new Error("usage: sdoc export <input.sdoc|document.json> --format pdf -o output.pdf");
+    }
+
+    await writePdfExport(await loadDocument(inputPath), output);
+    return;
+  }
+
   const exportText = renderExport(await loadDocument(inputPath), format);
 
   if (output) {
     await writeFile(output, exportText, "utf8");
   } else {
     process.stdout.write(exportText);
+  }
+}
+
+async function writePdfExport(document: SDocDocument, outputPath: string): Promise<void> {
+  const { chromium } = await import("playwright");
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.emulateMedia({ media: "print" });
+    await page.setContent(exportHtml(document), { waitUntil: "load" });
+    await page.pdf({
+      path: outputPath,
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true
+    });
+  } finally {
+    await browser.close();
   }
 }
 
@@ -201,7 +228,7 @@ function printHelp(): void {
 
 Commands:
   sdoc diff <old.sdoc|old.document.json> <new.sdoc|new.document.json>
-  sdoc export <input.sdoc|document.json> <markdown|html|chunks|outline|references> [output]
+  sdoc export <input.sdoc|document.json> <markdown|html|pdf|chunks|outline|references> [output]
   sdoc pack <folder> <output.sdoc>
   sdoc unpack <input.sdoc> <folder>
   sdoc validate <input.sdoc|document.json|unpacked-folder>

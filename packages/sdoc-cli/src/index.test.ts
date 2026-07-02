@@ -74,6 +74,22 @@ describe("sdoc CLI", () => {
     expect(html.stdout).toContain(".sdoc-document");
   });
 
+  it("exports PDF through the HTML print pipeline", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const pdfPath = path.join(tempDir, "basic.pdf");
+
+    try {
+      const result = await runSdoc(["export", validDocumentPath, "--format", "pdf", "-o", pdfPath]);
+      const pdf = await readFile(pdfPath);
+
+      expect(result.stdout).toBe("");
+      expect(pdf.subarray(0, 5).toString("utf8")).toBe("%PDF-");
+      expect(pdf.length).toBeGreaterThan(1_000);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("runs the Phase 0 pack/unpack/diff/export smoke flow", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const basicFolder = path.join(tempDir, "basic.sdoc.d");

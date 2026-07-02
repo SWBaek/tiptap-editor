@@ -27,17 +27,31 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Keep headings with following content and avoid breaking figures, tables, code blocks, callouts, equations, and diagrams across pages where possible.
 - Show external HTTP(S) link URLs in print output.
 
-## Current Slice: PDF Export Boundary
+## Completed Slice: PDF Export Boundary
 
 - Decide whether MVP PDF export should use browser print-to-PDF, Playwright/Chromium rendering, or a dedicated PDF renderer.
 - Keep PDF generation downstream of `exportHtml` unless the renderer cannot preserve technical document structure reliably.
 - Define what belongs in browser export, CLI export, and future desktop/Tauri export.
+- Use `docs/pdf-export-boundary.md` as the boundary document.
+
+## Completed Slice: CLI PDF Export
+
+- Add `sdoc export <input.sdoc|document.json> --format pdf -o output.pdf`.
+- Render PDF through the existing `exportHtml` projection and Playwright/Chromium print emulation.
+- Require an output path because PDF is binary output.
+
+## Current Slice: Browser PDF UX Boundary
+
+- Decide whether the web playground should expose a print command, a PDF-ready HTML action, or defer direct PDF UX to Tauri.
+- Avoid claiming browser PDF generation unless it can produce a file reliably.
+- Keep the Export panel focused on outputs that the browser can actually download today.
 
 ## Acceptance Evidence
 
 - Unit tests cover heading anchors, cross references, HTML escaping, unsafe link blocking, figure asset resolution, and title-based filenames.
 - Unit tests cover generated HTML print stylesheet rules.
 - CLI tests cover `sdoc export <document> --format html`.
+- CLI tests cover PDF generation through the HTML print pipeline.
 - Playwright verifies the Export side panel exposes and downloads `.html`.
 
 ## Boundaries
@@ -48,7 +62,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 
 ## Later Slices
 
-- PDF export
+- Browser/Tauri PDF export UX
 - Slide export
 - Draw.io integration
 - Advanced table editing

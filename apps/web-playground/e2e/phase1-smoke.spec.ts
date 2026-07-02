@@ -112,10 +112,13 @@ test("tracks browser recent files in the Files side panel", async ({ page }) => 
   const filesPanel = page.getByRole("complementary", { name: "Files side panel" });
   await expect(filesPanel).toBeVisible();
   await expect(filesPanel.getByLabel("Recent files")).toContainText("No recent browser activity");
+  await expect(filesPanel.getByLabel("Unpacked folder workflow")).toContainText("CLI/Tauri-only");
 
   await page.getByRole("button", { name: "Settings panel" }).click();
   await page.getByLabel("Title").fill("Files Panel Spec");
   await page.getByRole("button", { name: "Files panel" }).click();
+  await filesPanel.getByRole("button", { name: "Copy unpack command" }).click();
+  await expect(page.locator(".status-note")).toContainText('npm run sdoc -- unpack "Files Panel Spec.sdoc" "Files Panel Spec.sdoc.d"');
 
   const sdocDownload = page.waitForEvent("download");
   await filesPanel.getByRole("button", { name: "Save .sdoc" }).click();

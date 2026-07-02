@@ -109,11 +109,18 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Reduce duplication with Review, Files, References, and Export panels now that those workflows have dedicated homes.
 - Keep Settings useful as the default landing side panel without making it a catch-all status sidebar.
 
-## Current Slice: Unpacked Folder Workflow Boundary
+## Completed Slice: Unpacked Folder Workflow Boundary
 
 - Define the browser-safe and Tauri-only parts of unpacked `.sdoc` folder workflows.
 - Keep single-file `.sdoc` as the normal user-facing document format.
 - Add implementation hooks only where they do not imply browser access to arbitrary folders.
+- Use `docs/unpacked-folder-workflow.md` as the boundary document for browser, CLI, and future Tauri behavior.
+
+## Current Slice: Git Integration Boundary
+
+- Keep Git optional and hidden from normal authoring workflows.
+- Define which Git operations belong in CLI/Tauri rather than the browser MVP.
+- Connect Git-oriented review flows to semantic diff and unpacked-folder workflows without making Git the canonical storage model.
 
 ## Acceptance Evidence
 
@@ -136,6 +143,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that the Files Activity SidePanel shows browser-local recent file metadata after `.sdoc` save, persists it across reload, and explains that browser recent entries cannot auto-reopen files.
 - Playwright verifies that the Export Activity SidePanel exposes `.sdoc`, Markdown, and AI/RAG exports with visible filenames and downloads `plain.md` and `chunks.jsonl`.
 - Playwright verifies that the Settings Activity SidePanel keeps metadata and schema status while omitting Review, References, and current-file status now owned by dedicated panels.
+- Playwright verifies that the Files Activity SidePanel exposes the unpacked-folder boundary as CLI/Tauri-only and provides an unpack CLI command without claiming browser folder access.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

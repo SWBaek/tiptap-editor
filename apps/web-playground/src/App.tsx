@@ -334,6 +334,11 @@ export function App() {
     setStatusMessage(`Recent file metadata only: reopen ${entry.name} from disk to load it in the browser`);
   }
 
+  function showDeveloperCommand(command: string) {
+    void navigator.clipboard?.writeText(command).catch(() => undefined);
+    setStatusMessage(`CLI command: ${command}`);
+  }
+
   function saveHistorySnapshot() {
     if (!requireValidDocument("save history snapshot")) {
       return;
@@ -649,12 +654,14 @@ export function App() {
           {activePanel === "files" && (
             <FilesPanel
               currentFile={fileLabel}
+              sdocFilename={exportFilenames.sdoc}
               savedLabel={savedLabel}
               recentFiles={recentFiles}
               onNewDocument={createNewDocument}
               onOpenDocument={() => fileInputRef.current?.click()}
               onSaveSdoc={downloadSdoc}
               onSelectRecentFile={explainRecentFileAccess}
+              onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
 
@@ -975,21 +982,28 @@ function SettingsPanel({
 
 function FilesPanel({
   currentFile,
+  sdocFilename,
   savedLabel,
   recentFiles,
   onNewDocument,
   onOpenDocument,
   onSaveSdoc,
-  onSelectRecentFile
+  onSelectRecentFile,
+  onCopyDeveloperCommand
 }: {
   currentFile: string;
+  sdocFilename: string;
   savedLabel: string;
   recentFiles: RecentFileEntry[];
   onNewDocument: () => void;
   onOpenDocument: () => void;
   onSaveSdoc: () => void;
   onSelectRecentFile: (entry: RecentFileEntry) => void;
+  onCopyDeveloperCommand: (command: string) => void;
 }) {
+  const unpackCommand = `npm run sdoc -- unpack ${quoteCliPath(sdocFilename)} ${quoteCliPath(`${sdocFilename}.d`)}`;
+  const packCommand = `npm run sdoc -- pack ${quoteCliPath(`${sdocFilename}.d`)} ${quoteCliPath(sdocFilename)}`;
+
   return (
     <div className="side-panel-section files-panel">
       <div className="status-block">
@@ -1031,6 +1045,20 @@ function FilesPanel({
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="developer-workspace" aria-label="Unpacked folder workflow">
+        <h3>Developer workspace</h3>
+        <div className="workspace-boundary">
+          <strong>Single-file .sdoc is the browser format</strong>
+          <span>Unpacked folders are CLI/Tauri-only because browsers cannot manage arbitrary project folders.</span>
+        </div>
+        <button type="button" onClick={() => onCopyDeveloperCommand(unpackCommand)}>
+          Copy unpack command
+        </button>
+        <button type="button" onClick={() => onCopyDeveloperCommand(packCommand)}>
+          Copy pack command
+        </button>
       </section>
     </div>
   );
@@ -1661,6 +1689,10 @@ function formatRecentFileTime(value: string): string {
   }
 
   return date.toLocaleString();
+}
+
+function quoteCliPath(value: string): string {
+  return `"${value.replaceAll('"', '\\"')}"`;
 }
 
 function getDerivedOutputDescription(name: DerivedOutputName): string {

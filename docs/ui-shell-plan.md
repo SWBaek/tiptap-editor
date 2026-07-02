@@ -35,6 +35,8 @@ Full file and folder exploration belongs to the Tauri desktop phase, where nativ
 - showing unpacked `.sdoc` folders for developer workflows,
 - round-tripping single-file `.sdoc` containers without exposing internal files to non-developer users.
 
+`docs/unpacked-folder-workflow.md` records the browser, CLI, and future Tauri boundary for this workflow.
+
 ## UX Rules
 
 - Git and unpacked-folder workflows must remain optional and hidden from normal authoring.

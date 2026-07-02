@@ -307,6 +307,49 @@ button {
   font-size: 11px;
 }
 
+.developer-workspace {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.developer-workspace h3 {
+  margin: 0;
+  color: #d9e1e8;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.workspace-boundary {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+}
+
+.workspace-boundary strong,
+.workspace-boundary span {
+  display: block;
+  min-width: 0;
+}
+
+.workspace-boundary strong {
+  color: #f7f9fb;
+  font-size: 13px;
+}
+
+.workspace-boundary span {
+  color: #aeb8c2;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .export-panel {
   align-content: start;
 }

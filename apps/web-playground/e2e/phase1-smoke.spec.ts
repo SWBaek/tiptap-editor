@@ -101,6 +101,31 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(page.locator(".diff-empty")).toContainText("No changes");
 });
 
+test("tracks browser recent files in the Files side panel", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Files panel" }).click();
+  const filesPanel = page.getByRole("complementary", { name: "Files side panel" });
+  await expect(filesPanel).toBeVisible();
+  await expect(filesPanel.getByLabel("Recent files")).toContainText("No recent browser activity");
+
+  await page.getByRole("button", { name: "Settings panel" }).click();
+  await page.getByLabel("Title").fill("Files Panel Spec");
+  await page.getByRole("button", { name: "Files panel" }).click();
+
+  const sdocDownload = page.waitForEvent("download");
+  await filesPanel.getByRole("button", { name: "Save .sdoc" }).click();
+  expect((await sdocDownload).suggestedFilename()).toBe("Files Panel Spec.sdoc");
+  await expect(filesPanel.getByLabel("Recent files")).toContainText("Files Panel Spec.sdoc");
+  await expect(filesPanel.getByLabel("Recent files")).toContainText("saved Files Panel Spec");
+
+  await page.reload();
+  await page.getByRole("button", { name: "Files panel" }).click();
+  const reloadedFilesPanel = page.getByRole("complementary", { name: "Files side panel" });
+  await expect(reloadedFilesPanel.getByLabel("Recent files")).toContainText("Files Panel Spec.sdoc");
+  await reloadedFilesPanel.getByRole("button", { name: /Files Panel Spec\.sdoc/ }).click();
+  await expect(page.locator(".status-note")).toContainText("Recent file metadata only: reopen Files Panel Spec.sdoc");
+});
+
 test("stores local history snapshots and compares them with the current document", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "History panel" }).click();

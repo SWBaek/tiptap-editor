@@ -217,6 +217,73 @@ button {
   line-height: 1.2;
 }
 
+.files-panel {
+  align-content: start;
+}
+
+.files-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.recent-files {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+.recent-files h3 {
+  margin: 0;
+  color: #d9e1e8;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.recent-files p {
+  margin: 0;
+  color: #aeb8c2;
+  font-size: 12px;
+}
+
+.recent-files ul {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-files button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 54px;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.recent-files strong,
+.recent-files span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-files strong {
+  color: #f7f9fb;
+  font-size: 13px;
+}
+
+.recent-files span {
+  color: #aeb8c2;
+  font-size: 11px;
+}
+
 .metadata-field {
   display: grid;
   gap: 6px;

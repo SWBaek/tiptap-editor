@@ -86,6 +86,14 @@ import {
 type PreviewTab = "json" | "markdown" | "diff";
 type ActivityPanel = "files" | "review" | "references" | "history" | "export" | "settings";
 type CalloutKind = "note" | "warning";
+type RecentFileAction = "opened" | "saved";
+interface RecentFileEntry {
+  id: string;
+  name: string;
+  title: string;
+  action: RecentFileAction;
+  updatedAt: string;
+}
 interface EditorHighlightOverlay {
   nodeId: string;
   top: number;
@@ -95,6 +103,8 @@ interface EditorHighlightOverlay {
 }
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
+const RECENT_FILES_STORAGE_KEY = "sdoc.recentFiles.v1";
+const RECENT_FILES_LIMIT = 6;
 
 const initialDocument = toSdocDocument(initialContent);
 const initialMetadata: SDocMetadata = {
@@ -126,6 +136,7 @@ export function App() {
   const [baselineMetadata, setBaselineMetadata] = useState<SDocMetadata>(initialMetadata);
   const [assets, setAssets] = useState<SDocAssets>({});
   const [currentFilename, setCurrentFilename] = useState<string | null>(null);
+  const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>(loadStoredRecentFiles);
   const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>(loadStoredHistory);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
@@ -203,6 +214,7 @@ export function App() {
       setBaselineMetadata(metadata);
       setSelectedHistoryId(null);
       setCurrentFilename(payload.filename);
+      addRecentFile(payload.filename, metadata.title || payload.filename, "saved");
       markSaved("Saved .sdoc");
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
@@ -259,6 +271,7 @@ export function App() {
       setBaselineMetadata(nextMetadata);
       setSelectedHistoryId(null);
       setCurrentFilename(file.name);
+      addRecentFile(file.name, nextMetadata.title || file.name, "opened");
       setActiveTab("json");
       markSaved(loaded.statusMessage);
     } catch (error) {
@@ -284,6 +297,23 @@ export function App() {
     setBaselineMetadata(metadata);
     setSelectedHistoryId(null);
     markSaved("Marked current state as saved");
+  }
+
+  function addRecentFile(name: string, title: string, action: RecentFileAction) {
+    const entry: RecentFileEntry = {
+      id: name,
+      name,
+      title,
+      action,
+      updatedAt: new Date().toISOString()
+    };
+    const nextEntries = upsertRecentFile(recentFiles, entry);
+    setRecentFiles(nextEntries);
+    storeRecentFiles(nextEntries);
+  }
+
+  function explainRecentFileAccess(entry: RecentFileEntry) {
+    setStatusMessage(`Recent file metadata only: reopen ${entry.name} from disk to load it in the browser`);
   }
 
   function saveHistorySnapshot() {
@@ -642,21 +672,15 @@ export function App() {
           )}
 
           {activePanel === "files" && (
-            <div className="side-panel-section">
-              <div className="status-block">
-                <span>Current file</span>
-                <strong>{fileLabel}</strong>
-              </div>
-              <button type="button" onClick={createNewDocument}>
-                New document
-              </button>
-              <button type="button" onClick={() => fileInputRef.current?.click()}>
-                Open .sdoc or JSON
-              </button>
-              <button type="button" onClick={downloadSdoc}>
-                Save .sdoc
-              </button>
-            </div>
+            <FilesPanel
+              currentFile={fileLabel}
+              savedLabel={savedLabel}
+              recentFiles={recentFiles}
+              onNewDocument={createNewDocument}
+              onOpenDocument={() => fileInputRef.current?.click()}
+              onSaveSdoc={downloadSdoc}
+              onSelectRecentFile={explainRecentFileAccess}
+            />
           )}
 
           {activePanel === "review" && (
@@ -906,6 +930,69 @@ function ActivityButton({
     >
       {children}
     </button>
+  );
+}
+
+function FilesPanel({
+  currentFile,
+  savedLabel,
+  recentFiles,
+  onNewDocument,
+  onOpenDocument,
+  onSaveSdoc,
+  onSelectRecentFile
+}: {
+  currentFile: string;
+  savedLabel: string;
+  recentFiles: RecentFileEntry[];
+  onNewDocument: () => void;
+  onOpenDocument: () => void;
+  onSaveSdoc: () => void;
+  onSelectRecentFile: (entry: RecentFileEntry) => void;
+}) {
+  return (
+    <div className="side-panel-section files-panel">
+      <div className="status-block">
+        <span>Current file</span>
+        <strong title={currentFile}>{currentFile}</strong>
+      </div>
+      <div className="status-block">
+        <span>Saved</span>
+        <strong>{savedLabel}</strong>
+      </div>
+
+      <div className="files-actions" aria-label="File actions">
+        <button type="button" onClick={onNewDocument}>
+          New document
+        </button>
+        <button type="button" onClick={onOpenDocument}>
+          Open .sdoc or JSON
+        </button>
+        <button type="button" onClick={onSaveSdoc}>
+          Save .sdoc
+        </button>
+      </div>
+
+      <section className="recent-files" aria-label="Recent files">
+        <h3>Recent files</h3>
+        {recentFiles.length === 0 ? (
+          <p>No recent browser activity</p>
+        ) : (
+          <ul>
+            {recentFiles.map((entry) => (
+              <li key={entry.id}>
+                <button type="button" onClick={() => onSelectRecentFile(entry)}>
+                  <strong>{entry.name}</strong>
+                  <span>
+                    {entry.action} {entry.title} - {formatRecentFileTime(entry.updatedAt)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -1400,6 +1487,67 @@ function storeHistory(entries: LocalHistoryEntry[]) {
   }
 
   window.localStorage.setItem(LOCAL_HISTORY_STORAGE_KEY, serializeLocalHistory(entries));
+}
+
+function loadStoredRecentFiles(): RecentFileEntry[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  return parseRecentFiles(window.localStorage.getItem(RECENT_FILES_STORAGE_KEY));
+}
+
+function storeRecentFiles(entries: RecentFileEntry[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(RECENT_FILES_STORAGE_KEY, JSON.stringify(entries));
+}
+
+function parseRecentFiles(value: string | null): RecentFileEntry[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter(isRecentFileEntry).slice(0, RECENT_FILES_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function isRecentFileEntry(value: unknown): value is RecentFileEntry {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const entry = value as Partial<RecentFileEntry>;
+  return (
+    typeof entry.id === "string" &&
+    typeof entry.name === "string" &&
+    typeof entry.title === "string" &&
+    (entry.action === "opened" || entry.action === "saved") &&
+    typeof entry.updatedAt === "string"
+  );
+}
+
+function upsertRecentFile(entries: RecentFileEntry[], entry: RecentFileEntry): RecentFileEntry[] {
+  return [entry, ...entries.filter((current) => current.id !== entry.id)].slice(0, RECENT_FILES_LIMIT);
+}
+
+function formatRecentFileTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 }
 
 function formatHistoryTime(value: string): string {

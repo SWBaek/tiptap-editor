@@ -91,11 +91,17 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Expand the Review Activity SidePanel with review status, base selection, and review actions.
 - Avoid duplicating full diff content in the sidebar; keep the sidebar focused on navigation and workflow controls.
 
-## Current Slice: Browser Files Panel
+## Completed Slice: Browser Files Panel
 
 - Keep browser file operations honest: current file, new/open/save actions, and browser-local recent entries only.
 - Avoid pretending that the browser can browse arbitrary folders before Tauri filesystem integration exists.
 - Prepare the Files Activity SidePanel to become the bridge into recent files and later unpacked-folder workflows.
+
+## Current Slice: Export SidePanel Refinement
+
+- Make the Export Activity SidePanel the primary home for `.sdoc`, Markdown, and AI/RAG export actions.
+- Keep export status and filenames visible without mixing export controls into file browsing.
+- Preserve toolbar shortcuts for speed while making the side panel workflow complete enough for non-developer users.
 
 ## Acceptance Evidence
 
@@ -115,6 +121,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that reference insertion and broken-reference diagnostics work from the References Activity SidePanel.
 - Playwright verifies that history save, rename, compare, delete, and reload workflows work from the History Activity SidePanel.
 - Playwright verifies that the Review Activity SidePanel shows review counts, opens the Diff preview, marks the current state saved, and switches from a history base back to the saved baseline.
+- Playwright verifies that the Files Activity SidePanel shows browser-local recent file metadata after `.sdoc` save, persists it across reload, and explains that browser recent entries cannot auto-reopen files.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

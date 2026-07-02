@@ -6,7 +6,7 @@
 
 Phase 3 turns the semantic diff engine into a review workflow. The first slice stays local and browser-only: compare the current document against the saved baseline, show reviewable change groups, and let the user reset the baseline with the existing save/mark-saved action.
 
-## First Slice Scope
+## Completed Slice: Local Diff Review
 
 - Keep the existing raw diff output for debugging and copy/paste.
 - Add a structured diff review panel with total, document, and metadata counts.
@@ -14,15 +14,23 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Surface the same count in the sidebar as review state.
 - Treat `Mark saved`, `.sdoc` save, JSON save, new document, and open document as baseline updates.
 
+## Current Slice: Persistent Local History
+
+- Store document/metadata snapshots in browser localStorage.
+- Keep snapshots local to the browser; `.sdoc` remains the portable source of truth.
+- Compare the current document against a selected snapshot without changing the saved baseline.
+- Keep binary assets out of history snapshots for now; figure diffs still work through canonical asset references.
+
 ## Acceptance Evidence
 
 - Unit tests cover the structured review summary model.
+- Unit tests cover local history snapshot creation, capping, serialization, and malformed storage handling.
 - Playwright verifies that metadata changes appear in the visual review list and that `Mark saved` clears the review state.
+- Playwright verifies that a history snapshot can be saved, used as a comparison target, and survives page reload.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope
 
-- Persistent local history storage
 - Side-by-side visual document diff
 - Accept/reject individual changes
 - Multi-user review or comments

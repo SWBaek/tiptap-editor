@@ -1,5 +1,5 @@
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
-import type { ValidationResult } from "@sdoc/schema";
+import type { SDocDocument, ValidationResult } from "@sdoc/schema";
 
 export interface ChangeReviewSection {
   title: string;
@@ -12,6 +12,14 @@ export interface ChangeReviewModel {
   metadataCount: number;
   label: string;
   sections: ChangeReviewSection[];
+}
+
+export interface LocalHistoryEntry {
+  id: string;
+  createdAt: string;
+  title: string;
+  document: SDocDocument;
+  metadata: SDocMetadata;
 }
 
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
@@ -95,8 +103,78 @@ export function createChangeReview(documentLines: string[], metadataLines: strin
   };
 }
 
+export function createLocalHistoryEntry(
+  document: SDocDocument,
+  metadata: SDocMetadata,
+  now = new Date(),
+  id = createLocalHistoryId(now)
+): LocalHistoryEntry {
+  const title = typeof metadata.title === "string" && metadata.title.trim().length > 0 ? metadata.title.trim() : "Untitled";
+  return {
+    id,
+    createdAt: now.toISOString(),
+    title,
+    document,
+    metadata
+  };
+}
+
+export function addLocalHistoryEntry(entries: LocalHistoryEntry[], entry: LocalHistoryEntry, limit = 12): LocalHistoryEntry[] {
+  return [entry, ...entries.filter((current) => current.id !== entry.id)].slice(0, limit);
+}
+
+export function serializeLocalHistory(entries: LocalHistoryEntry[]): string {
+  return JSON.stringify(entries);
+}
+
+export function parseLocalHistory(value: string | null): LocalHistoryEntry[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter(isLocalHistoryEntry);
+  } catch {
+    return [];
+  }
+}
+
 function renderSection(title: string, lines: string[]): string {
   return [`${title} (${lines.length})`, ...lines.map((line) => `- ${line}`)].join("\n");
+}
+
+function createLocalHistoryId(now: Date): string {
+  return `hist_${now.getTime().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isLocalHistoryEntry(value: unknown): value is LocalHistoryEntry {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<LocalHistoryEntry>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.createdAt === "string" &&
+    typeof candidate.title === "string" &&
+    isSdocDocument(candidate.document) &&
+    !!candidate.metadata &&
+    typeof candidate.metadata === "object"
+  );
+}
+
+function isSdocDocument(value: unknown): value is SDocDocument {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<SDocDocument>;
+  return candidate.schemaVersion === 1 && candidate.type === "doc" && !!candidate.attrs && typeof candidate.attrs.id === "string";
 }
 
 function fingerprintValue(value: unknown): string {

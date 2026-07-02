@@ -35,9 +35,9 @@ const blockToolbarCases: BlockToolbarCase[] = [
   { button: "Warning callout", topType: "callout", attrs: { kind: "warning" } }
 ];
 
-test("loads the Phase 2 playground and exercises preview/export basics", async ({ page }) => {
+test("loads the Phase 3 playground and exercises preview/export basics", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Phase 2 Playground")).toBeVisible();
+  await expect(page.getByText("Phase 3 Playground")).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
   await expect(page.getByRole("button", { name: "Heading 1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download .sdoc" })).toBeVisible();
@@ -65,6 +65,29 @@ test("loads the Phase 2 playground and exercises preview/export basics", async (
 
   const screenshot = await page.screenshot({ fullPage: true });
   expect(screenshot.length).toBeGreaterThan(1_000);
+});
+
+test("stores local history snapshots and compares them with the current document", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
+  await expect(page.locator(".history-empty")).toContainText("No snapshots");
+
+  await page.getByRole("button", { name: "Save history snapshot" }).click();
+  await expect(page.locator(".status-note")).toContainText("Saved history snapshot: Playground Document");
+  await expect(page.locator(".history-item")).toContainText("Playground Document");
+
+  await page.getByLabel("Title").fill("History Spec");
+  await page.locator(".history-item").filter({ hasText: "Playground Document" }).getByRole("button", { name: "Compare" }).click();
+  await expect(page.locator(".status-note")).toContainText("Comparing with history snapshot: Playground Document");
+  await expect(page.locator(".diff-review-base")).toContainText("History: Playground Document");
+  await expect(page.locator(".status-block").filter({ hasText: "Review" })).toContainText("1 change");
+  await expect(page.locator(".diff-review-section").filter({ hasText: "Metadata changes" })).toContainText(
+    'Metadata title changed: "Playground Document" -> "History Spec"'
+  );
+
+  await page.reload();
+  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
+  await expect(page.locator(".history-item")).toContainText("Playground Document");
 });
 
 test("round-trips a downloaded .sdoc through the browser open flow", async ({ page }, testInfo) => {
@@ -395,7 +418,7 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await expect(page.getByText("Phase 2 Playground")).toBeVisible();
+  await expect(page.getByText("Phase 3 Playground")).toBeVisible();
   await expect(page.getByRole("button", { name: "Open .sdoc or document.json" })).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
 

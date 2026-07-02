@@ -1,13 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  addLocalHistoryEntry,
   createChangeReview,
+  createLocalHistoryEntry,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
   isMetadataDirty,
+  parseLocalHistory,
   renderDiffPreview,
-  renderMetadataDiff
+  renderMetadataDiff,
+  serializeLocalHistory
 } from "./documentState";
+import type { SDocDocument } from "@sdoc/schema";
+
+const historyDocument: SDocDocument = {
+  schemaVersion: 1,
+  type: "doc",
+  attrs: { id: "doc_history" },
+  content: [{ type: "paragraph", attrs: { id: "blk_history" }, content: [{ type: "text", text: "History" }] }]
+};
 
 describe("document state helpers", () => {
   it("detects metadata changes with stable key ordering", () => {
@@ -68,5 +80,27 @@ describe("document state helpers", () => {
       label: "No changes",
       sections: []
     });
+  });
+
+  it("creates and caps local history snapshots", () => {
+    const first = createLocalHistoryEntry(historyDocument, { title: "First" }, new Date("2026-07-02T00:00:00.000Z"), "hist_first");
+    const second = createLocalHistoryEntry(historyDocument, { title: "Second" }, new Date("2026-07-02T00:01:00.000Z"), "hist_second");
+
+    expect(first).toMatchObject({
+      id: "hist_first",
+      createdAt: "2026-07-02T00:00:00.000Z",
+      title: "First",
+      document: historyDocument,
+      metadata: { title: "First" }
+    });
+    expect(addLocalHistoryEntry([first], second, 1)).toEqual([second]);
+  });
+
+  it("round-trips valid local history and ignores malformed storage", () => {
+    const entry = createLocalHistoryEntry(historyDocument, { title: "Snapshot" }, new Date("2026-07-02T00:00:00.000Z"), "hist_snapshot");
+
+    expect(parseLocalHistory(serializeLocalHistory([entry]))).toEqual([entry]);
+    expect(parseLocalHistory("not json")).toEqual([]);
+    expect(parseLocalHistory(JSON.stringify([{ id: "bad" }, entry]))).toEqual([entry]);
   });
 });

@@ -18,6 +18,7 @@ import {
   FolderOpen,
   Heading1,
   Heading2,
+  History as HistoryIcon,
   Image as ImageIcon,
   Info,
   Italic,
@@ -55,18 +56,24 @@ import {
 } from "@sdoc/editor-tiptap";
 import { createMarkdownPayload, createSdocPayload, openDocumentInput, type SDocAssets } from "./documentIo";
 import {
+  addLocalHistoryEntry,
   createChangeReview,
+  createLocalHistoryEntry,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
   isMetadataDirty,
+  parseLocalHistory,
   renderDiffPreview,
   renderMetadataDiff,
+  serializeLocalHistory,
+  type LocalHistoryEntry,
   type ChangeReviewModel
 } from "./documentState";
 
-type PreviewTab = "json" | "markdown" | "diff";
+type PreviewTab = "json" | "markdown" | "diff" | "history";
 type CalloutKind = "note" | "warning";
+const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
 
 const initialDocument = toSdocDocument(initialContent);
 const initialMetadata: SDocMetadata = {
@@ -95,6 +102,8 @@ export function App() {
   const [baselineMetadata, setBaselineMetadata] = useState<SDocMetadata>(initialMetadata);
   const [assets, setAssets] = useState<SDocAssets>({});
   const [currentFilename, setCurrentFilename] = useState<string | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>(loadStoredHistory);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -128,12 +137,16 @@ export function App() {
   const validation = validateDocument(document);
   const json = stableStringify(document);
   const markdown = exportMarkdown(document);
-  const documentDiffEvents = diffDocuments(baselineDocument, document);
+  const selectedHistoryEntry = historyEntries.find((entry) => entry.id === selectedHistoryId) ?? null;
+  const reviewBaseDocument = selectedHistoryEntry?.document ?? baselineDocument;
+  const reviewBaseMetadata = selectedHistoryEntry?.metadata ?? baselineMetadata;
+  const reviewBaseLabel = selectedHistoryEntry ? `History: ${selectedHistoryEntry.title}` : "Saved baseline";
+  const documentDiffEvents = diffDocuments(reviewBaseDocument, document);
   const documentDiffLines = renderReadableDiffEvents(documentDiffEvents);
-  const metadataDiffLines = renderMetadataDiff(metadata, baselineMetadata);
+  const metadataDiffLines = renderMetadataDiff(metadata, reviewBaseMetadata);
   const diffPreview = renderDiffPreview(documentDiffLines, metadataDiffLines);
   const changeReview = createChangeReview(documentDiffLines, metadataDiffLines);
-  const hasDocumentChanges = documentDiffEvents.length > 0;
+  const hasDocumentChanges = diffDocuments(baselineDocument, document).length > 0;
   const hasMetadataChanges = isMetadataDirty(metadata, baselineMetadata);
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges;
   const fileLabel = getFileLabel(currentFilename, metadata);
@@ -151,6 +164,7 @@ export function App() {
       downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), payload.filename);
       setBaselineDocument(document);
       setBaselineMetadata(metadata);
+      setSelectedHistoryId(null);
       setCurrentFilename(payload.filename);
       markSaved("Saved .sdoc");
     } catch (error) {
@@ -165,6 +179,7 @@ export function App() {
 
     downloadBlob(new Blob([json], { type: "application/json" }), "document.json");
     setBaselineDocument(document);
+    setSelectedHistoryId(null);
     markSaved("Saved document.json");
   }
 
@@ -205,6 +220,7 @@ export function App() {
       setMetadata(nextMetadata);
       setBaselineDocument(appliedDocument);
       setBaselineMetadata(nextMetadata);
+      setSelectedHistoryId(null);
       setCurrentFilename(file.name);
       setActiveTab("json");
       markSaved(loaded.statusMessage);
@@ -229,7 +245,44 @@ export function App() {
 
     setBaselineDocument(document);
     setBaselineMetadata(metadata);
+    setSelectedHistoryId(null);
     markSaved("Marked current state as saved");
+  }
+
+  function saveHistorySnapshot() {
+    if (!requireValidDocument("save history snapshot")) {
+      return;
+    }
+
+    const entry = createLocalHistoryEntry(document, metadata);
+    const nextEntries = addLocalHistoryEntry(historyEntries, entry);
+    persistHistory(nextEntries);
+    setSelectedHistoryId(entry.id);
+    setActiveTab("history");
+    setStatusMessage(`Saved history snapshot: ${entry.title}`);
+  }
+
+  function compareHistorySnapshot(entryId: string) {
+    const entry = historyEntries.find((current) => current.id === entryId);
+    if (!entry) {
+      setStatusMessage("History snapshot is no longer available");
+      return;
+    }
+
+    setSelectedHistoryId(entry.id);
+    setActiveTab("diff");
+    setStatusMessage(`Comparing with history snapshot: ${entry.title}`);
+  }
+
+  function compareSavedBaseline() {
+    setSelectedHistoryId(null);
+    setActiveTab("diff");
+    setStatusMessage("Comparing with saved baseline");
+  }
+
+  function persistHistory(entries: LocalHistoryEntry[]) {
+    setHistoryEntries(entries);
+    storeHistory(entries);
   }
 
   function requireValidDocument(action: string): boolean {
@@ -257,6 +310,7 @@ export function App() {
     setBaselineDocument(appliedDocument);
     setBaselineMetadata(nextMetadata);
     setAssets({});
+    setSelectedHistoryId(null);
     setCurrentFilename(null);
     setActiveTab("json");
     setSavedAt("Not saved");
@@ -381,7 +435,7 @@ export function App() {
           <FileJson size={22} />
           <div>
             <strong>SDoc</strong>
-            <span>Phase 2 Playground</span>
+            <span>Phase 3 Playground</span>
           </div>
         </div>
 
@@ -539,8 +593,21 @@ export function App() {
               <TabButton label="JSON" value="json" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="Markdown" value="markdown" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="Diff" value="diff" activeTab={activeTab} onSelect={setActiveTab} />
+              <TabButton label="History" value="history" activeTab={activeTab} onSelect={setActiveTab} />
             </div>
-            {activeTab === "diff" ? <DiffReview review={changeReview} rawPreview={diffPreview} /> : <pre className="preview-output">{preview}</pre>}
+            {activeTab === "diff" ? (
+              <DiffReview review={changeReview} rawPreview={diffPreview} baseLabel={reviewBaseLabel} onCompareSavedBaseline={compareSavedBaseline} />
+            ) : activeTab === "history" ? (
+              <HistoryPanel
+                entries={historyEntries}
+                selectedId={selectedHistoryId}
+                onSaveSnapshot={saveHistorySnapshot}
+                onCompareSnapshot={compareHistorySnapshot}
+                onCompareSavedBaseline={compareSavedBaseline}
+              />
+            ) : (
+              <pre className="preview-output">{preview}</pre>
+            )}
           </section>
         </div>
       </section>
@@ -548,9 +615,28 @@ export function App() {
   );
 }
 
-function DiffReview({ review, rawPreview }: { review: ChangeReviewModel; rawPreview: string }) {
+function DiffReview({
+  review,
+  rawPreview,
+  baseLabel,
+  onCompareSavedBaseline
+}: {
+  review: ChangeReviewModel;
+  rawPreview: string;
+  baseLabel: string;
+  onCompareSavedBaseline: () => void;
+}) {
   return (
     <div className="diff-review">
+      <div className="diff-review-base">
+        <span>{baseLabel}</span>
+        {baseLabel !== "Saved baseline" && (
+          <button type="button" onClick={onCompareSavedBaseline}>
+            Saved baseline
+          </button>
+        )}
+      </div>
+
       <div className="diff-review-summary" aria-label="Change summary">
         <div>
           <span>Total</span>
@@ -589,6 +675,55 @@ function DiffReview({ review, rawPreview }: { review: ChangeReviewModel; rawPrev
       <pre className="preview-output diff-raw" aria-label="Raw diff preview">
         {rawPreview}
       </pre>
+    </div>
+  );
+}
+
+function HistoryPanel({
+  entries,
+  selectedId,
+  onSaveSnapshot,
+  onCompareSnapshot,
+  onCompareSavedBaseline
+}: {
+  entries: LocalHistoryEntry[];
+  selectedId: string | null;
+  onSaveSnapshot: () => void;
+  onCompareSnapshot: (entryId: string) => void;
+  onCompareSavedBaseline: () => void;
+}) {
+  return (
+    <div className="history-panel">
+      <div className="history-toolbar">
+        <button className="history-primary" type="button" onClick={onSaveSnapshot} aria-label="Save history snapshot">
+          <Save size={16} />
+          <span>Save snapshot</span>
+        </button>
+        <button className="history-secondary" type="button" onClick={onCompareSavedBaseline}>
+          Saved baseline
+        </button>
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="history-empty">
+          <HistoryIcon size={22} />
+          <span>No snapshots</span>
+        </div>
+      ) : (
+        <div className="history-list">
+          {entries.map((entry) => (
+            <article className={entry.id === selectedId ? "history-item selected" : "history-item"} key={entry.id}>
+              <div>
+                <strong>{entry.title}</strong>
+                <span>{formatHistoryTime(entry.createdAt)}</span>
+              </div>
+              <button type="button" onClick={() => onCompareSnapshot(entry.id)}>
+                Compare
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -636,6 +771,31 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function loadStoredHistory(): LocalHistoryEntry[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  return parseLocalHistory(window.localStorage.getItem(LOCAL_HISTORY_STORAGE_KEY));
+}
+
+function storeHistory(entries: LocalHistoryEntry[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(LOCAL_HISTORY_STORAGE_KEY, serializeLocalHistory(entries));
+}
+
+function formatHistoryTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 }
 
 function createImageAssetId(filename: string, mimeType: string): string {

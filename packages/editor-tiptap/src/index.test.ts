@@ -6,12 +6,14 @@ import {
   BlockIdExtension,
   CalloutNode,
   collectJsonBlockIds,
+  DiagramNode,
   EquationBlockNode,
   FigureNode,
   fromSdocDocument,
   InlineEquationNode,
   insertEquationBlock,
   insertInlineEquation,
+  insertMermaidDiagram,
   moveSelectedTopLevelBlock,
   repairJsonBlockIds,
   repairEditorBlockIds,
@@ -281,6 +283,40 @@ describe("SDoc conversion", () => {
       ]
     });
   });
+
+  it("round-trips Mermaid diagrams across SDoc conversion", () => {
+    const document = toSdocDocument(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "diagram",
+            attrs: {
+              id: "blk_diagram",
+              kind: "mermaid",
+              source: "flowchart TD\nA[Start] --> B[Done]"
+            }
+          }
+        ]
+      },
+      "doc_diagram"
+    );
+
+    expect(validateDocument(document).ok).toBe(true);
+    expect(fromSdocDocument(document)).toEqual({
+      type: "doc",
+      content: [
+        {
+          type: "diagram",
+          attrs: {
+            id: "blk_diagram",
+            kind: "mermaid",
+            source: "flowchart TD\nA[Start] --> B[Done]"
+          }
+        }
+      ]
+    });
+  });
 });
 
 describe("BlockIdExtension", () => {
@@ -474,6 +510,29 @@ describe("BlockIdExtension", () => {
     expect(JSON.stringify(document)).toContain('"type":"equation"');
     expect(JSON.stringify(document)).toContain('"type":"equationBlock"');
     expect(document.content[1].attrs?.id).toBe("blk_equation");
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
+  it("inserts Mermaid diagrams with preserved source", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, InlineEquationNode, EquationBlockNode, DiagramNode, ...TableExtensions, FigureNode, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_initial" }, content: [{ type: "text", text: "Initial" }] }]
+      }
+    });
+
+    const inserted = insertMermaidDiagram(editor, "flowchart TD\nA[Start] --> B[Done]", "blk_diagram");
+    const document = toSdocDocument(editor.getJSON(), "doc_diagram");
+    editor.destroy();
+
+    expect(inserted).toBe(true);
+    expect(JSON.stringify(document)).toContain('"type":"diagram"');
+    expect(document.content.find((node) => node.type === "diagram")?.attrs).toEqual({
+      id: "blk_diagram",
+      kind: "mermaid",
+      source: "flowchart TD\nA[Start] --> B[Done]"
+    });
     expect(validateDocument(document).ok).toBe(true);
   });
 });

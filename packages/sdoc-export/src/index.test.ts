@@ -108,6 +108,10 @@ describe("exportMarkdown", () => {
     expect(markdown).toContain("Energy $E=mc^2$");
     expect(markdown).toContain("$$\na^2+b^2=c^2\n$$");
   });
+
+  it("exports Mermaid diagrams as fenced source blocks", () => {
+    expect(exportMarkdown(createDiagramDocument())).toContain("```mermaid\nflowchart TD\nA[Start] --> B[Done]\n```");
+  });
 });
 
 describe("exportDerivedOutputs", () => {
@@ -159,7 +163,34 @@ describe("exportDerivedOutputs", () => {
     expect(outputs["references.json"]).toContain('"type": "equationBlock"');
     expect(outputs["chunks.jsonl"]).toContain("a^2+b^2=c^2");
   });
+
+  it("includes Mermaid diagram source in derived outputs", () => {
+    const outputs = exportDerivedOutputs(createDiagramDocument());
+
+    expect(outputs["plain.md"]).toContain("```mermaid");
+    expect(outputs["plain.md"]).toContain("A[Start] --> B[Done]");
+    expect(outputs["references.json"]).toContain('"type": "diagram"');
+    expect(outputs["chunks.jsonl"]).toContain("flowchart TD");
+  });
 });
+
+function createDiagramDocument(): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_diagram" },
+    content: [
+      {
+        type: "diagram",
+        attrs: {
+          id: "blk_diagram",
+          kind: "mermaid",
+          source: "flowchart TD\nA[Start] --> B[Done]"
+        }
+      }
+    ]
+  };
+}
 
 function createEquationDocument(inlineLatex: string, blockLatex: string): SDocDocument {
   return {

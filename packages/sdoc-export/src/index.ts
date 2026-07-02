@@ -124,6 +124,12 @@ function renderBlock(node: SDocNode, references: Map<string, ReferenceTarget>, d
       return `$$\n${latex}\n$$`;
     }
 
+    case "diagram": {
+      const kind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "mermaid";
+      const source = typeof node.attrs?.source === "string" ? node.attrs.source : "";
+      return `\`\`\`${kind}\n${source}\n\`\`\``;
+    }
+
     case "table":
       return renderMarkdownTable(node, references);
 

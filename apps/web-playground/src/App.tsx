@@ -27,7 +27,8 @@ import {
   Save,
   Sigma,
   Table as TableIcon,
-  Underline as UnderlineIcon
+  Underline as UnderlineIcon,
+  Workflow
 } from "lucide-react";
 import { diffDocuments, renderReadableDiffEvents } from "@sdoc/diff";
 import { exportMarkdown } from "@sdoc/export";
@@ -36,6 +37,7 @@ import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, v
 import {
   BlockIdExtension,
   CalloutNode,
+  DiagramNode,
   EquationBlockNode,
   FigureNode,
   fromSdocDocument,
@@ -43,6 +45,7 @@ import {
   initialContent,
   insertEquationBlock,
   insertInlineEquation,
+  insertMermaidDiagram,
   insertSimpleTable,
   moveSelectedTopLevelBlock,
   repairEditorBlockIds,
@@ -73,6 +76,7 @@ const initialMetadata: SDocMetadata = {
 const sdocExtensions = [
   InlineEquationNode,
   EquationBlockNode,
+  DiagramNode,
   ...TableExtensions,
   FigureNode,
   CalloutNode,
@@ -301,6 +305,18 @@ export function App() {
     setStatusMessage(inserted ? "Inserted equation block" : "Cannot insert equation block");
   }
 
+  function insertMermaidDiagramFromPrompt() {
+    const source = window.prompt("Mermaid diagram", "flowchart TD\nA[Start] --> B[Done]")?.trim();
+    if (!source) {
+      setStatusMessage("Canceled Mermaid diagram");
+      return;
+    }
+
+    const inserted = insertMermaidDiagram(editor, source);
+    setActiveTab("json");
+    setStatusMessage(inserted ? "Inserted Mermaid diagram" : "Cannot insert Mermaid diagram");
+  }
+
   async function insertImageFile(file: File) {
     try {
       if (file.type && !file.type.startsWith("image/")) {
@@ -443,6 +459,9 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Insert equation block" active={editor.isActive("equationBlock")} onClick={insertEquationBlockFromPrompt}>
             <Sigma size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Insert Mermaid diagram" active={editor.isActive("diagram")} onClick={insertMermaidDiagramFromPrompt}>
+            <Workflow size={18} />
           </ToolbarButton>
           <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
             <Info size={18} />

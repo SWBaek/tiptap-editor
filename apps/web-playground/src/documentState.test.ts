@@ -29,10 +29,10 @@ describe("document state helpers", () => {
     expect(getValidationFailureMessage({ ok: true, issues: [] }, "save .sdoc")).toBeNull();
     expect(
       getValidationFailureMessage(
-        { ok: false, issues: [{ path: "$.content[0].type", message: "unsupported node type: diagram" }] },
+        { ok: false, issues: [{ path: "$.content[0].type", message: "unsupported node type: drawioDiagram" }] },
         "export Markdown"
       )
-    ).toBe("Cannot export Markdown: $.content[0].type: unsupported node type: diagram");
+    ).toBe("Cannot export Markdown: $.content[0].type: unsupported node type: drawioDiagram");
   });
 
   it("renders metadata changes by field", () => {

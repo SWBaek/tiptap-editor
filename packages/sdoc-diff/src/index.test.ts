@@ -215,6 +215,17 @@ describe("diffDocuments", () => {
     expect(modified?.kind).toBe("modified");
     expect(modified?.kind === "modified" ? modified.changes : []).toEqual(['text changed "[-E=mc^2-] [+F=ma+]"']);
   });
+
+  it("summarizes Mermaid diagram source changes", () => {
+    const oldDiagramDocument = createDiagramDocument("flowchart TD\nA --> B");
+    const newDiagramDocument = createDiagramDocument("flowchart TD\nA --> C");
+    const modified = diffDocuments(oldDiagramDocument, newDiagramDocument).find(
+      (event) => event.kind === "modified" && event.id === "blk_diagram"
+    );
+
+    expect(modified?.kind).toBe("modified");
+    expect(modified?.kind === "modified" ? modified.changes : []).toEqual(['text changed "flowchart TD A --> [-B-] [+C+]"']);
+  });
 });
 
 describe("renderReadableDiffEvents", () => {
@@ -299,5 +310,14 @@ function createEquationDocument(latex: string): SDocDocument {
     type: "doc",
     attrs: { id: "doc_equation" },
     content: [{ type: "equationBlock", attrs: { id: "blk_equation", latex } }]
+  };
+}
+
+function createDiagramDocument(source: string): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_diagram" },
+    content: [{ type: "diagram", attrs: { id: "blk_diagram", kind: "mermaid", source } }]
   };
 }

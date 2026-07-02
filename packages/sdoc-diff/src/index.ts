@@ -544,6 +544,11 @@ function omitDiffAttrs(node: SDocNode): Record<string, unknown> {
     const { latex: _latex, ...rest } = attrs;
     return rest;
   }
+
+  if (node.type === "diagram") {
+    const { source: _source, ...rest } = attrs;
+    return rest;
+  }
   return attrs;
 }
 

@@ -15,6 +15,7 @@ export const BLOCK_TYPES_WITH_IDS = [
   "callout",
   "figure",
   "equationBlock",
+  "diagram",
   "table",
   "tableRow",
   "tableCell",
@@ -226,6 +227,46 @@ export const EquationBlockNode = Node.create({
   }
 });
 
+export const DiagramNode = Node.create({
+  name: "diagram",
+  group: "block",
+  atom: true,
+  defining: true,
+  selectable: true,
+
+  addAttributes() {
+    return {
+      kind: {
+        default: "mermaid",
+        parseHTML: (element) => element.getAttribute("data-kind") ?? "mermaid",
+        renderHTML: (attributes) => ({ "data-kind": attributes.kind })
+      },
+      source: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-source") ?? element.textContent ?? "",
+        renderHTML: () => ({})
+      }
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "div[data-type='diagram']" }];
+  },
+
+  renderHTML({ HTMLAttributes, node }) {
+    const source = String(node.attrs.source ?? "");
+    return [
+      "div",
+      mergeAttributes(HTMLAttributes, { "data-type": "diagram", class: "sdoc-diagram" }),
+      ["pre", source]
+    ];
+  },
+
+  addNodeView() {
+    return createDiagramNodeView();
+  }
+});
+
 export const TableNode = Table.configure({
   resizable: false,
   HTMLAttributes: {
@@ -275,6 +316,18 @@ export function insertEquationBlock(editor: EquationInsertTarget, latex: string,
   const before = fingerprintEditorJson(editor);
   const chain = editor.chain() as InsertContentChain;
   const result = chain.focus().insertContent({ type: "equationBlock", attrs: { id, latex } }).run();
+  return result || fingerprintEditorJson(editor) !== before;
+}
+
+export interface DiagramInsertTarget {
+  chain: () => unknown;
+  getJSON?: () => unknown;
+}
+
+export function insertMermaidDiagram(editor: DiagramInsertTarget, source: string, id = createBlockId()): boolean {
+  const before = fingerprintEditorJson(editor);
+  const chain = editor.chain() as InsertContentChain;
+  const result = chain.focus().insertContent({ type: "diagram", attrs: { id, kind: "mermaid", source } }).run();
   return result || fingerprintEditorJson(editor) !== before;
 }
 
@@ -342,6 +395,80 @@ function escapeHtml(value: string): string {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+let diagramRenderSequence = 0;
+let mermaidInitialized = false;
+
+function createDiagramNodeView() {
+  return ({ node }: { node: { type: { name: string }; attrs: Record<string, unknown> } }) => {
+    const dom = document.createElement("div");
+    let renderVersion = 0;
+
+    function render(currentNode: typeof node): void {
+      const source = typeof currentNode.attrs.source === "string" ? currentNode.attrs.source : "";
+      const kind = typeof currentNode.attrs.kind === "string" ? currentNode.attrs.kind : "mermaid";
+      renderVersion += 1;
+      const version = renderVersion;
+
+      dom.className = "sdoc-diagram";
+      dom.setAttribute("data-type", "diagram");
+      dom.setAttribute("data-kind", kind);
+      dom.setAttribute("data-source", source);
+      dom.innerHTML = `<pre>${escapeHtml(source)}</pre>`;
+
+      if (kind !== "mermaid" || source.trim().length === 0) {
+        return;
+      }
+
+      void renderMermaidInto(dom, source, version, () => renderVersion);
+    }
+
+    render(node);
+
+    return {
+      dom,
+      update(updatedNode: typeof node) {
+        if (updatedNode.type.name !== "diagram") {
+          return false;
+        }
+
+        render(updatedNode);
+        return true;
+      }
+    };
+  };
+}
+
+async function renderMermaidInto(
+  container: HTMLElement,
+  source: string,
+  version: number,
+  getCurrentVersion: () => number
+): Promise<void> {
+  try {
+    const mermaidModule = await import("mermaid");
+    const mermaid = mermaidModule.default;
+    if (!mermaidInitialized) {
+      mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default" });
+      mermaidInitialized = true;
+    }
+
+    const id = `sdoc-mermaid-${++diagramRenderSequence}`;
+    const { svg } = await mermaid.render(id, source);
+    if (getCurrentVersion() !== version) {
+      return;
+    }
+
+    container.innerHTML = svg;
+  } catch (error) {
+    if (getCurrentVersion() !== version) {
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    container.innerHTML = `<pre>${escapeHtml(source)}</pre><div class="sdoc-diagram-error">${escapeHtml(message)}</div>`;
+  }
 }
 
 export const BlockIdExtension = Extension.create({

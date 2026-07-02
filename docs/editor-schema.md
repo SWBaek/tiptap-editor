@@ -23,6 +23,7 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 | `callout` | yes | `kind: note/info/warning/danger/tip` |
 | `figure` | yes | Phase 2 asset-backed image with caption; `assetId` required |
 | `equationBlock` | yes | Phase 2 block math; `latex` source required |
+| `diagram` | yes | Phase 2 Mermaid diagram; `kind` and `source` required |
 | `table` | yes | Phase 2 simple table container |
 | `tableRow` | yes | Table row; children are `tableCell` or `tableHeader` |
 | `tableCell` | yes | Table body cell; contains block content |
@@ -32,7 +33,7 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 | `crossReference` | no | 내부 참조 inline node |
 | `equation` | no | Phase 2 inline math; `latex` source required |
 
-Phase 2 이후 `diagram`을 추가한다. PDF, slide, Draw.io deep integration은 schema foundation 이후로 미룬다.
+PDF, slide, Draw.io deep integration은 schema foundation 이후로 미룬다.
 
 ## Phase 2 Figure Shape
 
@@ -77,6 +78,21 @@ Equations store source text in `attrs.latex`. KaTeX rendering is an editor/expor
   "attrs": {
     "id": "blk_equation",
     "latex": "a^2+b^2=c^2"
+  }
+}
+```
+
+## Phase 2 Diagram Shape
+
+Mermaid diagrams store source text in `attrs.source` with `attrs.kind = "mermaid"`. SVG rendering is an editor/export projection; canonical `document.json` does not store generated SVG.
+
+```json
+{
+  "type": "diagram",
+  "attrs": {
+    "id": "blk_diagram",
+    "kind": "mermaid",
+    "source": "flowchart TD\nA[Start] --> B[Done]"
   }
 }
 ```

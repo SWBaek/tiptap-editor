@@ -10,6 +10,7 @@ interface JsonNode {
     kind?: unknown;
     latex?: unknown;
     level?: unknown;
+    source?: unknown;
   };
   content?: JsonNode[];
   marks?: Array<{ type?: unknown }>;
@@ -232,6 +233,52 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   const reopenedDocument = await readPreviewDocument(page);
   expect(findFirstNodeByType(reopenedDocument, "equation").attrs?.latex).toBe("E=mc^2");
   expect(findFirstNodeByType(reopenedDocument, "equationBlock").attrs?.latex).toBe("a^2+b^2=c^2");
+  expectUniqueIds(collectBlockIds(reopenedDocument));
+});
+
+test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page }, testInfo) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toBe("Mermaid diagram");
+    await dialog.accept("flowchart TD\nA[Start] --> B[Done]");
+  });
+  await page.getByRole("button", { name: "Insert Mermaid diagram" }).click();
+  await expect(page.locator(".status-note")).toContainText("Inserted Mermaid diagram");
+  await expect(page.locator(".editor-surface .sdoc-diagram svg")).toBeVisible();
+
+  const insertedDocument = await readPreviewDocument(page);
+  const insertedDiagram = findFirstNodeByType(insertedDocument, "diagram");
+  expect(insertedDiagram.attrs?.kind).toBe("mermaid");
+  expect(insertedDiagram.attrs?.source).toBe("flowchart TD\nA[Start] --> B[Done]");
+  expect(JSON.stringify(insertedDocument)).not.toContain("<svg");
+  expectUniqueIds(collectBlockIds(insertedDocument));
+  await expect(page.getByText("Valid")).toBeVisible();
+
+  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await expect(page.locator(".preview-output")).toContainText("```mermaid");
+  await expect(page.locator(".preview-output")).toContainText("A[Start] --> B[Done]");
+
+  const sdocDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  const sdocDownload = await sdocDownloadPromise;
+  const sdocPath = testInfo.outputPath("Diagram Round Trip.sdoc");
+  await sdocDownload.saveAs(sdocPath);
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.getByLabel("Open document file").setInputFiles(sdocPath);
+  await expect(page.locator(".status-note")).toContainText("Opened Diagram Round Trip.sdoc");
+  await expect(page.locator(".editor-surface .sdoc-diagram svg")).toBeVisible();
+
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const reopenedDocument = await readPreviewDocument(page);
+  const reopenedDiagram = findFirstNodeByType(reopenedDocument, "diagram");
+  expect(reopenedDiagram.attrs?.source).toBe("flowchart TD\nA[Start] --> B[Done]");
+  expect(JSON.stringify(reopenedDocument)).not.toContain("<svg");
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 

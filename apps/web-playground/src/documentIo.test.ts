@@ -160,7 +160,7 @@ describe("openDocumentInput", () => {
     await expect(
       openDocumentInput({
         name: "document.json",
-        data: new TextEncoder().encode(JSON.stringify({ ...document, content: [{ type: "diagram" }] })),
+        data: new TextEncoder().encode(JSON.stringify({ ...document, content: [{ type: "drawioDiagram" }] })),
         fallbackMetadata: metadata
       })
     ).rejects.toThrow("Invalid document JSON in document.json");

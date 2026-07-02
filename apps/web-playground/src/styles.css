@@ -402,6 +402,32 @@ button {
   text-align: center;
 }
 
+.editor-surface .sdoc-diagram {
+  margin: 18px 0;
+  padding: 16px;
+  overflow-x: auto;
+  background: #f8fafb;
+  border: 1px solid #d8e0e6;
+  border-radius: 6px;
+}
+
+.editor-surface .sdoc-diagram svg {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.editor-surface .sdoc-diagram pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.editor-surface .sdoc-diagram-error {
+  margin-top: 8px;
+  color: #a33a32;
+  font-size: 12px;
+}
+
 .editor-surface .is-editor-empty:first-child::before {
   float: left;
   height: 0;

@@ -169,17 +169,53 @@ describe("validateDocument", () => {
     expect(result.issues.some((issue) => issue.message.includes("equationBlock latex is required"))).toBe(true);
   });
 
+  it("accepts Mermaid diagrams with source text", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_diagram" },
+      content: [
+        {
+          type: "diagram",
+          attrs: {
+            id: "blk_diagram",
+            kind: "mermaid",
+            source: "flowchart TD\nA[Start] --> B[Done]"
+          }
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(true);
+    expect(getPlainText(document.content[0])).toBe("flowchart TD\nA[Start] --> B[Done]");
+  });
+
+  it("rejects diagrams without Mermaid kind or source", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_diagram_bad" },
+      content: [{ type: "diagram", attrs: { id: "blk_diagram", kind: "drawio", source: "" } }]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("diagram kind must be mermaid"))).toBe(true);
+    expect(result.issues.some((issue) => issue.message.includes("diagram source is required"))).toBe(true);
+  });
+
   it("rejects nodes outside the current scope", () => {
     const document = {
       schemaVersion: 1,
       type: "doc",
       attrs: { id: "doc_test" },
-      content: [{ type: "diagram", attrs: { id: "blk_future" }, content: [] }]
+      content: [{ type: "drawioDiagram", attrs: { id: "blk_future" }, content: [] }]
     };
 
     const result = validateDocument(document);
     expect(result.ok).toBe(false);
-    expect(result.issues.some((issue) => issue.message.includes("unsupported node type: diagram"))).toBe(true);
+    expect(result.issues.some((issue) => issue.message.includes("unsupported node type: drawioDiagram"))).toBe(true);
   });
 
   it("rejects marks outside the v1 scope", () => {

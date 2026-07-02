@@ -48,6 +48,7 @@ export const BLOCK_NODE_TYPES = new Set([
   "callout",
   "figure",
   "equationBlock",
+  "diagram",
   "table",
   "tableRow",
   "tableCell",
@@ -92,6 +93,10 @@ export function getPlainText(node: SDocNode): string {
 
   if (node.type === "equation" || node.type === "equationBlock") {
     return typeof node.attrs?.latex === "string" ? node.attrs.latex : "";
+  }
+
+  if (node.type === "diagram") {
+    return typeof node.attrs?.source === "string" ? node.attrs.source : "";
   }
 
   return (node.content ?? []).map(getPlainText).join("");
@@ -203,6 +208,18 @@ function validateNode(
     const latex = typedNode.attrs?.latex;
     if (typeof latex !== "string" || latex.trim().length === 0) {
       issues.push({ path: `${path}.attrs.latex`, message: `${typedNode.type} latex is required` });
+    }
+  }
+
+  if (typedNode.type === "diagram") {
+    const kind = typedNode.attrs?.kind;
+    if (kind !== "mermaid") {
+      issues.push({ path: `${path}.attrs.kind`, message: "diagram kind must be mermaid" });
+    }
+
+    const source = typedNode.attrs?.source;
+    if (typeof source !== "string" || source.trim().length === 0) {
+      issues.push({ path: `${path}.attrs.source`, message: "diagram source is required" });
     }
   }
 

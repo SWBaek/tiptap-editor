@@ -54,11 +54,19 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Prefer an export boundary document before implementation.
 - Use `docs/slide-export-boundary.md` as the boundary document.
 
-## Current Slice: Draw.io Integration Boundary
+## Completed Slice: Draw.io Integration Boundary
 
 - Decide whether Draw.io source belongs as asset-backed diagram source, external attachment, or a dedicated node shape.
 - Avoid deep integration until asset lifecycle and source-preserving diagram behavior are clear.
 - Prefer a boundary document before schema/editor implementation.
+- Use `docs/drawio-integration-boundary.md` as the boundary document.
+
+## Current Slice: Draw.io Minimal Asset Model
+
+- Extend the existing `diagram` shape for `attrs.kind = "drawio"` with `sourceAssetId` and optional `previewAssetId`.
+- Keep editable Draw.io source in `.sdoc/assets/`; do not embed XML or generated preview bytes in `document.json`.
+- Add a small storage policy or adapter boundary so the default asset-backed model can evolve without rewriting schema, CLI, or UI code.
+- Preserve Draw.io source assets through validation, pack/unpack, export, and semantic diff workflows before attempting embedded editor integration.
 
 ## Acceptance Evidence
 
@@ -69,6 +77,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Playwright verifies the Export side panel exposes and downloads `.html`.
 - Playwright verifies the Export side panel marks PDF as CLI/Tauri-only and exposes a PDF CLI command without pretending the browser downloads PDF.
 - `docs/slide-export-boundary.md` records that slide export is a derived projection and defers PPTX/native deck generation until renderer decisions are made.
+- `docs/drawio-integration-boundary.md` records that Draw.io source is stored as an asset-backed diagram source and defers embedded editing until the asset lifecycle is proven.
 
 ## Boundaries
 
@@ -79,6 +88,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 ## Later Slices
 
 - Native PPTX slide export
-- Draw.io integration
+- Embedded Draw.io editor integration
+- Draw.io structural diff
 - Advanced table editing
 - Section folding

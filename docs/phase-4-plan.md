@@ -47,11 +47,18 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Keep the Export panel focused on outputs that the browser can actually download today.
 - Expose PDF as a CLI/Tauri workflow in the Export panel with a copyable `sdoc export --format pdf` command.
 
-## Current Slice: Slide Export Boundary
+## Completed Slice: Slide Export Boundary
 
 - Decide whether slides should be generated from sections/headings, explicit slide nodes, or a separate projection of the canonical document.
 - Avoid adding slide-specific canonical state until the mapping from technical documents to decks is clear.
 - Prefer an export boundary document before implementation.
+- Use `docs/slide-export-boundary.md` as the boundary document.
+
+## Current Slice: Draw.io Integration Boundary
+
+- Decide whether Draw.io source belongs as asset-backed diagram source, external attachment, or a dedicated node shape.
+- Avoid deep integration until asset lifecycle and source-preserving diagram behavior are clear.
+- Prefer a boundary document before schema/editor implementation.
 
 ## Acceptance Evidence
 
@@ -61,6 +68,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - CLI tests cover PDF generation through the HTML print pipeline.
 - Playwright verifies the Export side panel exposes and downloads `.html`.
 - Playwright verifies the Export side panel marks PDF as CLI/Tauri-only and exposes a PDF CLI command without pretending the browser downloads PDF.
+- `docs/slide-export-boundary.md` records that slide export is a derived projection and defers PPTX/native deck generation until renderer decisions are made.
 
 ## Boundaries
 
@@ -70,7 +78,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 
 ## Later Slices
 
-- Slide export
+- Native PPTX slide export
 - Draw.io integration
 - Advanced table editing
 - Section folding

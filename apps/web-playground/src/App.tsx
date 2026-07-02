@@ -28,6 +28,7 @@ import {
   Save,
   Sigma,
   Table as TableIcon,
+  Trash2,
   Underline as UnderlineIcon,
   Workflow
 } from "lucide-react";
@@ -66,6 +67,7 @@ import {
   parseLocalHistory,
   renderDiffPreview,
   renderMetadataDiff,
+  removeLocalHistoryEntry,
   serializeLocalHistory,
   type LocalHistoryEntry,
   type ChangeReviewModel
@@ -278,6 +280,21 @@ export function App() {
     setSelectedHistoryId(null);
     setActiveTab("diff");
     setStatusMessage("Comparing with saved baseline");
+  }
+
+  function deleteHistorySnapshot(entryId: string) {
+    const entry = historyEntries.find((current) => current.id === entryId);
+    if (!entry) {
+      setStatusMessage("History snapshot is no longer available");
+      return;
+    }
+
+    const nextEntries = removeLocalHistoryEntry(historyEntries, entryId);
+    persistHistory(nextEntries);
+    if (selectedHistoryId === entryId) {
+      setSelectedHistoryId(null);
+    }
+    setStatusMessage(`Deleted history snapshot: ${entry.title}`);
   }
 
   function persistHistory(entries: LocalHistoryEntry[]) {
@@ -603,6 +620,7 @@ export function App() {
                 selectedId={selectedHistoryId}
                 onSaveSnapshot={saveHistorySnapshot}
                 onCompareSnapshot={compareHistorySnapshot}
+                onDeleteSnapshot={deleteHistorySnapshot}
                 onCompareSavedBaseline={compareSavedBaseline}
               />
             ) : (
@@ -684,12 +702,14 @@ function HistoryPanel({
   selectedId,
   onSaveSnapshot,
   onCompareSnapshot,
+  onDeleteSnapshot,
   onCompareSavedBaseline
 }: {
   entries: LocalHistoryEntry[];
   selectedId: string | null;
   onSaveSnapshot: () => void;
   onCompareSnapshot: (entryId: string) => void;
+  onDeleteSnapshot: (entryId: string) => void;
   onCompareSavedBaseline: () => void;
 }) {
   return (
@@ -717,9 +737,20 @@ function HistoryPanel({
                 <strong>{entry.title}</strong>
                 <span>{formatHistoryTime(entry.createdAt)}</span>
               </div>
-              <button type="button" onClick={() => onCompareSnapshot(entry.id)}>
-                Compare
-              </button>
+              <div className="history-actions">
+                <button type="button" onClick={() => onCompareSnapshot(entry.id)}>
+                  Compare
+                </button>
+                <button
+                  className="history-delete"
+                  type="button"
+                  title={`Delete ${entry.title}`}
+                  aria-label={`Delete history snapshot ${entry.title}`}
+                  onClick={() => onDeleteSnapshot(entry.id)}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </article>
           ))}
         </div>

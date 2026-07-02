@@ -123,6 +123,10 @@ export function addLocalHistoryEntry(entries: LocalHistoryEntry[], entry: LocalH
   return [entry, ...entries.filter((current) => current.id !== entry.id)].slice(0, limit);
 }
 
+export function removeLocalHistoryEntry(entries: LocalHistoryEntry[], entryId: string): LocalHistoryEntry[] {
+  return entries.filter((entry) => entry.id !== entryId);
+}
+
 export function serializeLocalHistory(entries: LocalHistoryEntry[]): string {
   return JSON.stringify(entries);
 }

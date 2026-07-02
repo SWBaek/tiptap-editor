@@ -8,6 +8,7 @@ import {
   getValidationFailureMessage,
   isMetadataDirty,
   parseLocalHistory,
+  removeLocalHistoryEntry,
   renderDiffPreview,
   renderMetadataDiff,
   serializeLocalHistory
@@ -94,6 +95,14 @@ describe("document state helpers", () => {
       metadata: { title: "First" }
     });
     expect(addLocalHistoryEntry([first], second, 1)).toEqual([second]);
+  });
+
+  it("removes local history snapshots by id", () => {
+    const first = createLocalHistoryEntry(historyDocument, { title: "First" }, new Date("2026-07-02T00:00:00.000Z"), "hist_first");
+    const second = createLocalHistoryEntry(historyDocument, { title: "Second" }, new Date("2026-07-02T00:01:00.000Z"), "hist_second");
+
+    expect(removeLocalHistoryEntry([first, second], "hist_first")).toEqual([second]);
+    expect(removeLocalHistoryEntry([first], "hist_missing")).toEqual([first]);
   });
 
   it("round-trips valid local history and ignores malformed storage", () => {

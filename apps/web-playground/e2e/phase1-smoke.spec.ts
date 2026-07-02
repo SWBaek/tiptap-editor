@@ -85,6 +85,25 @@ test("stores local history snapshots and compares them with the current document
     'Metadata title changed: "Playground Document" -> "History Spec"'
   );
 
+  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "Delete history snapshot Playground Document" }).click();
+  await expect(page.locator(".status-note")).toContainText("Deleted history snapshot: Playground Document");
+  await expect(page.locator(".history-empty")).toContainText("No snapshots");
+
+  await page.locator(".tabs").getByRole("button", { name: "Diff" }).click();
+  await expect(page.locator(".diff-review-base")).toContainText("Saved baseline");
+  await expect(page.locator(".status-block").filter({ hasText: "Review" })).toContainText("1 change");
+
+  await page.reload();
+  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
+  await expect(page.locator(".history-empty")).toContainText("No snapshots");
+});
+
+test("persists local history snapshots across reloads", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "Save history snapshot" }).click();
+
   await page.reload();
   await page.locator(".tabs").getByRole("button", { name: "History" }).click();
   await expect(page.locator(".history-item")).toContainText("Playground Document");

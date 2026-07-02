@@ -646,6 +646,21 @@ button {
   cursor: pointer;
 }
 
+.history-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.history-item .history-delete {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  padding: 0;
+  color: #75523c;
+}
+
 .history-primary {
   display: inline-flex;
   gap: 7px;

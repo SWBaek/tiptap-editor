@@ -482,6 +482,109 @@ button {
   word-break: normal;
 }
 
+.diff-review {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: #fbfcfd;
+}
+
+.diff-review-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: #dfe5ea;
+  border-bottom: 1px solid #dfe5ea;
+}
+
+.diff-review-summary div {
+  min-width: 0;
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+.diff-review-summary span,
+.diff-review-summary strong {
+  display: block;
+}
+
+.diff-review-summary span {
+  color: #657484;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.diff-review-summary strong {
+  margin-top: 4px;
+  color: #17212b;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.diff-review-sections {
+  min-height: 0;
+  overflow: auto;
+}
+
+.diff-review-section {
+  padding: 16px 18px;
+  border-bottom: 1px solid #e4e9ee;
+}
+
+.diff-review-section h3 {
+  margin: 0 0 12px;
+  color: #17212b;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.diff-review-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diff-review-list li {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  color: #2d3a46;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.diff-review-list li > span {
+  width: 4px;
+  border-radius: 2px;
+  background: #4c95a3;
+}
+
+.diff-review-list p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.diff-empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  color: #657484;
+  font-size: 13px;
+}
+
+.diff-raw {
+  max-height: 180px;
+  border-top: 1px solid #dfe5ea;
+  background: #f5f7f9;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;

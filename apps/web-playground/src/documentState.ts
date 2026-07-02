@@ -1,6 +1,19 @@
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
 import type { ValidationResult } from "@sdoc/schema";
 
+export interface ChangeReviewSection {
+  title: string;
+  lines: string[];
+}
+
+export interface ChangeReviewModel {
+  total: number;
+  documentCount: number;
+  metadataCount: number;
+  label: string;
+  sections: ChangeReviewSection[];
+}
+
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
   return stableStringify(current) !== stableStringify(baseline);
 }
@@ -60,6 +73,26 @@ export function renderDiffPreview(documentLines: string[], metadataLines: string
   }
 
   return `${sections.join("\n\n")}\n`;
+}
+
+export function createChangeReview(documentLines: string[], metadataLines: string[]): ChangeReviewModel {
+  const total = documentLines.length + metadataLines.length;
+  const sections: ChangeReviewSection[] = [];
+
+  if (documentLines.length > 0) {
+    sections.push({ title: "Document changes", lines: documentLines });
+  }
+  if (metadataLines.length > 0) {
+    sections.push({ title: "Metadata changes", lines: metadataLines });
+  }
+
+  return {
+    total,
+    documentCount: documentLines.length,
+    metadataCount: metadataLines.length,
+    label: total === 0 ? "No changes" : `${total} change${total === 1 ? "" : "s"}`,
+    sections
+  };
 }
 
 function renderSection(title: string, lines: string[]): string {

@@ -588,6 +588,10 @@ export const initialContent: JSONContent = {
       type: "codeBlock",
       attrs: { id: "blk_code", language: "ts" },
       content: [{ type: "text", text: "const canonical = \"document.json\";" }]
+    },
+    {
+      type: "paragraph",
+      attrs: { id: "blk_draft" }
     }
   ]
 };

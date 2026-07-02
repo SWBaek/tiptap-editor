@@ -63,6 +63,8 @@
 
 ## Phase 3: Review & Integration
 
+상태: started on 2026-07-02. 첫 slice는 `docs/phase-3-plan.md`의 local diff review workflow다.
+
 목표는 diff와 개발자 workflow를 제품 가치로 만드는 것이다.
 
 포함:

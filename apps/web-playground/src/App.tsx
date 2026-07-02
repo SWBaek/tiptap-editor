@@ -55,12 +55,14 @@ import {
 } from "@sdoc/editor-tiptap";
 import { createMarkdownPayload, createSdocPayload, openDocumentInput, type SDocAssets } from "./documentIo";
 import {
+  createChangeReview,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
   isMetadataDirty,
   renderDiffPreview,
-  renderMetadataDiff
+  renderMetadataDiff,
+  type ChangeReviewModel
 } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
@@ -130,12 +132,13 @@ export function App() {
   const documentDiffLines = renderReadableDiffEvents(documentDiffEvents);
   const metadataDiffLines = renderMetadataDiff(metadata, baselineMetadata);
   const diffPreview = renderDiffPreview(documentDiffLines, metadataDiffLines);
+  const changeReview = createChangeReview(documentDiffLines, metadataDiffLines);
   const hasDocumentChanges = documentDiffEvents.length > 0;
   const hasMetadataChanges = isMetadataDirty(metadata, baselineMetadata);
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges;
   const fileLabel = getFileLabel(currentFilename, metadata);
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
-  const preview = activeTab === "json" ? json : activeTab === "markdown" ? markdown : diffPreview;
+  const preview = activeTab === "json" ? json : markdown;
 
   async function downloadSdoc() {
     if (!requireValidDocument("save .sdoc")) {
@@ -391,6 +394,10 @@ export function App() {
           <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
         </div>
         <div className="status-block">
+          <span>Review</span>
+          <strong className={hasUnsavedChanges ? "warning" : "ok"}>{changeReview.label}</strong>
+        </div>
+        <div className="status-block">
           <span>File</span>
           <strong>{fileLabel}</strong>
         </div>
@@ -533,11 +540,56 @@ export function App() {
               <TabButton label="Markdown" value="markdown" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="Diff" value="diff" activeTab={activeTab} onSelect={setActiveTab} />
             </div>
-            <pre className="preview-output">{preview}</pre>
+            {activeTab === "diff" ? <DiffReview review={changeReview} rawPreview={diffPreview} /> : <pre className="preview-output">{preview}</pre>}
           </section>
         </div>
       </section>
     </main>
+  );
+}
+
+function DiffReview({ review, rawPreview }: { review: ChangeReviewModel; rawPreview: string }) {
+  return (
+    <div className="diff-review">
+      <div className="diff-review-summary" aria-label="Change summary">
+        <div>
+          <span>Total</span>
+          <strong>{review.total}</strong>
+        </div>
+        <div>
+          <span>Document</span>
+          <strong>{review.documentCount}</strong>
+        </div>
+        <div>
+          <span>Metadata</span>
+          <strong>{review.metadataCount}</strong>
+        </div>
+      </div>
+
+      {review.sections.length === 0 ? (
+        <div className="diff-empty">No changes</div>
+      ) : (
+        <div className="diff-review-sections">
+          {review.sections.map((section) => (
+            <section className="diff-review-section" key={section.title}>
+              <h3>{section.title}</h3>
+              <ul className="diff-review-list">
+                {section.lines.map((line) => (
+                  <li key={`${section.title}-${line}`}>
+                    <span />
+                    <p>{line}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+
+      <pre className="preview-output diff-raw" aria-label="Raw diff preview">
+        {rawPreview}
+      </pre>
+    </div>
   );
 }
 

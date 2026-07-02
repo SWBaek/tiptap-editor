@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createChangeReview,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
@@ -47,5 +48,25 @@ describe("document state helpers", () => {
       'Document changes (1)\n- Moved paragraph\n\nMetadata changes (1)\n- Metadata title changed: "A" -> "B"\n'
     );
     expect(renderDiffPreview([], [])).toBe("NO_CHANGES\n");
+  });
+
+  it("builds a structured change review summary", () => {
+    expect(createChangeReview(["Moved paragraph"], ['Metadata title changed: "A" -> "B"'])).toEqual({
+      total: 2,
+      documentCount: 1,
+      metadataCount: 1,
+      label: "2 changes",
+      sections: [
+        { title: "Document changes", lines: ["Moved paragraph"] },
+        { title: "Metadata changes", lines: ['Metadata title changed: "A" -> "B"'] }
+      ]
+    });
+    expect(createChangeReview([], [])).toEqual({
+      total: 0,
+      documentCount: 0,
+      metadataCount: 0,
+      label: "No changes",
+      sections: []
+    });
   });
 });

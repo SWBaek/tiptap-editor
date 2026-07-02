@@ -47,7 +47,17 @@ test("loads the Phase 2 playground and exercises preview/export basics", async (
 
   await page.getByLabel("Title").fill("Smoke Spec");
   await page.locator(".tabs").getByRole("button", { name: "Diff" }).click();
+  await expect(page.locator(".diff-review-summary")).toContainText("Total");
+  await expect(page.locator(".diff-review-summary")).toContainText("Metadata");
+  const metadataSection = page.locator(".diff-review-section").filter({ hasText: "Metadata changes" });
+  await expect(metadataSection).toContainText("Metadata changes");
+  await expect(metadataSection.locator(".diff-review-list")).toContainText('Metadata title changed: "Playground Document" -> "Smoke Spec"');
   await expect(page.locator(".preview-output")).toContainText('Metadata title changed: "Playground Document" -> "Smoke Spec"');
+  await expect(page.locator(".status-block").filter({ hasText: "Review" })).toContainText("1 change");
+
+  await page.getByRole("button", { name: "Mark saved" }).click();
+  await expect(page.locator(".status-block").filter({ hasText: "Review" })).toContainText("No changes");
+  await expect(page.locator(".diff-empty")).toContainText("No changes");
 
   const markdownDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download Markdown" }).click();

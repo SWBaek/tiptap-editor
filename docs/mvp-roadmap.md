@@ -48,6 +48,8 @@
 
 ## Phase 2: Technical Document Basics
 
+상태: MVP slice accepted on 2026-07-02. 세부 증거는 `docs/phase-2-closure.md`를 기준으로 한다.
+
 목표는 실제 기술 문서 작성에 필요한 기본 구조를 제공하는 것이다.
 
 포함:

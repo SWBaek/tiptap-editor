@@ -6,6 +6,8 @@
 
 Phase 2의 목표는 실제 기술 문서 작성에 필요한 최소 구조를 추가하는 것이다. Phase 1이 editor/save/load의 기반을 증명했다면, Phase 2는 figure, simple table, equation, Mermaid, asset-backed document structure가 schema, editor, export, diff에서 일관되게 동작함을 증명해야 한다.
 
+Status: MVP slice accepted on 2026-07-02. Closure evidence is recorded in `docs/phase-2-closure.md`.
+
 ## Current Baseline
 
 | Area | Current State |

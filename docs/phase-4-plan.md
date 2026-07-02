@@ -96,11 +96,19 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Ensure exports, validation, semantic diff, references, and AI/RAG derived outputs still include folded content.
 - Add unit and Playwright coverage proving fold state is runtime-only.
 
-## Current Slice: Native PPTX Slide Export Boundary
+## Completed Slice: Native PPTX Slide Export Boundary
 
 - Decide whether native PPTX export should be implemented directly, generated from HTML, or deferred to a dedicated renderer.
 - Keep slide output a derived projection from `document.json`; do not introduce slide-only canonical state without a boundary decision.
 - Define CLI, browser, and future Tauri responsibilities before adding implementation.
+- Use `docs/native-pptx-export-boundary.md` as the boundary document.
+
+## Current Slice: Native PPTX CLI Export
+
+- Add `sdoc export <input.sdoc|document.json> --format pptx -o output.pptx`.
+- Generate editable PPTX objects from the existing heading-section slide mapping.
+- Keep PPTX export binary, derived, and free of canonical layout state.
+- Add focused tests for CLI output, section mapping, assets, and deterministic projection behavior.
 
 ## Acceptance Evidence
 
@@ -119,6 +127,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - `docs/section-folding-boundary.md` records that section folding is derived from headings and that collapsed state is runtime-only.
 - Unit tests cover heading-derived fold ranges and stale collapsed heading pruning.
 - Playwright verifies section fold/unfold controls hide editor DOM only while `document.json` and Markdown output retain folded content.
+- `docs/native-pptx-export-boundary.md` records that native PPTX should be CLI-first, editable-object oriented, and generated from canonical `document.json` without slide-specific state.
 
 ## Boundaries
 
@@ -128,7 +137,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 
 ## Later Slices
 
-- Native PPTX slide export
+- Native PPTX browser download
 - Embedded Draw.io editor integration
 - Draw.io structural diff
 - Merged table cells

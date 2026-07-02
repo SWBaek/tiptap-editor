@@ -22,11 +22,15 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 | `listItem` | yes | 목록 항목 |
 | `callout` | yes | `kind: note/info/warning/danger/tip` |
 | `figure` | yes | Phase 2 asset-backed image with caption; `assetId` required |
+| `table` | yes | Phase 2 simple table container |
+| `tableRow` | yes | Table row; children are `tableCell` or `tableHeader` |
+| `tableCell` | yes | Table body cell; contains block content |
+| `tableHeader` | yes | Header cell; contains block content |
 | `text` | no | inline text |
 | `hardBreak` | no | 줄바꿈 |
 | `crossReference` | no | 내부 참조 inline node |
 
-Phase 2 이후 `table`, `equationBlock`, `diagram`을 추가한다. PDF, slide, Draw.io deep integration은 schema foundation 이후로 미룬다.
+Phase 2 이후 `equationBlock`, `diagram`을 추가한다. PDF, slide, Draw.io deep integration은 schema foundation 이후로 미룬다.
 
 ## Phase 2 Figure Shape
 
@@ -45,6 +49,30 @@ Phase 2 이후 `table`, `equationBlock`, `diagram`을 추가한다. PDF, slide, 
       "type": "paragraph",
       "attrs": { "id": "blk_caption" },
       "content": [{ "type": "text", "text": "System architecture" }]
+    }
+  ]
+}
+```
+
+## Phase 2 Table Shape
+
+Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tableCell` nodes. Each table node still carries a stable `attrs.id`; semantic diff reports cell text changes at the table block.
+
+```json
+{
+  "type": "table",
+  "attrs": { "id": "blk_table" },
+  "content": [
+    {
+      "type": "tableRow",
+      "attrs": { "id": "blk_row_header" },
+      "content": [
+        {
+          "type": "tableHeader",
+          "attrs": { "id": "blk_header_name" },
+          "content": [{ "type": "paragraph", "attrs": { "id": "blk_header_name_text" }, "content": [{ "type": "text", "text": "Name" }] }]
+        }
+      ]
     }
   ]
 }

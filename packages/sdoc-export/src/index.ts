@@ -119,6 +119,9 @@ function renderBlock(node: SDocNode, references: Map<string, ReferenceTarget>, d
       return `![${escapeMarkdownAlt(alt)}](assets/${encodeURI(assetId)})\n\n_Figure: ${caption}_`;
     }
 
+    case "table":
+      return renderMarkdownTable(node, references);
+
     case "bulletList":
       return (node.content ?? []).map((child) => renderListItem(child, references, "-", depth)).join("\n");
 
@@ -197,6 +200,28 @@ function applyMarks(text: string, marks: SDocMark[]): string {
 
 function escapeMarkdownAlt(value: string): string {
   return value.replaceAll("[", "\\[").replaceAll("]", "\\]");
+}
+
+function renderMarkdownTable(node: SDocNode, references: Map<string, ReferenceTarget>): string {
+  const rows = (node.content ?? []).filter((child) => child.type === "tableRow");
+  const cells = rows.map((row) =>
+    (row.content ?? [])
+      .filter((child) => child.type === "tableCell" || child.type === "tableHeader")
+      .map((cell) => escapeMarkdownTableCell(renderInlineChildren(cell, references).trim()))
+  );
+  const columnCount = Math.max(0, ...cells.map((row) => row.length));
+  if (cells.length === 0 || columnCount === 0) {
+    return "";
+  }
+
+  const normalizedRows = cells.map((row) => [...row, ...Array<string>(columnCount - row.length).fill("")]);
+  const [header, ...body] = normalizedRows;
+  const separator = Array<string>(columnCount).fill("---");
+  return [header, separator, ...body].map((row) => `| ${row.join(" | ")} |`).join("\n");
+}
+
+function escapeMarkdownTableCell(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll("|", "\\|").replace(/\s*\n+\s*/g, "<br>");
 }
 
 function collectReferenceTargets(document: SDocDocument): Map<string, ReferenceTarget> {

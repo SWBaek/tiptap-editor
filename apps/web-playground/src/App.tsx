@@ -25,6 +25,7 @@ import {
   ListOrdered,
   Quote,
   Save,
+  Table as TableIcon,
   Underline as UnderlineIcon
 } from "lucide-react";
 import { diffDocuments, renderReadableDiffEvents } from "@sdoc/diff";
@@ -37,8 +38,10 @@ import {
   FigureNode,
   fromSdocDocument,
   initialContent,
+  insertSimpleTable,
   moveSelectedTopLevelBlock,
   repairEditorBlockIds,
+  TableExtensions,
   toSdocDocument,
   type BlockMoveDirection
 } from "@sdoc/editor-tiptap";
@@ -62,7 +65,7 @@ const initialMetadata: SDocMetadata = {
   version: "0.1"
 };
 
-const sdocExtensions = [FigureNode, CalloutNode, BlockIdExtension] as unknown as AnyExtension[];
+const sdocExtensions = [...TableExtensions, FigureNode, CalloutNode, BlockIdExtension] as unknown as AnyExtension[];
 
 export function App() {
   const [activeTab, setActiveTab] = useState<PreviewTab>("json");
@@ -256,6 +259,12 @@ export function App() {
     setStatusMessage(applied ? `Applied ${kind} callout` : `Cannot apply ${kind} callout`);
   }
 
+  function insertTable() {
+    const inserted = insertSimpleTable(editor);
+    setActiveTab("json");
+    setStatusMessage(inserted ? "Inserted table" : "Cannot insert table");
+  }
+
   async function insertImageFile(file: File) {
     try {
       if (file.type && !file.type.startsWith("image/")) {
@@ -389,6 +398,9 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Insert image" active={editor.isActive("figure")} onClick={() => imageInputRef.current?.click()}>
             <ImageIcon size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={insertTable}>
+            <TableIcon size={18} />
           </ToolbarButton>
           <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
             <Info size={18} />

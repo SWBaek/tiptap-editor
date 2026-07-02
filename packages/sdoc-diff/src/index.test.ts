@@ -192,6 +192,18 @@ describe("diffDocuments", () => {
 
     expect(addedIds).toEqual(["blk_callout"]);
   });
+
+  it("summarizes table cell changes at the table block", () => {
+    const oldTableDocument = createTableDocument("Draft");
+    const newTableDocument = createTableDocument("Ready");
+    const events = diffDocuments(oldTableDocument, newTableDocument);
+    const modified = events.find((event) => event.kind === "modified" && event.id === "blk_table");
+
+    expect(modified?.kind).toBe("modified");
+    expect(modified?.kind === "modified" ? modified.changes : []).toContain('cell 2,2 changed "Draft" -> "Ready"');
+    expect(events.some((event) => event.kind === "modified" && event.id !== "blk_table")).toBe(false);
+    expect(renderReadableDiffEvents(events)).toContain('Modified table "table 2x2" (blk_table) at doc_table[0]/blk_table: cell 2,2 changed "Draft" -> "Ready"');
+  });
 });
 
 describe("renderReadableDiffEvents", () => {
@@ -229,3 +241,43 @@ describe("renderReadableDiffEvents", () => {
     ]);
   });
 });
+
+function createTableDocument(status: string): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_table" },
+    content: [
+      {
+        type: "table",
+        attrs: { id: "blk_table" },
+        content: [
+          {
+            type: "tableRow",
+            attrs: { id: "blk_row_header" },
+            content: [
+              createTableCell("tableHeader", "blk_header_name", "blk_header_name_text", "Name"),
+              createTableCell("tableHeader", "blk_header_status", "blk_header_status_text", "Status")
+            ]
+          },
+          {
+            type: "tableRow",
+            attrs: { id: "blk_row_body" },
+            content: [
+              createTableCell("tableCell", "blk_cell_api", "blk_cell_api_text", "API"),
+              createTableCell("tableCell", "blk_cell_status", "blk_cell_status_text", status)
+            ]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function createTableCell(type: "tableCell" | "tableHeader", id: string, paragraphId: string, text: string) {
+  return {
+    type,
+    attrs: { id },
+    content: [{ type: "paragraph", attrs: { id: paragraphId }, content: [{ type: "text", text }] }]
+  };
+}

@@ -191,6 +191,10 @@ function flattenBlocks(document: SDocDocument): Map<string, BlockInfo> {
         });
       }
 
+      if (node.type === "table") {
+        return;
+      }
+
       const nextParentId = id ?? parentId;
       const nextAncestorIds = id ? [...ancestorIds, id] : ancestorIds;
       let childBlockIndex = 0;
@@ -294,6 +298,14 @@ function longestCommonSubsequence(left: string[], right: string[]): string[] {
 }
 
 function fingerprintBlock(node: SDocNode): string {
+  if (node.type === "table") {
+    return stableStringify({
+      type: node.type,
+      attrs: omitId(node.attrs ?? {}),
+      rows: getTableRows(node)
+    });
+  }
+
   return stableStringify(stripNestedBlocks(node));
 }
 
@@ -320,6 +332,10 @@ function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
     changes.push(`type changed ${oldNode.type} -> ${newNode.type}`);
   }
 
+  if (oldNode.type === "table" && newNode.type === "table") {
+    return summarizeTableChanges(oldNode, newNode);
+  }
+
   const oldText = getPlainText(oldNode);
   const newText = getPlainText(newNode);
   if (oldText !== newText) {
@@ -333,6 +349,50 @@ function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
   }
 
   return changes.length > 0 ? changes : ["content changed"];
+}
+
+function summarizeTableChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
+  const oldRows = getTableRows(oldNode);
+  const newRows = getTableRows(newNode);
+  const changes: string[] = [];
+  const oldColumnCount = getMaxColumnCount(oldRows);
+  const newColumnCount = getMaxColumnCount(newRows);
+
+  if (oldRows.length !== newRows.length) {
+    changes.push(`rows changed ${oldRows.length} -> ${newRows.length}`);
+  }
+
+  if (oldColumnCount !== newColumnCount) {
+    changes.push(`columns changed ${oldColumnCount} -> ${newColumnCount}`);
+  }
+
+  const rowCount = Math.max(oldRows.length, newRows.length);
+  const columnCount = Math.max(oldColumnCount, newColumnCount);
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      const oldValue = oldRows[rowIndex]?.[columnIndex] ?? "";
+      const newValue = newRows[rowIndex]?.[columnIndex] ?? "";
+      if (oldValue !== newValue) {
+        changes.push(`cell ${rowIndex + 1},${columnIndex + 1} changed ${quote(oldValue)} -> ${quote(newValue)}`);
+      }
+    }
+  }
+
+  return changes.length > 0 ? changes : ["table changed"];
+}
+
+function getTableRows(node: SDocNode): string[][] {
+  return (node.content ?? [])
+    .filter((row) => row.type === "tableRow")
+    .map((row) =>
+      (row.content ?? [])
+        .filter((cell) => cell.type === "tableCell" || cell.type === "tableHeader")
+        .map((cell) => getPlainText(cell).trim())
+    );
+}
+
+function getMaxColumnCount(rows: string[][]): number {
+  return Math.max(0, ...rows.map((row) => row.length));
 }
 
 type WordDiffKind = "same" | "added" | "deleted";
@@ -452,6 +512,11 @@ function findBrokenReferences(document: SDocDocument, blocks: Map<string, BlockI
 }
 
 function getBlockLabel(node: SDocNode): string {
+  if (node.type === "table") {
+    const rows = getTableRows(node);
+    return quote(`table ${rows.length}x${getMaxColumnCount(rows)}`);
+  }
+
   const text = getPlainText(node).trim();
   if (text.length > 0) {
     return quote(text.length > 80 ? `${text.slice(0, 77)}...` : text);

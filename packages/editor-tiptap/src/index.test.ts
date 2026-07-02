@@ -11,6 +11,7 @@ import {
   moveSelectedTopLevelBlock,
   repairJsonBlockIds,
   repairEditorBlockIds,
+  TableExtensions,
   toSdocDocument
 } from "./index";
 
@@ -172,6 +173,68 @@ describe("SDoc conversion", () => {
       ]
     });
   });
+
+  it("round-trips simple tables across SDoc conversion", () => {
+    const document = toSdocDocument(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "table",
+            attrs: { id: "blk_table" },
+            content: [
+              {
+                type: "tableRow",
+                attrs: { id: "blk_row" },
+                content: [
+                  {
+                    type: "tableHeader",
+                    attrs: { id: "blk_header" },
+                    content: [{ type: "paragraph", attrs: { id: "blk_header_text" }, content: [{ type: "text", text: "Name" }] }]
+                  },
+                  {
+                    type: "tableCell",
+                    attrs: { id: "blk_cell" },
+                    content: [{ type: "paragraph", attrs: { id: "blk_cell_text" }, content: [{ type: "text", text: "API" }] }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "doc_table"
+    );
+
+    expect(validateDocument(document).ok).toBe(true);
+    expect(fromSdocDocument(document)).toEqual({
+      type: "doc",
+      content: [
+        {
+          type: "table",
+          attrs: { id: "blk_table" },
+          content: [
+            {
+              type: "tableRow",
+              attrs: { id: "blk_row" },
+              content: [
+                {
+                  type: "tableHeader",
+                  attrs: { id: "blk_header" },
+                  content: [{ type: "paragraph", attrs: { id: "blk_header_text" }, content: [{ type: "text", text: "Name" }] }]
+                },
+                {
+                  type: "tableCell",
+                  attrs: { id: "blk_cell" },
+                  content: [{ type: "paragraph", attrs: { id: "blk_cell_text" }, content: [{ type: "text", text: "API" }] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+  });
 });
 
 describe("BlockIdExtension", () => {
@@ -320,6 +383,28 @@ describe("BlockIdExtension", () => {
     expect(ids).toHaveLength(2);
     expect(ids.every((id) => id.startsWith("blk_"))).toBe(true);
     expect(document.content[0].attrs).not.toHaveProperty("src");
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
+  it("assigns ids to tables inserted by Tiptap commands", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, ...TableExtensions, FigureNode, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_initial" }, content: [{ type: "text", text: "Initial" }] }]
+      }
+    });
+
+    editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: true });
+    const repaired = repairEditorBlockIds(editor);
+    const document = toSdocDocument(editor.getJSON(), "doc_table");
+    const ids = collectJsonBlockIds(editor.getJSON());
+    editor.destroy();
+
+    expect(repaired).toBe(false);
+    expect(document.content.some((node) => node.type === "table")).toBe(true);
+    expect(ids.length).toBeGreaterThanOrEqual(8);
+    expect(new Set(ids).size).toBe(ids.length);
     expect(validateDocument(document).ok).toBe(true);
   });
 });

@@ -95,6 +95,12 @@ describe("exportMarkdown", () => {
     expect(markdown).toContain("![Architecture](assets/asset_architecture.png)");
     expect(markdown).toContain("_Figure: System architecture_");
   });
+
+  it("exports simple tables as Markdown pipe tables", () => {
+    const withTable = createTableDocument("Ready");
+
+    expect(exportMarkdown(withTable)).toContain("| Name | Status |\n| --- | --- |\n| API | Ready |");
+  });
 });
 
 describe("exportDerivedOutputs", () => {
@@ -128,4 +134,53 @@ describe("exportDerivedOutputs", () => {
     expect(outputs["chunks.jsonl"]).toContain('"type":"figure"');
     expect(outputs["chunks.jsonl"]).toContain("System architecture");
   });
+
+  it("includes table text in derived outputs", () => {
+    const outputs = exportDerivedOutputs(createTableDocument("Ready"));
+
+    expect(outputs["plain.md"]).toContain("| Name | Status |");
+    expect(outputs["plain.md"]).toContain("| API | Ready |");
+    expect(outputs["references.json"]).toContain('"type": "table"');
+    expect(outputs["chunks.jsonl"]).toContain("Ready");
+  });
 });
+
+function createTableDocument(status: string): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_table" },
+    content: [
+      {
+        type: "table",
+        attrs: { id: "blk_table" },
+        content: [
+          {
+            type: "tableRow",
+            attrs: { id: "blk_row_header" },
+            content: [
+              createTableCell("tableHeader", "blk_header_name", "blk_header_name_text", "Name"),
+              createTableCell("tableHeader", "blk_header_status", "blk_header_status_text", "Status")
+            ]
+          },
+          {
+            type: "tableRow",
+            attrs: { id: "blk_row_body" },
+            content: [
+              createTableCell("tableCell", "blk_cell_api", "blk_cell_api_text", "API"),
+              createTableCell("tableCell", "blk_cell_ready", "blk_cell_ready_text", status)
+            ]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function createTableCell(type: "tableCell" | "tableHeader", id: string, paragraphId: string, text: string) {
+  return {
+    type,
+    attrs: { id },
+    content: [{ type: "paragraph", attrs: { id: paragraphId }, content: [{ type: "text", text }] }]
+  };
+}

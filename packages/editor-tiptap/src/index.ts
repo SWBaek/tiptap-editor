@@ -1,5 +1,6 @@
 import { Extension, mergeAttributes, Node, type JSONContent } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { createBlockId, type JsonValue, type SDocDocument, type SDocNode } from "@sdoc/schema";
 
 export const BLOCK_TYPES_WITH_IDS = [
@@ -11,7 +12,11 @@ export const BLOCK_TYPES_WITH_IDS = [
   "orderedList",
   "listItem",
   "callout",
-  "figure"
+  "figure",
+  "table",
+  "tableRow",
+  "tableCell",
+  "tableHeader"
 ] as const;
 
 const blockTypeSet = new Set<string>(BLOCK_TYPES_WITH_IDS);
@@ -148,6 +153,33 @@ export const FigureNode = Node.create({
     ];
   }
 });
+
+export const TableNode = Table.configure({
+  resizable: false,
+  HTMLAttributes: {
+    "data-type": "table"
+  }
+});
+
+export const TableRowNode = TableRow;
+export const TableCellNode = TableCell;
+export const TableHeaderNode = TableHeader;
+export const TableExtensions = [TableNode, TableRowNode, TableHeaderNode, TableCellNode] as const;
+
+export interface TableInsertTarget {
+  chain: () => unknown;
+}
+
+interface TableChain {
+  focus: () => {
+    insertTable: (options: { rows: number; cols: number; withHeaderRow: boolean }) => { run: () => boolean };
+  };
+}
+
+export function insertSimpleTable(editor: TableInsertTarget, rows = 3, cols = 2): boolean {
+  const chain = editor.chain() as TableChain;
+  return chain.focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+}
 
 export const BlockIdExtension = Extension.create({
   name: "blockId",

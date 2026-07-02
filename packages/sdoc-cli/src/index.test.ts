@@ -29,13 +29,13 @@ describe("sdoc CLI", () => {
           schemaVersion: 1,
           type: "doc",
           attrs: { id: "doc_bad" },
-          content: [{ type: "table" }]
+          content: [{ type: "equationBlock" }]
         }),
         "utf8"
       );
 
       await expect(runSdoc(["validate", invalidPath])).rejects.toMatchObject({
-        stderr: expect.stringContaining("$.content[0].type: unsupported node type: table")
+        stderr: expect.stringContaining("$.content[0].type: unsupported node type: equationBlock")
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });

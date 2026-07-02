@@ -46,7 +46,11 @@ export const BLOCK_NODE_TYPES = new Set([
   "orderedList",
   "listItem",
   "callout",
-  "figure"
+  "figure",
+  "table",
+  "tableRow",
+  "tableCell",
+  "tableHeader"
 ]);
 
 export const INLINE_NODE_TYPES = new Set(["text", "hardBreak", "crossReference"]);
@@ -202,6 +206,20 @@ function validateNode(
     }
   }
 
+  if (typedNode.type === "table") {
+    validateRequiredChildTypes(typedNode, path, issues, "table", ["tableRow"]);
+  }
+
+  if (typedNode.type === "tableRow") {
+    validateRequiredChildTypes(typedNode, path, issues, "tableRow", ["tableCell", "tableHeader"]);
+  }
+
+  if (typedNode.type === "tableCell" || typedNode.type === "tableHeader") {
+    if (!Array.isArray(typedNode.content) || typedNode.content.length === 0) {
+      issues.push({ path: `${path}.content`, message: `${typedNode.type} content is required` });
+    }
+  }
+
   if (typedNode.marks !== undefined) {
     validateMarks(typedNode.marks, `${path}.marks`, issues);
   }
@@ -214,6 +232,33 @@ function validateNode(
 
     typedNode.content.forEach((child, index) => validateNode(child, `${path}.content[${index}]`, issues, ids));
   }
+}
+
+function validateRequiredChildTypes(
+  node: SDocNode,
+  path: string,
+  issues: ValidationIssue[],
+  parentType: string,
+  allowedChildTypes: string[]
+): void {
+  if (!Array.isArray(node.content) || node.content.length === 0) {
+    issues.push({ path: `${path}.content`, message: `${parentType} content is required` });
+    return;
+  }
+
+  node.content.forEach((child, index) => {
+    if (!isRecord(child)) {
+      return;
+    }
+
+    const childType = child.type;
+    if (typeof childType === "string" && !allowedChildTypes.includes(childType)) {
+      issues.push({
+        path: `${path}.content[${index}].type`,
+        message: `${parentType} child must be ${allowedChildTypes.join(" or ")}`
+      });
+    }
+  });
 }
 
 function validateMarks(marks: unknown, path: string, issues: ValidationIssue[]): void {

@@ -138,6 +138,49 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 
+test("inserts a simple table and round-trips through .sdoc", async ({ page }, testInfo) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+  await page.getByRole("button", { name: "Insert table" }).click();
+  await expect(page.locator(".status-note")).toContainText("Inserted table");
+  await expect(page.locator(".editor-surface table")).toBeVisible();
+
+  await fillTableCell(page, "th", 0, "Name");
+  await fillTableCell(page, "th", 1, "Status");
+  await fillTableCell(page, "td", 0, "API");
+  await fillTableCell(page, "td", 1, "Ready");
+
+  await expect.poll(async () => findFirstNodeByType(await readPreviewDocument(page), "table").attrs?.id).toEqual(expect.any(String));
+  const insertedDocument = await readPreviewDocument(page);
+  expectUniqueIds(collectBlockIds(insertedDocument));
+  await expect(page.getByText("Valid")).toBeVisible();
+
+  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await expect(page.locator(".preview-output")).toContainText("| Name | Status |");
+  await expect(page.locator(".preview-output")).toContainText("| API | Ready |");
+
+  const sdocDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  const sdocDownload = await sdocDownloadPromise;
+  const sdocPath = testInfo.outputPath("Table Round Trip.sdoc");
+  await sdocDownload.saveAs(sdocPath);
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.getByLabel("Open document file").setInputFiles(sdocPath);
+  await expect(page.locator(".status-note")).toContainText("Opened Table Round Trip.sdoc");
+  await expect(page.locator(".editor-surface table")).toBeVisible();
+  await expect(page.locator(".editor-surface table")).toContainText("Ready");
+
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const reopenedDocument = await readPreviewDocument(page);
+  const reopenedTable = findFirstNodeByType(reopenedDocument, "table");
+  expect(reopenedTable.attrs?.id).toBe(findFirstNodeByType(insertedDocument, "table").attrs?.id);
+  expectUniqueIds(collectBlockIds(reopenedDocument));
+});
+
 test("reports unsupported files without replacing the current document", async ({ page }, testInfo) => {
   await page.goto("/");
 
@@ -264,6 +307,13 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
 
 async function readPreviewDocument(page: Page): Promise<JsonNode> {
   return JSON.parse(await page.locator(".preview-output").innerText()) as JsonNode;
+}
+
+async function fillTableCell(page: Page, selector: "th" | "td", index: number, text: string): Promise<void> {
+  const cell = page.locator(`.editor-surface ${selector} p`).nth(index);
+  await cell.click();
+  await page.keyboard.type(text);
+  await expect(cell).toContainText(text);
 }
 
 async function placeCursorAtEndOfFirstParagraph(page: Page): Promise<void> {

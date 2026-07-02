@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { exportDerivedOutputs, exportHtml, exportMarkdown } from "./index";
+import JSZip from "jszip";
+import { createPptxSlideModel, exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx } from "./index";
 import type { SDocDocument } from "@sdoc/schema";
 
 const document: SDocDocument = {
@@ -277,6 +278,61 @@ describe("exportDerivedOutputs", () => {
   });
 });
 
+describe("exportPptx", () => {
+  it("derives deterministic slide groups from h1 and h2 headings", () => {
+    const model = createPptxSlideModel(createSlideDocument());
+
+    expect(model.map((slide) => ({ title: slide.title, sectionTitle: slide.sectionTitle, sourceIds: slide.sourceIds }))).toEqual([
+      { title: "System Overview", sectionTitle: "System Overview", sourceIds: ["blk_h1"] },
+      { title: "API", sectionTitle: "System Overview", sourceIds: ["blk_h2_api", "blk_api_body"] },
+      { title: "Operations", sectionTitle: "System Overview", sourceIds: ["blk_h2_ops", "blk_ops_body"] }
+    ]);
+  });
+
+  it("writes a non-empty native PPTX containing editable slide text", async () => {
+    const bytes = await exportPptx(createSlideDocument(), { title: "Generated Deck" });
+    const zip = await JSZip.loadAsync(bytes);
+    const slideNames = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
+    const slideXml = await Promise.all(slideNames.sort().map((name) => zip.file(name)?.async("string")));
+    const allSlides = slideXml.join("\n");
+
+    expect(Buffer.from(bytes.subarray(0, 2)).toString("utf8")).toBe("PK");
+    expect(bytes.length).toBeGreaterThan(1_000);
+    expect(slideNames).toHaveLength(3);
+    expect(allSlides).toContain("System Overview");
+    expect(allSlides).toContain("API");
+    expect(allSlides).toContain("Stable endpoints");
+    expect(allSlides).toContain("Operations");
+  });
+
+  it("uses asset-backed figures without embedding export state in document JSON", async () => {
+    const figureDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_figure_deck" },
+      content: [
+        { type: "heading", attrs: { id: "blk_h1", level: 1 }, content: [{ type: "text", text: "Architecture" }] },
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "System architecture" }] }]
+        }
+      ]
+    };
+    const before = JSON.stringify(figureDocument);
+    const bytes = await exportPptx(figureDocument, {
+      assetResolver: (assetId) =>
+        assetId === "asset_architecture.png"
+          ? Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=", "base64"))
+          : undefined
+    });
+
+    expect(bytes.length).toBeGreaterThan(1_000);
+    expect(JSON.stringify(figureDocument)).toBe(before);
+    expect(JSON.stringify(figureDocument)).not.toContain("pptx");
+  });
+});
+
 function createDiagramDocument(): SDocDocument {
   return {
     schemaVersion: 1,
@@ -291,6 +347,21 @@ function createDiagramDocument(): SDocDocument {
           source: "flowchart TD\nA[Start] --> B[Done]"
         }
       }
+    ]
+  };
+}
+
+function createSlideDocument(): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_slides" },
+    content: [
+      { type: "heading", attrs: { id: "blk_h1", level: 1 }, content: [{ type: "text", text: "System Overview" }] },
+      { type: "heading", attrs: { id: "blk_h2_api", level: 2 }, content: [{ type: "text", text: "API" }] },
+      { type: "paragraph", attrs: { id: "blk_api_body" }, content: [{ type: "text", text: "Stable endpoints" }] },
+      { type: "heading", attrs: { id: "blk_h2_ops", level: 2 }, content: [{ type: "text", text: "Operations" }] },
+      { type: "paragraph", attrs: { id: "blk_ops_body" }, content: [{ type: "text", text: "Runbook summary" }] }
     ]
   };
 }

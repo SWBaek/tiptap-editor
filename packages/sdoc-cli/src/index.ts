@@ -3,7 +3,7 @@
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
-import { exportDerivedOutputs, exportHtml, exportMarkdown } from "@sdoc/export";
+import { exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx } from "@sdoc/export";
 import { isLikelyZipContainer, normalizeDocument, packSdoc, stableStringify, unpackSdoc, type SDocContainer } from "@sdoc/format";
 import { validateDocument, type SDocDocument, type ValidationIssue } from "@sdoc/schema";
 
@@ -47,7 +47,7 @@ async function runDiff(args: string[]): Promise<void> {
 async function runExport(args: string[]): Promise<void> {
   const [inputPath, ...rest] = args;
   if (!inputPath) {
-    throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|pdf|chunks|outline|references> [-o output]");
+    throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|pdf|pptx|chunks|outline|references> [-o output]");
   }
 
   const positionals = rest.filter((value) => !value.startsWith("-"));
@@ -62,6 +62,15 @@ async function runExport(args: string[]): Promise<void> {
     return;
   }
 
+  if (format.toLowerCase() === "pptx") {
+    if (!output) {
+      throw new Error("usage: sdoc export <input.sdoc|document.json> --format pptx -o output.pptx");
+    }
+
+    await writePptxExport(await loadExportInput(inputPath), output);
+    return;
+  }
+
   const exportText = renderExport(await loadDocument(inputPath), format);
 
   if (output) {
@@ -69,6 +78,14 @@ async function runExport(args: string[]): Promise<void> {
   } else {
     process.stdout.write(exportText);
   }
+}
+
+async function writePptxExport(input: ExportInput, outputPath: string): Promise<void> {
+  const bytes = await exportPptx(input.document, {
+    title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
+    assetResolver: (assetId) => input.assets[assetId]
+  });
+  await writeFile(outputPath, bytes);
 }
 
 async function writePdfExport(document: SDocDocument, outputPath: string): Promise<void> {
@@ -139,12 +156,29 @@ async function runValidate(args: string[]): Promise<void> {
 }
 
 async function loadDocument(filePath: string): Promise<SDocDocument> {
-  const data = await readFile(filePath);
-  if (filePath.toLowerCase().endsWith(".sdoc") || isLikelyZipContainer(data)) {
-    return (await unpackSdoc(data)).document;
+  return (await loadExportInput(filePath)).document;
+}
+
+interface ExportInput {
+  document: SDocDocument;
+  metadata: Record<string, unknown>;
+  assets: Record<string, Uint8Array>;
+}
+
+async function loadExportInput(filePath: string): Promise<ExportInput> {
+  const inputStat = await stat(filePath);
+  if (inputStat.isDirectory()) {
+    const container = await readContainerFolder(filePath);
+    return { document: container.document, metadata: container.metadata, assets: container.assets ?? {} };
   }
 
-  return parseDocumentJson(stripBom(data.toString("utf8")), filePath);
+  const data = await readFile(filePath);
+  if (filePath.toLowerCase().endsWith(".sdoc") || isLikelyZipContainer(data)) {
+    const container = await unpackSdoc(data);
+    return { document: container.document, metadata: container.metadata, assets: container.assets ?? {} };
+  }
+
+  return { document: parseDocumentJson(stripBom(data.toString("utf8")), filePath), metadata: {}, assets: {} };
 }
 
 async function readContainerFolder(folderPath: string): Promise<SDocContainer> {

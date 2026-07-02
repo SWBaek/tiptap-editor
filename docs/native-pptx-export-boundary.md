@@ -36,6 +36,12 @@ npm run sdoc -- export "document.sdoc" --format pptx -o "deck.pptx"
 
 PPTX is binary, so `-o` should be required. The command must accept `.sdoc`, unpacked `.sdoc` folders, and `document.json` inputs consistently with existing export formats.
 
+## v1 Implementation
+
+The first implementation adds `exportPptx(document, options)` in `@sdoc/export` and `sdoc export --format pptx -o deck.pptx` in the CLI. It uses PptxGenJS to generate native PPTX files with editable text, tables, basic callout/blockquote shapes, image-backed figures, Draw.io preview assets when available, and speaker notes containing source block IDs.
+
+The implementation keeps layout heuristic-only: `h1` and `h2` create slides, dense content may be summarized or omitted by the v1 slide projection, and no slide layout decisions are written back into `document.json`.
+
 ## Browser And Tauri Scope
 
 The browser playground should initially expose PPTX as a CLI/Tauri boundary command, not as a direct download, until bundle size, browser asset handling, and output fidelity are verified. A later browser download is acceptable only if it uses the same projection model and does not store export state in `document.json`.

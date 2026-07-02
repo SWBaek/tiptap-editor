@@ -103,12 +103,19 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Define CLI, browser, and future Tauri responsibilities before adding implementation.
 - Use `docs/native-pptx-export-boundary.md` as the boundary document.
 
-## Current Slice: Native PPTX CLI Export
+## Completed Slice: Native PPTX CLI Export
 
 - Add `sdoc export <input.sdoc|document.json> --format pptx -o output.pptx`.
 - Generate editable PPTX objects from the existing heading-section slide mapping.
 - Keep PPTX export binary, derived, and free of canonical layout state.
 - Add focused tests for CLI output, section mapping, assets, and deterministic projection behavior.
+- Expose a browser Export panel command that copies the CLI/Tauri PPTX workflow without claiming direct browser generation.
+
+## Current Slice: Embedded Draw.io Editor Integration Boundary
+
+- Decide whether embedded Draw.io editing should run inside the browser playground, future Tauri, or both.
+- Keep Draw.io XML source asset-backed; embedded editor state and preview state must not enter `document.json`.
+- Define asset update, preview regeneration, and failure recovery behavior before implementation.
 
 ## Acceptance Evidence
 
@@ -128,6 +135,9 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Unit tests cover heading-derived fold ranges and stale collapsed heading pruning.
 - Playwright verifies section fold/unfold controls hide editor DOM only while `document.json` and Markdown output retain folded content.
 - `docs/native-pptx-export-boundary.md` records that native PPTX should be CLI-first, editable-object oriented, and generated from canonical `document.json` without slide-specific state.
+- Unit tests cover heading-derived PPTX slide grouping, non-empty native PPTX output, and asset-backed figure handling without mutating `document.json`.
+- CLI tests cover `sdoc export <document> --format pptx -o output.pptx`.
+- Playwright verifies the Export side panel marks PPTX as CLI/Tauri-only and exposes a PPTX CLI command.
 
 ## Boundaries
 

@@ -90,6 +90,22 @@ describe("sdoc CLI", () => {
     }
   });
 
+  it("exports native PPTX as a binary CLI artifact", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const pptxPath = path.join(tempDir, "basic.pptx");
+
+    try {
+      const result = await runSdoc(["export", validDocumentPath, "--format", "pptx", "-o", pptxPath]);
+      const pptx = await readFile(pptxPath);
+
+      expect(result.stdout).toBe("");
+      expect(pptx.subarray(0, 2).toString("utf8")).toBe("PK");
+      expect(pptx.length).toBeGreaterThan(1_000);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("runs the Phase 0 pack/unpack/diff/export smoke flow", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const basicFolder = path.join(tempDir, "basic.sdoc.d");

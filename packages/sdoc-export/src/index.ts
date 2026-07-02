@@ -5,6 +5,11 @@ export interface HtmlExportOptions {
   assetResolver?: (assetId: string) => string | undefined;
 }
 
+export interface PptxExportOptions {
+  title?: string;
+  assetResolver?: (assetId: string) => Uint8Array | undefined;
+}
+
 export interface DerivedOutputs extends Record<string, string> {
   "plain.md": string;
   "outline.json": string;
@@ -17,6 +22,38 @@ interface ReferenceTarget {
   type: string;
   anchor?: string;
   label: string;
+}
+
+export interface PptxSlideModel {
+  title: string;
+  sectionTitle?: string;
+  sourceIds: string[];
+  blocks: SDocNode[];
+}
+
+interface PptxConstructor {
+  new (): PptxPresentation;
+}
+
+interface PptxPresentation {
+  layout: string;
+  author: string;
+  company: string;
+  subject: string;
+  title: string;
+  theme: Record<string, string>;
+  addSection(props: { title: string }): void;
+  addSlide(props?: { sectionTitle?: string }): PptxSlide;
+  write(props?: { outputType?: "uint8array"; compression?: boolean }): Promise<string | ArrayBuffer | Blob | Uint8Array>;
+}
+
+interface PptxSlide {
+  background: { color: string };
+  addText(text: string, options?: Record<string, unknown>): PptxSlide;
+  addShape(shapeName: string, options?: Record<string, unknown>): PptxSlide;
+  addTable(tableRows: Array<Array<Record<string, unknown>>>, options?: Record<string, unknown>): PptxSlide;
+  addImage(options: Record<string, unknown>): PptxSlide;
+  addNotes(notes: string): PptxSlide;
 }
 
 export function exportMarkdown(document: SDocDocument): string {
@@ -56,6 +93,89 @@ export function exportDerivedOutputs(document: SDocDocument): DerivedOutputs {
     "references.json": `${JSON.stringify([...collectReferenceTargets(document).values()], null, 2)}\n`,
     "chunks.jsonl": exportChunks(document)
   };
+}
+
+export async function exportPptx(document: SDocDocument, options: PptxExportOptions = {}): Promise<Uint8Array> {
+  const pptx = await createPptxPresentation();
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = "SDoc";
+  pptx.subject = "Generated from canonical SDoc document.json";
+  pptx.title = options.title?.trim() || getDocumentTitle(document) || "SDoc Deck";
+  pptx.company = "SDoc";
+  pptx.theme = {
+    headFontFace: "Aptos Display",
+    bodyFontFace: "Aptos",
+    lang: "en-US"
+  };
+
+  const slides = createPptxSlideModel(document);
+  const sectionTitles = [...new Set(slides.flatMap((slide) => (slide.sectionTitle ? [slide.sectionTitle] : [])))];
+  sectionTitles.forEach((title) => pptx.addSection({ title }));
+  for (const model of slides) {
+    renderPptxSlide(pptx, model, options);
+  }
+
+  const bytes = await pptx.write({ outputType: "uint8array", compression: true });
+  if (bytes instanceof Uint8Array) {
+    return bytes;
+  }
+  if (bytes instanceof ArrayBuffer) {
+    return new Uint8Array(bytes);
+  }
+  if (typeof bytes === "string") {
+    return new TextEncoder().encode(bytes);
+  }
+
+  return new Uint8Array(await bytes.arrayBuffer());
+}
+
+async function createPptxPresentation(): Promise<PptxPresentation> {
+  const module = await import("pptxgenjs");
+  const PptxGenJS = module.default as unknown as PptxConstructor;
+  return new PptxGenJS();
+}
+
+export function createPptxSlideModel(document: SDocDocument): PptxSlideModel[] {
+  const slides: PptxSlideModel[] = [];
+  let currentSection: string | undefined;
+  let currentSlide: PptxSlideModel | null = null;
+
+  function ensureSlide(title = "Overview"): PptxSlideModel {
+    if (!currentSlide) {
+      currentSlide = { title, sectionTitle: currentSection, sourceIds: [], blocks: [] };
+      slides.push(currentSlide);
+    }
+    return currentSlide;
+  }
+
+  for (const node of document.content) {
+    if (node.type === "heading") {
+      const level = typeof node.attrs?.level === "number" ? node.attrs.level : 1;
+      const title = getPlainText(node).trim() || getNodeId(node) || "Untitled";
+      if (level === 1) {
+        currentSection = title;
+        currentSlide = { title, sectionTitle: currentSection, sourceIds: collectNodeIds(node), blocks: [] };
+        slides.push(currentSlide);
+        continue;
+      }
+
+      if (level === 2) {
+        currentSlide = { title, sectionTitle: currentSection, sourceIds: collectNodeIds(node), blocks: [] };
+        slides.push(currentSlide);
+        continue;
+      }
+    }
+
+    const slide = ensureSlide();
+    slide.blocks.push(node);
+    slide.sourceIds.push(...collectNodeIds(node));
+  }
+
+  if (slides.length === 0) {
+    slides.push({ title: getDocumentTitle(document) || "Untitled", sourceIds: [], blocks: [] });
+  }
+
+  return slides;
 }
 
 export function exportOutline(document: SDocDocument): Array<{ id: string; level: number; title: string; anchor?: string }> {
@@ -107,6 +227,328 @@ export function exportChunks(document: SDocDocument): string {
   });
 
   return chunks.map((chunk) => JSON.stringify(chunk)).join("\n") + (chunks.length > 0 ? "\n" : "");
+}
+
+function renderPptxSlide(pptx: PptxPresentation, model: PptxSlideModel, options: PptxExportOptions): void {
+  const slide = pptx.addSlide(model.sectionTitle ? { sectionTitle: model.sectionTitle } : undefined);
+  slide.background = { color: "FFFFFF" };
+
+  slide.addText(model.title, {
+    x: 0.55,
+    y: 0.35,
+    w: 12.2,
+    h: 0.42,
+    margin: 0,
+    fontFace: "Aptos Display",
+    fontSize: 24,
+    bold: true,
+    color: "17212B",
+    breakLine: false,
+    fit: "shrink"
+  });
+
+  if (model.sectionTitle && model.sectionTitle !== model.title) {
+    slide.addText(model.sectionTitle, {
+      x: 0.58,
+      y: 0.82,
+      w: 12,
+      h: 0.22,
+      margin: 0,
+      fontFace: "Aptos",
+      fontSize: 8,
+      color: "687887",
+      fit: "shrink"
+    });
+  }
+
+  let y = 1.12;
+  for (const block of model.blocks) {
+    if (y > 6.8) {
+      y = renderOverflowNotice(slide, y);
+      break;
+    }
+
+    y = renderPptxBlock(slide, block, options, y);
+  }
+
+  if (model.sourceIds.length > 0) {
+    slide.addNotes(`SDoc source block ids: ${[...new Set(model.sourceIds)].join(", ")}`);
+  }
+}
+
+function renderPptxBlock(slide: PptxSlide, node: SDocNode, options: PptxExportOptions, y: number): number {
+  switch (node.type) {
+    case "paragraph":
+    case "blockquote":
+    case "callout": {
+      const text = getPlainText(node).trim();
+      if (!text) {
+        return y;
+      }
+      const isCallout = node.type === "callout";
+      const isWarning = node.attrs?.kind === "warning";
+      const boxHeight = Math.min(Math.max(0.38, estimateTextHeight(text, isCallout ? 52 : 76)), 1.18);
+      if (node.type === "blockquote" || isCallout) {
+        slide.addShape("rect", {
+          x: 0.65,
+          y,
+          w: 11.95,
+          h: boxHeight,
+          fill: { color: isWarning ? "FFF7E8" : isCallout ? "EEF8F0" : "F4F7FA" },
+          line: { color: isWarning ? "EFCD84" : "CBD6DE", width: 0.75 }
+        });
+      }
+      slide.addText(text, {
+        x: node.type === "paragraph" ? 0.65 : 0.82,
+        y: y + 0.06,
+        w: node.type === "paragraph" ? 11.95 : 11.55,
+        h: Math.max(0.28, boxHeight - 0.12),
+        margin: 0,
+        fontFace: "Aptos",
+        fontSize: 12,
+        color: "25313B",
+        fit: "shrink",
+        breakLine: false
+      });
+      return y + boxHeight + 0.18;
+    }
+
+    case "bulletList":
+    case "orderedList": {
+      const items = (node.content ?? []).map((child, index) => {
+        const marker = node.type === "orderedList" ? `${index + 1}.` : "-";
+        return `${marker} ${getPlainText(child).trim()}`;
+      });
+      const text = items.filter(Boolean).join("\n");
+      if (!text) {
+        return y;
+      }
+      const boxHeight = Math.min(Math.max(0.48, estimateTextHeight(text, 64)), 1.35);
+      slide.addText(text, {
+        x: 0.78,
+        y,
+        w: 11.7,
+        h: boxHeight,
+        margin: 0,
+        fontFace: "Aptos",
+        fontSize: 12,
+        color: "25313B",
+        breakLine: false,
+        fit: "shrink"
+      });
+      return y + boxHeight + 0.14;
+    }
+
+    case "codeBlock": {
+      const text = getPlainText(node);
+      const boxHeight = Math.min(Math.max(0.52, estimateTextHeight(text, 68)), 1.45);
+      slide.addShape("rect", {
+        x: 0.65,
+        y,
+        w: 11.95,
+        h: boxHeight,
+        fill: { color: "15202B" },
+        line: { color: "15202B", width: 0.75 }
+      });
+      slide.addText(text, {
+        x: 0.82,
+        y: y + 0.08,
+        w: 11.6,
+        h: Math.max(0.35, boxHeight - 0.16),
+        margin: 0,
+        fontFace: "Cascadia Mono",
+        fontSize: 8.5,
+        color: "F4F7FA",
+        fit: "shrink"
+      });
+      return y + boxHeight + 0.2;
+    }
+
+    case "table":
+      return renderPptxTable(slide, node, y);
+
+    case "figure": {
+      const assetId = typeof node.attrs?.assetId === "string" ? node.attrs.assetId : "";
+      const caption = getPlainText(node).trim();
+      return renderPptxAssetBlock(slide, options, assetId, caption || "Figure", y);
+    }
+
+    case "diagram": {
+      const kind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "mermaid";
+      if (kind === "drawio") {
+        const previewAssetId = typeof node.attrs?.previewAssetId === "string" ? node.attrs.previewAssetId : "";
+        const sourceAssetId = typeof node.attrs?.sourceAssetId === "string" ? node.attrs.sourceAssetId : "";
+        return previewAssetId
+          ? renderPptxAssetBlock(slide, options, previewAssetId, `Draw.io source: ${sourceAssetId}`, y)
+          : renderPptxPlaceholder(slide, `Draw.io source: ${sourceAssetId}`, y);
+      }
+
+      return renderPptxPlaceholder(slide, `${kind} diagram source:\n${typeof node.attrs?.source === "string" ? node.attrs.source : ""}`, y);
+    }
+
+    case "equationBlock":
+      return renderPptxPlaceholder(slide, `Equation: ${typeof node.attrs?.latex === "string" ? node.attrs.latex : ""}`, y);
+
+    case "heading":
+      return y;
+
+    default: {
+      const text = getPlainText(node).trim();
+      return text ? renderPptxPlaceholder(slide, text, y) : y;
+    }
+  }
+}
+
+function renderPptxTable(slide: PptxSlide, node: SDocNode, y: number): number {
+  const rows = (node.content ?? []).filter((child) => child.type === "tableRow");
+  const tableRows = rows.map((row) =>
+    (row.content ?? [])
+      .filter((cell) => cell.type === "tableCell" || cell.type === "tableHeader")
+      .map((cell) => ({
+        text: getPlainText(cell).trim(),
+        options: {
+          bold: cell.type === "tableHeader",
+          fill: { color: cell.type === "tableHeader" ? "EEF3F6" : "FFFFFF" },
+          color: "17212B",
+          fontFace: "Aptos",
+          fontSize: 9,
+          align: getTableCellAlign(cell) ?? "left",
+          margin: 0.04,
+          border: { type: "solid", color: "CFD8E1", pt: 0.5 }
+        }
+      }))
+  );
+  const columnCount = Math.max(1, ...tableRows.map((row) => row.length));
+  const height = Math.min(Math.max(0.42, tableRows.length * 0.32), 1.8);
+  slide.addTable(tableRows, {
+    x: 0.65,
+    y,
+    w: 11.95,
+    h: height,
+    colW: Array.from({ length: columnCount }, () => 11.95 / columnCount),
+    fontFace: "Aptos",
+    fontSize: 9,
+    color: "17212B"
+  });
+  return y + height + 0.2;
+}
+
+function renderPptxAssetBlock(slide: PptxSlide, options: PptxExportOptions, assetId: string, caption: string, y: number): number {
+  const asset = assetId ? options.assetResolver?.(assetId) : undefined;
+  if (!asset) {
+    return renderPptxPlaceholder(slide, `${caption}: missing asset ${assetId}`, y);
+  }
+
+  slide.addImage({
+    data: `data:${getAssetMimeType(assetId)};base64,${uint8ArrayToBase64(asset)}`,
+    x: 0.65,
+    y,
+    w: 4.2,
+    h: 2.0,
+    sizingCrop: true
+  });
+  slide.addText(caption, {
+    x: 5.05,
+    y,
+    w: 7.55,
+    h: 0.55,
+    margin: 0,
+    fontFace: "Aptos",
+    fontSize: 10,
+    color: "4E5D6B",
+    fit: "shrink"
+  });
+  return y + 2.2;
+}
+
+function renderPptxPlaceholder(slide: PptxSlide, text: string, y: number): number {
+  const height = Math.min(Math.max(0.45, estimateTextHeight(text, 70)), 1.2);
+  slide.addShape("rect", {
+    x: 0.65,
+    y,
+    w: 11.95,
+    h: height,
+    fill: { color: "F8FAFB" },
+    line: { color: "92A4B4", width: 0.75, dash: "dash" }
+  });
+  slide.addText(text, {
+    x: 0.82,
+    y: y + 0.08,
+    w: 11.6,
+    h: Math.max(0.28, height - 0.16),
+    margin: 0,
+    fontFace: "Aptos",
+    fontSize: 10,
+    color: "4E5D6B",
+    fit: "shrink"
+  });
+  return y + height + 0.18;
+}
+
+function renderOverflowNotice(slide: PptxSlide, y: number): number {
+  slide.addText("Additional content omitted from this v1 slide projection.", {
+    x: 0.65,
+    y,
+    w: 11.95,
+    h: 0.25,
+    margin: 0,
+    fontFace: "Aptos",
+    fontSize: 8,
+    color: "A33A32"
+  });
+  return y + 0.3;
+}
+
+function collectNodeIds(node: SDocNode): string[] {
+  const ids: string[] = [];
+  function visit(current: SDocNode): void {
+    const id = getNodeId(current);
+    if (id) {
+      ids.push(id);
+    }
+    current.content?.forEach(visit);
+  }
+
+  visit(node);
+  return ids;
+}
+
+function estimateTextHeight(text: string, charactersPerLine: number): number {
+  const lineCount = text
+    .split("\n")
+    .map((line) => Math.max(1, Math.ceil(line.length / charactersPerLine)))
+    .reduce((sum, count) => sum + count, 0);
+  return lineCount * 0.22 + 0.16;
+}
+
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
+  }
+
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+function getAssetMimeType(assetId: string): string {
+  const lower = assetId.toLowerCase();
+  if (lower.endsWith(".svg")) {
+    return "image/svg+xml";
+  }
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+  if (lower.endsWith(".gif")) {
+    return "image/gif";
+  }
+  if (lower.endsWith(".webp")) {
+    return "image/webp";
+  }
+
+  return "image/png";
 }
 
 function renderBlock(node: SDocNode, references: Map<string, ReferenceTarget>, depth = 0): string {

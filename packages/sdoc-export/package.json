@@ -11,7 +11,7 @@
     }
   },
   "dependencies": {
-    "@sdoc/schema": "0.0.0"
+    "@sdoc/schema": "0.0.0",
+    "pptxgenjs": "^4.0.1"
   }
 }
-

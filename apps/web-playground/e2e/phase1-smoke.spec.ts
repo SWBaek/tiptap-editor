@@ -173,6 +173,8 @@ test("exports readable and AI/RAG outputs from the Export side panel", async ({ 
   await expect(exportPanel.getByLabel("Readable exports")).toContainText("Export Panel Spec.html");
   await expect(exportPanel.getByLabel("PDF publishing boundary")).toContainText("CLI/Tauri PDF");
   await expect(exportPanel.getByLabel("PDF publishing boundary")).toContainText("Export Panel Spec.pdf");
+  await expect(exportPanel.getByLabel("Slide export boundary")).toContainText("CLI/Tauri PPTX");
+  await expect(exportPanel.getByLabel("Slide export boundary")).toContainText("Export Panel Spec.pptx");
   await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("plain.md");
   await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("chunks.jsonl");
   await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("outline.json");
@@ -190,6 +192,9 @@ test("exports readable and AI/RAG outputs from the Export side panel", async ({ 
 
   await exportPanel.getByRole("button", { name: "Copy PDF CLI command" }).click();
   await expect(page.locator(".status-note")).toContainText('npm run sdoc -- export "Export Panel Spec.sdoc" --format pdf -o "Export Panel Spec.pdf"');
+
+  await exportPanel.getByRole("button", { name: "Copy PPTX CLI command" }).click();
+  await expect(page.locator(".status-note")).toContainText('npm run sdoc -- export "Export Panel Spec.sdoc" --format pptx -o "Export Panel Spec.pptx"');
 
   const plainDownload = page.waitForEvent("download");
   await exportPanel.getByRole("button", { name: "Export plain.md" }).click();

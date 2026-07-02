@@ -230,7 +230,8 @@ export function App() {
     json: "document.json",
     markdown: `${exportBaseName}.md`,
     html: `${exportBaseName}.html`,
-    pdf: `${exportBaseName}.pdf`
+    pdf: `${exportBaseName}.pdf`,
+    pptx: `${exportBaseName}.pptx`
   };
   const preview = activeTab === "json" ? json : markdown;
 
@@ -1199,6 +1200,7 @@ function ExportPanel({
     markdown: string;
     html: string;
     pdf: string;
+    pptx: string;
   };
   derivedOutputs: Record<DerivedOutputName, string>;
   onExportSdoc: () => void;
@@ -1209,6 +1211,7 @@ function ExportPanel({
   onCopyDeveloperCommand: (command: string) => void;
 }) {
   const pdfCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pdf -o ${quoteCliPath(filenames.pdf)}`;
+  const pptxCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pptx -o ${quoteCliPath(filenames.pptx)}`;
 
   return (
     <div className="side-panel-section export-panel">
@@ -1240,6 +1243,20 @@ function ExportPanel({
           filename={filenames.pdf}
           description="Generates from the saved .sdoc file with Playwright/Chromium print emulation."
           onClick={() => onCopyDeveloperCommand(pdfCommand)}
+        />
+      </section>
+
+      <section className="export-section" aria-label="Slide export boundary">
+        <h3>Slides</h3>
+        <div className="workspace-boundary">
+          <strong>CLI/Tauri PPTX</strong>
+          <span>Save .sdoc first, then generate editable PPTX through the CLI; browser PPTX download is deferred until fidelity and bundle size are proven.</span>
+        </div>
+        <ExportAction
+          label="Copy PPTX CLI command"
+          filename={filenames.pptx}
+          description="Generates editable native slides from heading sections in canonical document.json."
+          onClick={() => onCopyDeveloperCommand(pptxCommand)}
         />
       </section>
 

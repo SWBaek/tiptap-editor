@@ -204,6 +204,17 @@ describe("diffDocuments", () => {
     expect(events.some((event) => event.kind === "modified" && event.id !== "blk_table")).toBe(false);
     expect(renderReadableDiffEvents(events)).toContain('Modified table "table 2x2" (blk_table) at doc_table[0]/blk_table: cell 2,2 changed "Draft" -> "Ready"');
   });
+
+  it("summarizes block equation source changes", () => {
+    const oldEquationDocument = createEquationDocument("E=mc^2");
+    const newEquationDocument = createEquationDocument("F=ma");
+    const modified = diffDocuments(oldEquationDocument, newEquationDocument).find(
+      (event) => event.kind === "modified" && event.id === "blk_equation"
+    );
+
+    expect(modified?.kind).toBe("modified");
+    expect(modified?.kind === "modified" ? modified.changes : []).toEqual(['text changed "[-E=mc^2-] [+F=ma+]"']);
+  });
 });
 
 describe("renderReadableDiffEvents", () => {
@@ -279,5 +290,14 @@ function createTableCell(type: "tableCell" | "tableHeader", id: string, paragrap
     type,
     attrs: { id },
     content: [{ type: "paragraph", attrs: { id: paragraphId }, content: [{ type: "text", text }] }]
+  };
+}
+
+function createEquationDocument(latex: string): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_equation" },
+    content: [{ type: "equationBlock", attrs: { id: "blk_equation", latex } }]
   };
 }

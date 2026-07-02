@@ -47,13 +47,14 @@ export const BLOCK_NODE_TYPES = new Set([
   "listItem",
   "callout",
   "figure",
+  "equationBlock",
   "table",
   "tableRow",
   "tableCell",
   "tableHeader"
 ]);
 
-export const INLINE_NODE_TYPES = new Set(["text", "hardBreak", "crossReference"]);
+export const INLINE_NODE_TYPES = new Set(["text", "hardBreak", "crossReference", "equation"]);
 
 export const MARK_TYPES = new Set([
   "bold",
@@ -87,6 +88,10 @@ export function getNodeAnchor(node: SDocNode): string | undefined {
 export function getPlainText(node: SDocNode): string {
   if (node.type === "text") {
     return node.text ?? "";
+  }
+
+  if (node.type === "equation" || node.type === "equationBlock") {
+    return typeof node.attrs?.latex === "string" ? node.attrs.latex : "";
   }
 
   return (node.content ?? []).map(getPlainText).join("");
@@ -191,6 +196,13 @@ function validateNode(
     const targetId = typedNode.attrs?.targetId;
     if (typeof targetId !== "string" || targetId.length === 0) {
       issues.push({ path: `${path}.attrs.targetId`, message: "crossReference targetId is required" });
+    }
+  }
+
+  if (typedNode.type === "equation" || typedNode.type === "equationBlock") {
+    const latex = typedNode.attrs?.latex;
+    if (typeof latex !== "string" || latex.trim().length === 0) {
+      issues.push({ path: `${path}.attrs.latex`, message: `${typedNode.type} latex is required` });
     }
   }
 

@@ -342,8 +342,8 @@ function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
     changes.push(summarizeTextChange(oldText, newText));
   }
 
-  const oldAttrs = stableStringify(omitId(oldNode.attrs ?? {}));
-  const newAttrs = stableStringify(omitId(newNode.attrs ?? {}));
+  const oldAttrs = stableStringify(omitDiffAttrs(oldNode));
+  const newAttrs = stableStringify(omitDiffAttrs(newNode));
   if (oldAttrs !== newAttrs) {
     changes.push("attrs changed");
   }
@@ -536,6 +536,15 @@ function humanizeNodeType(nodeType: string): string {
 function omitId(attrs: Record<string, unknown>): Record<string, unknown> {
   const { id: _id, ...rest } = attrs;
   return rest;
+}
+
+function omitDiffAttrs(node: SDocNode): Record<string, unknown> {
+  const attrs = omitId(node.attrs ?? {});
+  if (node.type === "equationBlock" || node.type === "equation") {
+    const { latex: _latex, ...rest } = attrs;
+    return rest;
+  }
+  return attrs;
 }
 
 function quote(value: string): string {

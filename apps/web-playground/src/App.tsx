@@ -25,6 +25,7 @@ import {
   ListOrdered,
   Quote,
   Save,
+  Sigma,
   Table as TableIcon,
   Underline as UnderlineIcon
 } from "lucide-react";
@@ -35,9 +36,13 @@ import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, v
 import {
   BlockIdExtension,
   CalloutNode,
+  EquationBlockNode,
   FigureNode,
   fromSdocDocument,
+  InlineEquationNode,
   initialContent,
+  insertEquationBlock,
+  insertInlineEquation,
   insertSimpleTable,
   moveSelectedTopLevelBlock,
   repairEditorBlockIds,
@@ -65,7 +70,14 @@ const initialMetadata: SDocMetadata = {
   version: "0.1"
 };
 
-const sdocExtensions = [...TableExtensions, FigureNode, CalloutNode, BlockIdExtension] as unknown as AnyExtension[];
+const sdocExtensions = [
+  InlineEquationNode,
+  EquationBlockNode,
+  ...TableExtensions,
+  FigureNode,
+  CalloutNode,
+  BlockIdExtension
+] as unknown as AnyExtension[];
 
 export function App() {
   const [activeTab, setActiveTab] = useState<PreviewTab>("json");
@@ -265,6 +277,30 @@ export function App() {
     setStatusMessage(inserted ? "Inserted table" : "Cannot insert table");
   }
 
+  function insertInlineEquationFromPrompt() {
+    const latex = window.prompt("Inline equation", "E=mc^2")?.trim();
+    if (!latex) {
+      setStatusMessage("Canceled inline equation");
+      return;
+    }
+
+    const inserted = insertInlineEquation(editor, latex);
+    setActiveTab("json");
+    setStatusMessage(inserted ? "Inserted inline equation" : "Cannot insert inline equation");
+  }
+
+  function insertEquationBlockFromPrompt() {
+    const latex = window.prompt("Block equation", "a^2+b^2=c^2")?.trim();
+    if (!latex) {
+      setStatusMessage("Canceled equation block");
+      return;
+    }
+
+    const inserted = insertEquationBlock(editor, latex);
+    setActiveTab("json");
+    setStatusMessage(inserted ? "Inserted equation block" : "Cannot insert equation block");
+  }
+
   async function insertImageFile(file: File) {
     try {
       if (file.type && !file.type.startsWith("image/")) {
@@ -401,6 +437,12 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={insertTable}>
             <TableIcon size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Insert inline equation" active={editor.isActive("equation")} onClick={insertInlineEquationFromPrompt}>
+            <Sigma size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Insert equation block" active={editor.isActive("equationBlock")} onClick={insertEquationBlockFromPrompt}>
+            <Sigma size={18} />
           </ToolbarButton>
           <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
             <Info size={18} />

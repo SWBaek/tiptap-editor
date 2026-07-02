@@ -101,6 +101,13 @@ describe("exportMarkdown", () => {
 
     expect(exportMarkdown(withTable)).toContain("| Name | Status |\n| --- | --- |\n| API | Ready |");
   });
+
+  it("exports inline and block equations as Markdown math", () => {
+    const markdown = exportMarkdown(createEquationDocument("E=mc^2", "a^2+b^2=c^2"));
+
+    expect(markdown).toContain("Energy $E=mc^2$");
+    expect(markdown).toContain("$$\na^2+b^2=c^2\n$$");
+  });
 });
 
 describe("exportDerivedOutputs", () => {
@@ -143,7 +150,38 @@ describe("exportDerivedOutputs", () => {
     expect(outputs["references.json"]).toContain('"type": "table"');
     expect(outputs["chunks.jsonl"]).toContain("Ready");
   });
+
+  it("includes equation source in derived outputs", () => {
+    const outputs = exportDerivedOutputs(createEquationDocument("E=mc^2", "a^2+b^2=c^2"));
+
+    expect(outputs["plain.md"]).toContain("Energy $E=mc^2$");
+    expect(outputs["plain.md"]).toContain("$$\na^2+b^2=c^2\n$$");
+    expect(outputs["references.json"]).toContain('"type": "equationBlock"');
+    expect(outputs["chunks.jsonl"]).toContain("a^2+b^2=c^2");
+  });
 });
+
+function createEquationDocument(inlineLatex: string, blockLatex: string): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_equation" },
+    content: [
+      {
+        type: "paragraph",
+        attrs: { id: "blk_equation_text" },
+        content: [
+          { type: "text", text: "Energy " },
+          { type: "equation", attrs: { latex: inlineLatex } }
+        ]
+      },
+      {
+        type: "equationBlock",
+        attrs: { id: "blk_equation", latex: blockLatex }
+      }
+    ]
+  };
+}
 
 function createTableDocument(status: string): SDocDocument {
   return {

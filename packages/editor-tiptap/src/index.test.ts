@@ -6,8 +6,12 @@ import {
   BlockIdExtension,
   CalloutNode,
   collectJsonBlockIds,
+  EquationBlockNode,
   FigureNode,
   fromSdocDocument,
+  InlineEquationNode,
+  insertEquationBlock,
+  insertInlineEquation,
   moveSelectedTopLevelBlock,
   repairJsonBlockIds,
   repairEditorBlockIds,
@@ -235,6 +239,48 @@ describe("SDoc conversion", () => {
       ]
     });
   });
+
+  it("round-trips inline and block equations across SDoc conversion", () => {
+    const document = toSdocDocument(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            attrs: { id: "blk_equation_text" },
+            content: [
+              { type: "text", text: "Energy " },
+              { type: "equation", attrs: { latex: "E=mc^2" } }
+            ]
+          },
+          {
+            type: "equationBlock",
+            attrs: { id: "blk_equation", latex: "a^2+b^2=c^2" }
+          }
+        ]
+      },
+      "doc_equation"
+    );
+
+    expect(validateDocument(document).ok).toBe(true);
+    expect(fromSdocDocument(document)).toEqual({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { id: "blk_equation_text" },
+          content: [
+            { type: "text", text: "Energy " },
+            { type: "equation", attrs: { latex: "E=mc^2" } }
+          ]
+        },
+        {
+          type: "equationBlock",
+          attrs: { id: "blk_equation", latex: "a^2+b^2=c^2" }
+        }
+      ]
+    });
+  });
 });
 
 describe("BlockIdExtension", () => {
@@ -405,6 +451,29 @@ describe("BlockIdExtension", () => {
     expect(document.content.some((node) => node.type === "table")).toBe(true);
     expect(ids.length).toBeGreaterThanOrEqual(8);
     expect(new Set(ids).size).toBe(ids.length);
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
+  it("inserts inline and block equations with preserved latex source", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, InlineEquationNode, EquationBlockNode, ...TableExtensions, FigureNode, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_initial" }, content: [{ type: "text", text: "Energy " }] }]
+      }
+    });
+
+    editor.commands.setTextSelection(8);
+    const inlineInserted = insertInlineEquation(editor, "E=mc^2");
+    const blockInserted = insertEquationBlock(editor, "a^2+b^2=c^2", "blk_equation");
+    const document = toSdocDocument(editor.getJSON(), "doc_equation");
+    editor.destroy();
+
+    expect(inlineInserted).toBe(true);
+    expect(blockInserted).toBe(true);
+    expect(JSON.stringify(document)).toContain('"type":"equation"');
+    expect(JSON.stringify(document)).toContain('"type":"equationBlock"');
+    expect(document.content[1].attrs?.id).toBe("blk_equation");
     expect(validateDocument(document).ok).toBe(true);
   });
 });

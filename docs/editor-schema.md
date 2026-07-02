@@ -22,6 +22,7 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 | `listItem` | yes | 목록 항목 |
 | `callout` | yes | `kind: note/info/warning/danger/tip` |
 | `figure` | yes | Phase 2 asset-backed image with caption; `assetId` required |
+| `equationBlock` | yes | Phase 2 block math; `latex` source required |
 | `table` | yes | Phase 2 simple table container |
 | `tableRow` | yes | Table row; children are `tableCell` or `tableHeader` |
 | `tableCell` | yes | Table body cell; contains block content |
@@ -29,8 +30,9 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 | `text` | no | inline text |
 | `hardBreak` | no | 줄바꿈 |
 | `crossReference` | no | 내부 참조 inline node |
+| `equation` | no | Phase 2 inline math; `latex` source required |
 
-Phase 2 이후 `equationBlock`, `diagram`을 추가한다. PDF, slide, Draw.io deep integration은 schema foundation 이후로 미룬다.
+Phase 2 이후 `diagram`을 추가한다. PDF, slide, Draw.io deep integration은 schema foundation 이후로 미룬다.
 
 ## Phase 2 Figure Shape
 
@@ -51,6 +53,31 @@ Phase 2 이후 `equationBlock`, `diagram`을 추가한다. PDF, slide, Draw.io d
       "content": [{ "type": "text", "text": "System architecture" }]
     }
   ]
+}
+```
+
+## Phase 2 Equation Shape
+
+Equations store source text in `attrs.latex`. KaTeX rendering is an editor/export projection; canonical `document.json` keeps only the source.
+
+```json
+{
+  "type": "paragraph",
+  "attrs": { "id": "blk_equation_text" },
+  "content": [
+    { "type": "text", "text": "Energy " },
+    { "type": "equation", "attrs": { "latex": "E=mc^2" } }
+  ]
+}
+```
+
+```json
+{
+  "type": "equationBlock",
+  "attrs": {
+    "id": "blk_equation",
+    "latex": "a^2+b^2=c^2"
+  }
 }
 ```
 

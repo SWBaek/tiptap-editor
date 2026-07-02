@@ -1,6 +1,7 @@
 import { Extension, mergeAttributes, Node, type JSONContent } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import katex from "katex";
 import { createBlockId, type JsonValue, type SDocDocument, type SDocNode } from "@sdoc/schema";
 
 export const BLOCK_TYPES_WITH_IDS = [
@@ -13,6 +14,7 @@ export const BLOCK_TYPES_WITH_IDS = [
   "listItem",
   "callout",
   "figure",
+  "equationBlock",
   "table",
   "tableRow",
   "tableCell",
@@ -154,6 +156,76 @@ export const FigureNode = Node.create({
   }
 });
 
+export const InlineEquationNode = Node.create({
+  name: "equation",
+  group: "inline",
+  inline: true,
+  atom: true,
+  selectable: true,
+
+  addAttributes() {
+    return {
+      latex: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-latex") ?? stripMathDelimiters(element.textContent ?? ""),
+        renderHTML: (attributes) => ({ "data-latex": attributes.latex })
+      }
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "span[data-type='equation']" }];
+  },
+
+  renderHTML({ HTMLAttributes, node }) {
+    const latex = String(node.attrs.latex ?? "");
+    return [
+      "span",
+      mergeAttributes(HTMLAttributes, { "data-type": "equation", class: "sdoc-inline-equation" }),
+      `$${latex}$`
+    ];
+  },
+
+  addNodeView() {
+    return createEquationNodeView("span", "equation", false);
+  }
+});
+
+export const EquationBlockNode = Node.create({
+  name: "equationBlock",
+  group: "block",
+  atom: true,
+  defining: true,
+  selectable: true,
+
+  addAttributes() {
+    return {
+      latex: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-latex") ?? stripMathDelimiters(element.textContent ?? ""),
+        renderHTML: (attributes) => ({ "data-latex": attributes.latex })
+      }
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "div[data-type='equationBlock']" }];
+  },
+
+  renderHTML({ HTMLAttributes, node }) {
+    const latex = String(node.attrs.latex ?? "");
+    return [
+      "div",
+      mergeAttributes(HTMLAttributes, { "data-type": "equationBlock", class: "sdoc-equation-block" }),
+      `$$\n${latex}\n$$`
+    ];
+  },
+
+  addNodeView() {
+    return createEquationNodeView("div", "equationBlock", true);
+  }
+});
+
 export const TableNode = Table.configure({
   resizable: false,
   HTMLAttributes: {
@@ -179,6 +251,97 @@ interface TableChain {
 export function insertSimpleTable(editor: TableInsertTarget, rows = 3, cols = 2): boolean {
   const chain = editor.chain() as TableChain;
   return chain.focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+}
+
+export interface EquationInsertTarget {
+  chain: () => unknown;
+  getJSON?: () => unknown;
+}
+
+interface InsertContentChain {
+  focus: () => {
+    insertContent: (content: JSONContent) => { run: () => boolean };
+  };
+}
+
+export function insertInlineEquation(editor: EquationInsertTarget, latex: string): boolean {
+  const before = fingerprintEditorJson(editor);
+  const chain = editor.chain() as InsertContentChain;
+  const result = chain.focus().insertContent({ type: "equation", attrs: { latex } }).run();
+  return result || fingerprintEditorJson(editor) !== before;
+}
+
+export function insertEquationBlock(editor: EquationInsertTarget, latex: string, id = createBlockId()): boolean {
+  const before = fingerprintEditorJson(editor);
+  const chain = editor.chain() as InsertContentChain;
+  const result = chain.focus().insertContent({ type: "equationBlock", attrs: { id, latex } }).run();
+  return result || fingerprintEditorJson(editor) !== before;
+}
+
+function fingerprintEditorJson(editor: EquationInsertTarget): string {
+  return editor.getJSON ? JSON.stringify(editor.getJSON()) : "";
+}
+
+function createEquationNodeView(tagName: "span" | "div", nodeType: "equation" | "equationBlock", displayMode: boolean) {
+  return ({ node }: { node: { type: { name: string }; attrs: Record<string, unknown> } }) => {
+    const dom = document.createElement(tagName);
+
+    function render(currentNode: typeof node): void {
+      const latex = typeof currentNode.attrs.latex === "string" ? currentNode.attrs.latex : "";
+      dom.className = displayMode ? "sdoc-equation-block" : "sdoc-inline-equation";
+      dom.setAttribute("data-type", nodeType);
+      dom.setAttribute("data-latex", latex);
+      dom.setAttribute("title", latex);
+      dom.innerHTML = renderKatex(latex, displayMode);
+    }
+
+    render(node);
+
+    return {
+      dom,
+      update(updatedNode: typeof node) {
+        if (updatedNode.type.name !== nodeType) {
+          return false;
+        }
+
+        render(updatedNode);
+        return true;
+      }
+    };
+  };
+}
+
+function renderKatex(latex: string, displayMode: boolean): string {
+  try {
+    return katex.renderToString(latex, {
+      displayMode,
+      throwOnError: false,
+      strict: "ignore"
+    });
+  } catch {
+    return escapeHtml(latex);
+  }
+}
+
+function stripMathDelimiters(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("$$") && trimmed.endsWith("$$")) {
+    return trimmed.slice(2, -2).trim();
+  }
+
+  if (trimmed.startsWith("$") && trimmed.endsWith("$")) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 export const BlockIdExtension = Extension.create({

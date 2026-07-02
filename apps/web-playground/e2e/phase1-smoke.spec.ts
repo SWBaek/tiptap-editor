@@ -8,6 +8,7 @@ interface JsonNode {
     assetId?: unknown;
     alt?: unknown;
     kind?: unknown;
+    latex?: unknown;
     level?: unknown;
   };
   content?: JsonNode[];
@@ -178,6 +179,59 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   const reopenedDocument = await readPreviewDocument(page);
   const reopenedTable = findFirstNodeByType(reopenedDocument, "table");
   expect(reopenedTable.attrs?.id).toBe(findFirstNodeByType(insertedDocument, "table").attrs?.id);
+  expectUniqueIds(collectBlockIds(reopenedDocument));
+});
+
+test("inserts inline and block equations and round-trips through .sdoc", async ({ page }, testInfo) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+  await page.keyboard.type("Energy ");
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toBe("Inline equation");
+    await dialog.accept("E=mc^2");
+  });
+  await page.getByRole("button", { name: "Insert inline equation" }).click();
+  await expect(page.locator(".status-note")).toContainText("Inserted inline equation");
+  await expect(page.locator(".editor-surface .sdoc-inline-equation .katex")).toBeVisible();
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toBe("Block equation");
+    await dialog.accept("a^2+b^2=c^2");
+  });
+  await page.getByRole("button", { name: "Insert equation block" }).click();
+  await expect(page.locator(".status-note")).toContainText("Inserted equation block");
+  await expect(page.locator(".editor-surface .sdoc-equation-block .katex")).toBeVisible();
+
+  const insertedDocument = await readPreviewDocument(page);
+  expect(findFirstNodeByType(insertedDocument, "equation").attrs?.latex).toBe("E=mc^2");
+  expect(findFirstNodeByType(insertedDocument, "equationBlock").attrs?.latex).toBe("a^2+b^2=c^2");
+  expectUniqueIds(collectBlockIds(insertedDocument));
+  await expect(page.getByText("Valid")).toBeVisible();
+
+  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await expect(page.locator(".preview-output")).toContainText("Energy $E=mc^2$");
+  await expect(page.locator(".preview-output")).toContainText("$$\na^2+b^2=c^2\n$$");
+
+  const sdocDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  const sdocDownload = await sdocDownloadPromise;
+  const sdocPath = testInfo.outputPath("Equation Round Trip.sdoc");
+  await sdocDownload.saveAs(sdocPath);
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.getByLabel("Open document file").setInputFiles(sdocPath);
+  await expect(page.locator(".status-note")).toContainText("Opened Equation Round Trip.sdoc");
+  await expect(page.locator(".editor-surface .sdoc-inline-equation .katex")).toBeVisible();
+  await expect(page.locator(".editor-surface .sdoc-equation-block .katex")).toBeVisible();
+
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const reopenedDocument = await readPreviewDocument(page);
+  expect(findFirstNodeByType(reopenedDocument, "equation").attrs?.latex).toBe("E=mc^2");
+  expect(findFirstNodeByType(reopenedDocument, "equationBlock").attrs?.latex).toBe("a^2+b^2=c^2");
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 

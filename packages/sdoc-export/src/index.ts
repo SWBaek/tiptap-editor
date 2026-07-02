@@ -119,6 +119,11 @@ function renderBlock(node: SDocNode, references: Map<string, ReferenceTarget>, d
       return `![${escapeMarkdownAlt(alt)}](assets/${encodeURI(assetId)})\n\n_Figure: ${caption}_`;
     }
 
+    case "equationBlock": {
+      const latex = typeof node.attrs?.latex === "string" ? node.attrs.latex : "";
+      return `$$\n${latex}\n$$`;
+    }
+
     case "table":
       return renderMarkdownTable(node, references);
 
@@ -157,6 +162,11 @@ function renderInline(node: SDocNode, references: Map<string, ReferenceTarget>):
 
   if (node.type === "hardBreak") {
     return "\n";
+  }
+
+  if (node.type === "equation") {
+    const latex = typeof node.attrs?.latex === "string" ? node.attrs.latex : "";
+    return `$${latex}$`;
   }
 
   if (node.type === "crossReference") {

@@ -1,3 +1,5 @@
+@import "katex/dist/katex.min.css";
+
 :root {
   color: #182026;
   background: #eef1f4;
@@ -379,6 +381,25 @@ button {
 .editor-surface th p,
 .editor-surface td p {
   margin: 0;
+}
+
+.editor-surface .sdoc-inline-equation {
+  display: inline-block;
+  padding: 0 3px;
+  vertical-align: baseline;
+  background: #f7fafb;
+  border: 1px solid #dce5ec;
+  border-radius: 4px;
+}
+
+.editor-surface .sdoc-equation-block {
+  margin: 18px 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  background: #f8fafb;
+  border: 1px solid #d8e0e6;
+  border-radius: 6px;
+  text-align: center;
 }
 
 .editor-surface .is-editor-empty:first-child::before {

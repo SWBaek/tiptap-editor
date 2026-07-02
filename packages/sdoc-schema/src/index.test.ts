@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBlockId, createDocumentId, createEmptyDocument, validateDocument } from "./index";
+import { createBlockId, createDocumentId, createEmptyDocument, getPlainText, validateDocument } from "./index";
 
 describe("validateDocument", () => {
   it("accepts the minimal document", () => {
@@ -125,17 +125,61 @@ describe("validateDocument", () => {
     expect(result.issues.some((issue) => issue.message.includes("table child must be tableRow"))).toBe(true);
   });
 
+  it("accepts inline and block equations with latex source", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_equation" },
+      content: [
+        {
+          type: "paragraph",
+          attrs: { id: "blk_paragraph" },
+          content: [
+            { type: "text", text: "Energy " },
+            { type: "equation", attrs: { latex: "E=mc^2" } }
+          ]
+        },
+        {
+          type: "equationBlock",
+          attrs: { id: "blk_equation", latex: "a^2+b^2=c^2" }
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(true);
+    expect(getPlainText(document.content[0])).toBe("Energy E=mc^2");
+    expect(getPlainText(document.content[1])).toBe("a^2+b^2=c^2");
+  });
+
+  it("rejects equations without latex source", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_equation_bad" },
+      content: [
+        { type: "paragraph", attrs: { id: "blk_paragraph" }, content: [{ type: "equation", attrs: { latex: "" } }] },
+        { type: "equationBlock", attrs: { id: "blk_equation" } }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("equation latex is required"))).toBe(true);
+    expect(result.issues.some((issue) => issue.message.includes("equationBlock latex is required"))).toBe(true);
+  });
+
   it("rejects nodes outside the current scope", () => {
     const document = {
       schemaVersion: 1,
       type: "doc",
       attrs: { id: "doc_test" },
-      content: [{ type: "equationBlock", attrs: { id: "blk_future" }, content: [] }]
+      content: [{ type: "diagram", attrs: { id: "blk_future" }, content: [] }]
     };
 
     const result = validateDocument(document);
     expect(result.ok).toBe(false);
-    expect(result.issues.some((issue) => issue.message.includes("unsupported node type: equationBlock"))).toBe(true);
+    expect(result.issues.some((issue) => issue.message.includes("unsupported node type: diagram"))).toBe(true);
   });
 
   it("rejects marks outside the v1 scope", () => {

@@ -82,11 +82,19 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Extend schema/export/diff only for semantic table attributes such as cell alignment; do not store selection or column width state.
 - Add focused unit tests and Playwright coverage for the browser editing workflow.
 
-## Current Slice: Section Folding Boundary
+## Completed Slice: Section Folding Boundary
 
 - Decide whether section folding is pure editor UI state, document outline metadata, or a canonical section node change.
 - Keep collapsed/expanded state out of `document.json` unless it represents authored document semantics.
 - Prefer a boundary document before implementing fold controls or persisted outline state.
+- Use `docs/section-folding-boundary.md` as the boundary document.
+
+## Current Slice: Section Folding Runtime Controls
+
+- Derive foldable ranges from heading levels and stable heading block IDs.
+- Add browser-local fold/unfold controls without changing `document.json`.
+- Ensure exports, validation, semantic diff, references, and AI/RAG derived outputs still include folded content.
+- Add unit and Playwright coverage proving fold state is runtime-only.
 
 ## Acceptance Evidence
 
@@ -102,6 +110,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - `docs/advanced-table-editing-boundary.md` records that v1 advanced tables stay rectangular, source-preserving, and free of transient UI layout state.
 - Unit tests cover table cell alignment validation, Markdown/HTML export, semantic diff summaries, and advanced table command wrappers.
 - Playwright covers row/column insertion, header column toggling, cell alignment, stable IDs, and absence of transient table UI state in `document.json`.
+- `docs/section-folding-boundary.md` records that section folding is derived from headings and that collapsed state is runtime-only.
 
 ## Boundaries
 
@@ -115,4 +124,4 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Embedded Draw.io editor integration
 - Draw.io structural diff
 - Merged table cells
-- Section folding implementation
+- Authored disclosure blocks

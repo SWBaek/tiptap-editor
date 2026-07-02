@@ -2,7 +2,7 @@ import { Extension, mergeAttributes, Node, type JSONContent } from "@tiptap/core
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import katex from "katex";
-import { createBlockId, type JsonValue, type SDocDocument, type SDocNode } from "@sdoc/schema";
+import { createBlockId, createReferenceId, type JsonValue, type SDocDocument, type SDocNode } from "@sdoc/schema";
 
 export const BLOCK_TYPES_WITH_IDS = [
   "paragraph",
@@ -154,6 +154,37 @@ export const FigureNode = Node.create({
       ["img", imageAttributes],
       ["figcaption", 0]
     ];
+  }
+});
+
+export const CrossReferenceNode = Node.create({
+  name: "crossReference",
+  group: "inline",
+  inline: true,
+  content: "text*",
+  selectable: true,
+
+  addAttributes() {
+    return {
+      id: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-id"),
+        renderHTML: (attributes) => (attributes.id ? { "data-id": attributes.id } : {})
+      },
+      targetId: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-target-id"),
+        renderHTML: (attributes) => (attributes.targetId ? { "data-target-id": attributes.targetId } : {})
+      }
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "span[data-type='crossReference']" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ["span", mergeAttributes(HTMLAttributes, { "data-type": "crossReference", class: "sdoc-cross-reference" }), 0];
   }
 });
 
@@ -309,6 +340,25 @@ export function insertInlineEquation(editor: EquationInsertTarget, latex: string
   const before = fingerprintEditorJson(editor);
   const chain = editor.chain() as InsertContentChain;
   const result = chain.focus().insertContent({ type: "equation", attrs: { latex } }).run();
+  return result || fingerprintEditorJson(editor) !== before;
+}
+
+export function insertCrossReference(editor: EquationInsertTarget, targetId: string, id = createReferenceId()): boolean {
+  const cleanTargetId = targetId.trim();
+  if (cleanTargetId.length === 0) {
+    return false;
+  }
+
+  const before = fingerprintEditorJson(editor);
+  const chain = editor.chain() as InsertContentChain;
+  const result = chain
+    .focus()
+    .insertContent({
+      type: "crossReference",
+      attrs: { id, targetId: cleanTargetId },
+      content: [{ type: "text", text: cleanTargetId }]
+    })
+    .run();
   return result || fingerprintEditorJson(editor) !== before;
 }
 

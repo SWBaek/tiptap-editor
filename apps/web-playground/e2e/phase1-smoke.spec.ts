@@ -11,6 +11,7 @@ interface JsonNode {
     latex?: unknown;
     level?: unknown;
     source?: unknown;
+    targetId?: unknown;
   };
   content?: JsonNode[];
   marks?: Array<{ type?: unknown }>;
@@ -107,6 +108,29 @@ test("persists local history snapshots across reloads", async ({ page }) => {
   await page.reload();
   await page.locator(".tabs").getByRole("button", { name: "History" }).click();
   await expect(page.locator(".history-item")).toContainText("Playground Document");
+});
+
+test("detects broken cross references in the playground", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".editor-surface p").first().click();
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toBe("Target block id");
+    await dialog.accept("blk_missing");
+  });
+  await page.getByRole("button", { name: "Insert reference" }).click();
+
+  await expect(page.locator(".status-note")).toContainText("Inserted reference to blk_missing");
+  await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("1 broken");
+  await expect(page.locator(".reference-summary")).toContainText("Broken");
+  await expect(page.locator(".reference-issue-list")).toContainText("blk_missing");
+  await expect(page.locator(".reference-target-list")).toContainText("blk_overview");
+
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const document = await readPreviewDocument(page);
+  expect(findFirstNodeByType(document, "crossReference").attrs?.targetId).toBe("blk_missing");
+  expectUniqueIds(collectBlockIds(document));
+  await expect(page.getByText("Valid")).toBeVisible();
 });
 
 test("round-trips a downloaded .sdoc through the browser open flow", async ({ page }, testInfo) => {

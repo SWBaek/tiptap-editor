@@ -1,5 +1,5 @@
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
-import type { SDocDocument, ValidationResult } from "@sdoc/schema";
+import { getNodeAnchor, getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocNode, type ValidationResult } from "@sdoc/schema";
 
 export interface ChangeReviewSection {
   title: string;
@@ -20,6 +20,29 @@ export interface LocalHistoryEntry {
   title: string;
   document: SDocDocument;
   metadata: SDocMetadata;
+}
+
+export interface ReferenceTargetSummary {
+  id: string;
+  type: string;
+  label: string;
+  anchor?: string;
+}
+
+export interface BrokenReference {
+  id: string;
+  targetId: string;
+  label: string;
+  path: string;
+}
+
+export interface ReferenceDiagnosticsModel {
+  targetCount: number;
+  referenceCount: number;
+  brokenCount: number;
+  label: string;
+  targets: ReferenceTargetSummary[];
+  brokenReferences: BrokenReference[];
 }
 
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
@@ -103,6 +126,51 @@ export function createChangeReview(documentLines: string[], metadataLines: strin
   };
 }
 
+export function createReferenceDiagnostics(document: SDocDocument): ReferenceDiagnosticsModel {
+  const targets: ReferenceTargetSummary[] = [];
+  const targetIds = new Set<string>();
+  const references: BrokenReference[] = [];
+
+  function visit(node: SDocNode, path: string): void {
+    if (isBlockNode(node)) {
+      const id = getNodeId(node);
+      if (id) {
+        targetIds.add(id);
+        targets.push({
+          id,
+          type: node.type,
+          label: getReferenceTargetLabel(node),
+          anchor: getNodeAnchor(node)
+        });
+      }
+    }
+
+    if (node.type === "crossReference") {
+      const targetId = typeof node.attrs?.targetId === "string" ? node.attrs.targetId : "";
+      references.push({
+        id: typeof node.attrs?.id === "string" && node.attrs.id.length > 0 ? node.attrs.id : `${path}.crossReference`,
+        targetId,
+        label: getPlainText(node).trim() || targetId || "Untitled reference",
+        path
+      });
+    }
+
+    node.content?.forEach((child, index) => visit(child, `${path}.${index}`));
+  }
+
+  document.content.forEach((node, index) => visit(node, `${index}`));
+
+  const brokenReferences = references.filter((reference) => !targetIds.has(reference.targetId));
+  return {
+    targetCount: targets.length,
+    referenceCount: references.length,
+    brokenCount: brokenReferences.length,
+    label: brokenReferences.length === 0 ? "References OK" : `${brokenReferences.length} broken`,
+    targets,
+    brokenReferences
+  };
+}
+
 export function createLocalHistoryEntry(
   document: SDocDocument,
   metadata: SDocMetadata,
@@ -154,6 +222,15 @@ function renderSection(title: string, lines: string[]): string {
 
 function createLocalHistoryId(now: Date): string {
   return `hist_${now.getTime().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getReferenceTargetLabel(node: SDocNode): string {
+  const text = getPlainText(node).trim();
+  if (text.length > 0) {
+    return text;
+  }
+
+  return getNodeAnchor(node) ?? getNodeId(node) ?? node.type;
 }
 
 function isLocalHistoryEntry(value: unknown): value is LocalHistoryEntry {

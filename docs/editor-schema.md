@@ -121,6 +121,28 @@ Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tab
 }
 ```
 
+## Phase 3 Cross Reference Shape
+
+`crossReference` is an inline semantic node. It stores a stable reference id in `attrs.id`, points to a block id through `attrs.targetId`, and keeps human-readable label text as inline content. The editor preserves this node, and the playground reports references whose `targetId` does not match any current block id.
+
+```json
+{
+  "type": "paragraph",
+  "attrs": { "id": "blk_ref" },
+  "content": [
+    { "type": "text", "text": "See " },
+    {
+      "type": "crossReference",
+      "attrs": {
+        "id": "ref_overview",
+        "targetId": "blk_overview"
+      },
+      "content": [{ "type": "text", "text": "System Overview" }]
+    }
+  ]
+}
+```
+
 ## Mark
 
 초기 mark는 `bold`, `italic`, `underline`, `strike`, `code`, `link`, `textColor`, `highlight`를 허용한다. mark attribute는 필요한 값만 저장하고 deterministic key ordering을 따른다.

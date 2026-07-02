@@ -22,6 +22,7 @@ import {
   Image as ImageIcon,
   Info,
   Italic,
+  Link2,
   List,
   ListOrdered,
   Quote,
@@ -39,10 +40,12 @@ import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, v
 import {
   BlockIdExtension,
   CalloutNode,
+  CrossReferenceNode,
   DiagramNode,
   EquationBlockNode,
   FigureNode,
   fromSdocDocument,
+  insertCrossReference,
   InlineEquationNode,
   initialContent,
   insertEquationBlock,
@@ -60,6 +63,7 @@ import {
   addLocalHistoryEntry,
   createChangeReview,
   createLocalHistoryEntry,
+  createReferenceDiagnostics,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
@@ -70,10 +74,11 @@ import {
   removeLocalHistoryEntry,
   serializeLocalHistory,
   type LocalHistoryEntry,
-  type ChangeReviewModel
+  type ChangeReviewModel,
+  type ReferenceDiagnosticsModel
 } from "./documentState";
 
-type PreviewTab = "json" | "markdown" | "diff" | "history";
+type PreviewTab = "json" | "markdown" | "diff" | "history" | "references";
 type CalloutKind = "note" | "warning";
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
 
@@ -85,6 +90,7 @@ const initialMetadata: SDocMetadata = {
 };
 
 const sdocExtensions = [
+  CrossReferenceNode,
   InlineEquationNode,
   EquationBlockNode,
   DiagramNode,
@@ -148,6 +154,7 @@ export function App() {
   const metadataDiffLines = renderMetadataDiff(metadata, reviewBaseMetadata);
   const diffPreview = renderDiffPreview(documentDiffLines, metadataDiffLines);
   const changeReview = createChangeReview(documentDiffLines, metadataDiffLines);
+  const referenceDiagnostics = createReferenceDiagnostics(document);
   const hasDocumentChanges = diffDocuments(baselineDocument, document).length > 0;
   const hasMetadataChanges = isMetadataDirty(metadata, baselineMetadata);
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges;
@@ -355,6 +362,18 @@ export function App() {
     setStatusMessage(inserted ? "Inserted table" : "Cannot insert table");
   }
 
+  function insertCrossReferenceFromPrompt() {
+    const targetId = window.prompt("Target block id", "blk_overview")?.trim();
+    if (!targetId) {
+      setStatusMessage("Canceled reference");
+      return;
+    }
+
+    const inserted = insertCrossReference(editor, targetId);
+    setActiveTab("references");
+    setStatusMessage(inserted ? `Inserted reference to ${targetId}` : `Cannot insert reference to ${targetId}`);
+  }
+
   function insertInlineEquationFromPrompt() {
     const latex = window.prompt("Inline equation", "E=mc^2")?.trim();
     if (!latex) {
@@ -469,6 +488,10 @@ export function App() {
           <strong className={hasUnsavedChanges ? "warning" : "ok"}>{changeReview.label}</strong>
         </div>
         <div className="status-block">
+          <span>References</span>
+          <strong className={referenceDiagnostics.brokenCount > 0 ? "error" : "ok"}>{referenceDiagnostics.label}</strong>
+        </div>
+        <div className="status-block">
           <span>File</span>
           <strong>{fileLabel}</strong>
         </div>
@@ -528,6 +551,9 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Insert image" active={editor.isActive("figure")} onClick={() => imageInputRef.current?.click()}>
             <ImageIcon size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Insert reference" active={editor.isActive("crossReference")} onClick={insertCrossReferenceFromPrompt}>
+            <Link2 size={18} />
           </ToolbarButton>
           <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={insertTable}>
             <TableIcon size={18} />
@@ -611,6 +637,7 @@ export function App() {
               <TabButton label="Markdown" value="markdown" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="Diff" value="diff" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="History" value="history" activeTab={activeTab} onSelect={setActiveTab} />
+              <TabButton label="References" value="references" activeTab={activeTab} onSelect={setActiveTab} />
             </div>
             {activeTab === "diff" ? (
               <DiffReview review={changeReview} rawPreview={diffPreview} baseLabel={reviewBaseLabel} onCompareSavedBaseline={compareSavedBaseline} />
@@ -623,6 +650,8 @@ export function App() {
                 onDeleteSnapshot={deleteHistorySnapshot}
                 onCompareSavedBaseline={compareSavedBaseline}
               />
+            ) : activeTab === "references" ? (
+              <ReferencePanel diagnostics={referenceDiagnostics} />
             ) : (
               <pre className="preview-output">{preview}</pre>
             )}
@@ -755,6 +784,68 @@ function HistoryPanel({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ReferencePanel({ diagnostics }: { diagnostics: ReferenceDiagnosticsModel }) {
+  return (
+    <div className="reference-panel">
+      <div className="reference-summary" aria-label="Reference summary">
+        <div>
+          <span>Targets</span>
+          <strong>{diagnostics.targetCount}</strong>
+        </div>
+        <div>
+          <span>References</span>
+          <strong>{diagnostics.referenceCount}</strong>
+        </div>
+        <div>
+          <span>Broken</span>
+          <strong className={diagnostics.brokenCount > 0 ? "error" : "ok"}>{diagnostics.brokenCount}</strong>
+        </div>
+      </div>
+
+      {diagnostics.brokenReferences.length === 0 ? (
+        <div className="reference-empty">
+          <Link2 size={22} />
+          <span>All references resolve</span>
+        </div>
+      ) : (
+        <section className="reference-section">
+          <h3>Broken references</h3>
+          <ul className="reference-issue-list">
+            {diagnostics.brokenReferences.map((reference) => (
+              <li key={`${reference.path}-${reference.id}`}>
+                <AlertTriangle size={16} />
+                <div>
+                  <strong>{reference.label}</strong>
+                  <span>
+                    {reference.id} targets missing block {reference.targetId}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="reference-section">
+        <h3>Target blocks</h3>
+        {diagnostics.targets.length === 0 ? (
+          <p className="reference-muted">No targetable blocks</p>
+        ) : (
+          <ul className="reference-target-list">
+            {diagnostics.targets.map((target) => (
+              <li key={target.id}>
+                <span>{target.type}</span>
+                <strong>{target.label}</strong>
+                <code>{target.anchor ? `${target.id} / #${target.anchor}` : target.id}</code>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

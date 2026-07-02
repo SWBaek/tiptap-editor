@@ -3,6 +3,7 @@ import {
   addLocalHistoryEntry,
   createChangeReview,
   createLocalHistoryEntry,
+  createReferenceDiagnostics,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
@@ -80,6 +81,38 @@ describe("document state helpers", () => {
       metadataCount: 0,
       label: "No changes",
       sections: []
+    });
+  });
+
+  it("detects broken cross references against current block ids", () => {
+    const document: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_references" },
+      content: [
+        { type: "heading", attrs: { id: "blk_target", level: 1, anchor: "target" }, content: [{ type: "text", text: "Target" }] },
+        {
+          type: "paragraph",
+          attrs: { id: "blk_refs" },
+          content: [
+            { type: "crossReference", attrs: { id: "ref_ok", targetId: "blk_target" }, content: [{ type: "text", text: "Target" }] },
+            { type: "text", text: " and " },
+            { type: "crossReference", attrs: { id: "ref_missing", targetId: "blk_missing" }, content: [{ type: "text", text: "Missing" }] }
+          ]
+        }
+      ]
+    };
+
+    expect(createReferenceDiagnostics(document)).toEqual({
+      targetCount: 2,
+      referenceCount: 2,
+      brokenCount: 1,
+      label: "1 broken",
+      targets: [
+        { id: "blk_target", type: "heading", label: "Target", anchor: "target" },
+        { id: "blk_refs", type: "paragraph", label: "Target and Missing", anchor: undefined }
+      ],
+      brokenReferences: [{ id: "ref_missing", targetId: "blk_missing", label: "Missing", path: "1.2" }]
     });
   });
 

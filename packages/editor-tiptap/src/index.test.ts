@@ -6,10 +6,12 @@ import {
   BlockIdExtension,
   CalloutNode,
   collectJsonBlockIds,
+  CrossReferenceNode,
   DiagramNode,
   EquationBlockNode,
   FigureNode,
   fromSdocDocument,
+  insertCrossReference,
   InlineEquationNode,
   insertEquationBlock,
   insertInlineEquation,
@@ -284,6 +286,42 @@ describe("SDoc conversion", () => {
     });
   });
 
+  it("round-trips cross references across SDoc conversion", () => {
+    const document = toSdocDocument(
+      {
+        type: "doc",
+        content: [
+          { type: "heading", attrs: { id: "blk_target", level: 2 }, content: [{ type: "text", text: "Target" }] },
+          {
+            type: "paragraph",
+            attrs: { id: "blk_ref" },
+            content: [
+              { type: "text", text: "See " },
+              { type: "crossReference", attrs: { id: "ref_target", targetId: "blk_target" }, content: [{ type: "text", text: "Target" }] }
+            ]
+          }
+        ]
+      },
+      "doc_reference"
+    );
+
+    expect(validateDocument(document).ok).toBe(true);
+    expect(fromSdocDocument(document)).toEqual({
+      type: "doc",
+      content: [
+        { type: "heading", attrs: { id: "blk_target", level: 2 }, content: [{ type: "text", text: "Target" }] },
+        {
+          type: "paragraph",
+          attrs: { id: "blk_ref" },
+          content: [
+            { type: "text", text: "See " },
+            { type: "crossReference", attrs: { id: "ref_target", targetId: "blk_target" }, content: [{ type: "text", text: "Target" }] }
+          ]
+        }
+      ]
+    });
+  });
+
   it("round-trips Mermaid diagrams across SDoc conversion", () => {
     const document = toSdocDocument(
       {
@@ -510,6 +548,30 @@ describe("BlockIdExtension", () => {
     expect(JSON.stringify(document)).toContain('"type":"equation"');
     expect(JSON.stringify(document)).toContain('"type":"equationBlock"');
     expect(document.content[1].attrs?.id).toBe("blk_equation");
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
+  it("inserts cross references with stable reference ids", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, CrossReferenceNode, InlineEquationNode, EquationBlockNode, ...TableExtensions, FigureNode, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [
+          { type: "heading", attrs: { id: "blk_target", level: 1 }, content: [{ type: "text", text: "Target" }] },
+          { type: "paragraph", attrs: { id: "blk_initial" }, content: [{ type: "text", text: "See " }] }
+        ]
+      }
+    });
+
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+    const inserted = insertCrossReference(editor, "blk_target", "ref_target");
+    const document = toSdocDocument(editor.getJSON(), "doc_reference");
+    editor.destroy();
+
+    expect(inserted).toBe(true);
+    expect(JSON.stringify(document)).toContain('"type":"crossReference"');
+    expect(JSON.stringify(document)).toContain('"targetId":"blk_target"');
+    expect(JSON.stringify(document)).toContain('"id":"ref_target"');
     expect(validateDocument(document).ok).toBe(true);
   });
 

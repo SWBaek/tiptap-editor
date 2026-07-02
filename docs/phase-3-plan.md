@@ -21,19 +21,28 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Compare the current document against a selected snapshot without changing the saved baseline.
 - Keep binary assets out of history snapshots for now; figure diffs still work through canonical asset references.
 
-## Current Slice: Local History Management
+## Completed Slice: Local History Management
 
 - Let users delete browser-local snapshots.
 - Clear a deleted snapshot as the comparison target and return to the saved baseline.
 - Persist deletion to localStorage so removed snapshots do not reappear after reload.
 
+## Current Slice: Broken Reference Diagnostics
+
+- Preserve `crossReference` inline nodes in the Tiptap editor.
+- Show a References panel with target, reference, and broken-reference counts.
+- Flag references whose `targetId` does not match any current block id.
+- Provide a minimal block-id based reference insertion path before autocomplete.
+
 ## Acceptance Evidence
 
 - Unit tests cover the structured review summary model.
 - Unit tests cover local history snapshot creation, capping, serialization, and malformed storage handling.
+- Unit tests cover reference diagnostics for valid and missing targets.
 - Playwright verifies that metadata changes appear in the visual review list and that `Mark saved` clears the review state.
 - Playwright verifies that a history snapshot can be saved, used as a comparison target, and survives page reload.
 - Playwright verifies that deleting a selected history snapshot clears it from comparison and persists after reload.
+- Playwright verifies that inserting a missing-target reference is reported in the References panel.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

@@ -28,6 +28,7 @@ import {
   Quote,
   Save,
   Search,
+  Settings,
   Sigma,
   Table as TableIcon,
   Trash2,
@@ -83,6 +84,7 @@ import {
 } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff" | "history" | "references";
+type ActivityPanel = "files" | "review" | "references" | "history" | "export" | "settings";
 type CalloutKind = "note" | "warning";
 interface EditorHighlightOverlay {
   nodeId: string;
@@ -114,6 +116,8 @@ const sdocExtensions = [
 
 export function App() {
   const [activeTab, setActiveTab] = useState<PreviewTab>("json");
+  const [activePanel, setActivePanel] = useState<ActivityPanel>("settings");
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(true);
   const [savedAt, setSavedAt] = useState<string>("Not saved");
   const [statusMessage, setStatusMessage] = useState<string>("Ready");
   const [documentId, setDocumentId] = useState<string>(initialDocument.attrs.id);
@@ -345,6 +349,16 @@ export function App() {
     storeHistory(entries);
   }
 
+  function selectActivityPanel(panel: ActivityPanel) {
+    if (panel === activePanel) {
+      setIsSidePanelOpen((open) => !open);
+      return;
+    }
+
+    setActivePanel(panel);
+    setIsSidePanelOpen(true);
+  }
+
   function requireValidDocument(action: string): boolean {
     const message = getValidationFailureMessage(validation, action);
     if (message) {
@@ -553,61 +567,158 @@ export function App() {
     return null;
   }
 
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <FileJson size={22} />
-          <div>
-            <strong>SDoc</strong>
-            <span>Phase 3 Playground</span>
-          </div>
-        </div>
+  const activePanelLabel = getActivityPanelLabel(activePanel);
 
-        <div className="status-block">
-          <span>Schema</span>
-          <strong className={validation.ok ? "ok" : "error"}>{validation.ok ? "Valid" : "Invalid"}</strong>
-        </div>
-        <div className="status-block">
-          <span>Saved</span>
-          <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
-        </div>
-        <div className="status-block">
-          <span>Review</span>
-          <strong className={hasUnsavedChanges ? "warning" : "ok"}>{changeReview.label}</strong>
-        </div>
-        <div className="status-block">
-          <span>References</span>
-          <strong className={getReferenceStatusClass(referenceDiagnostics)}>{referenceDiagnostics.label}</strong>
-        </div>
-        <div className="status-block">
-          <span>File</span>
-          <strong>{fileLabel}</strong>
-        </div>
-        <label className="metadata-field">
-          <span>Title</span>
-          <input value={metadata.title} onChange={(event) => setMetadata({ ...metadata, title: event.target.value })} />
-        </label>
-        <label className="metadata-field">
-          <span>Author</span>
-          <input value={String(metadata.author ?? "")} onChange={(event) => setMetadata({ ...metadata, author: event.target.value })} />
-        </label>
-        <label className="metadata-field">
-          <span>Version</span>
-          <input value={String(metadata.version ?? "")} onChange={(event) => setMetadata({ ...metadata, version: event.target.value })} />
-        </label>
-        <div className="status-note">{statusMessage}</div>
-        {!validation.ok && (
-          <div className="issue-list">
-            {validation.issues.slice(0, 5).map((issue) => (
-              <div key={`${issue.path}-${issue.message}`}>
-                <strong>{issue.path}</strong>
-                <span>{issue.message}</span>
-              </div>
-            ))}
+  return (
+    <main className={isSidePanelOpen ? "app-shell" : "app-shell side-panel-collapsed"}>
+      <ActivityBar activePanel={activePanel} isOpen={isSidePanelOpen} onSelect={selectActivityPanel} />
+
+      {isSidePanelOpen && (
+        <aside className="sidebar side-panel" aria-label={`${activePanelLabel} side panel`}>
+          <div className="brand">
+            <FileJson size={22} />
+            <div>
+              <strong>SDoc</strong>
+              <span>Phase 3 Playground</span>
+            </div>
           </div>
-        )}
-      </aside>
+
+          <div className="side-panel-title">
+            <span>{activePanelLabel}</span>
+          </div>
+
+          {activePanel === "settings" && (
+            <>
+              <div className="status-block">
+                <span>Schema</span>
+                <strong className={validation.ok ? "ok" : "error"}>{validation.ok ? "Valid" : "Invalid"}</strong>
+              </div>
+              <div className="status-block">
+                <span>Saved</span>
+                <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
+              </div>
+              <div className="status-block">
+                <span>Review</span>
+                <strong className={hasUnsavedChanges ? "warning" : "ok"}>{changeReview.label}</strong>
+              </div>
+              <div className="status-block">
+                <span>References</span>
+                <strong className={getReferenceStatusClass(referenceDiagnostics)}>{referenceDiagnostics.label}</strong>
+              </div>
+              <div className="status-block">
+                <span>File</span>
+                <strong>{fileLabel}</strong>
+              </div>
+              <label className="metadata-field">
+                <span>Title</span>
+                <input value={metadata.title} onChange={(event) => setMetadata({ ...metadata, title: event.target.value })} />
+              </label>
+              <label className="metadata-field">
+                <span>Author</span>
+                <input value={String(metadata.author ?? "")} onChange={(event) => setMetadata({ ...metadata, author: event.target.value })} />
+              </label>
+              <label className="metadata-field">
+                <span>Version</span>
+                <input value={String(metadata.version ?? "")} onChange={(event) => setMetadata({ ...metadata, version: event.target.value })} />
+              </label>
+              <div className="status-note">{statusMessage}</div>
+              {!validation.ok && (
+                <div className="issue-list">
+                  {validation.issues.slice(0, 5).map((issue) => (
+                    <div key={`${issue.path}-${issue.message}`}>
+                      <strong>{issue.path}</strong>
+                      <span>{issue.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {activePanel === "files" && (
+            <div className="side-panel-section">
+              <div className="status-block">
+                <span>Current file</span>
+                <strong>{fileLabel}</strong>
+              </div>
+              <button type="button" onClick={createNewDocument}>
+                New document
+              </button>
+              <button type="button" onClick={() => fileInputRef.current?.click()}>
+                Open .sdoc or JSON
+              </button>
+              <button type="button" onClick={downloadSdoc}>
+                Save .sdoc
+              </button>
+              <div className="status-note">{statusMessage}</div>
+            </div>
+          )}
+
+          {activePanel === "review" && (
+            <div className="side-panel-section">
+              <div className="status-block">
+                <span>Review</span>
+                <strong className={hasUnsavedChanges ? "warning" : "ok"}>{changeReview.label}</strong>
+              </div>
+              <div className="status-block">
+                <span>Saved</span>
+                <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
+              </div>
+              <button type="button" onClick={() => setActiveTab("diff")}>
+                Show diff
+              </button>
+              <button type="button" onClick={markCurrentAsBaseline}>
+                Mark saved
+              </button>
+            </div>
+          )}
+
+          {activePanel === "references" && (
+            <div className="side-panel-section">
+              <div className="status-block">
+                <span>References</span>
+                <strong className={getReferenceStatusClass(referenceDiagnostics)}>{referenceDiagnostics.label}</strong>
+              </div>
+              <div className="status-block">
+                <span>Targets</span>
+                <strong>{referenceDiagnostics.targetCount}</strong>
+              </div>
+              <button type="button" onClick={() => setActiveTab("references")}>
+                Open references
+              </button>
+            </div>
+          )}
+
+          {activePanel === "history" && (
+            <div className="side-panel-section">
+              <div className="status-block">
+                <span>Snapshots</span>
+                <strong>{historyEntries.length}</strong>
+              </div>
+              <button type="button" onClick={saveHistorySnapshot}>
+                Save snapshot
+              </button>
+              <button type="button" onClick={() => setActiveTab("history")}>
+                Open history
+              </button>
+            </div>
+          )}
+
+          {activePanel === "export" && (
+            <div className="side-panel-section">
+              <button type="button" onClick={downloadSdoc}>
+                Export .sdoc
+              </button>
+              <button type="button" onClick={downloadJson}>
+                Export document.json
+              </button>
+              <button type="button" onClick={downloadMarkdown}>
+                Export Markdown
+              </button>
+            </div>
+          )}
+        </aside>
+      )}
 
       <section className="workspace">
         <div className="toolbar" aria-label="Editor toolbar">
@@ -767,6 +878,65 @@ export function App() {
         </div>
       </section>
     </main>
+  );
+}
+
+function ActivityBar({
+  activePanel,
+  isOpen,
+  onSelect
+}: {
+  activePanel: ActivityPanel;
+  isOpen: boolean;
+  onSelect: (panel: ActivityPanel) => void;
+}) {
+  return (
+    <nav className="activity-bar" aria-label="Primary">
+      <ActivityButton active={activePanel === "files" && isOpen} label="Files" onClick={() => onSelect("files")}>
+        <FolderOpen size={20} />
+      </ActivityButton>
+      <ActivityButton active={activePanel === "review" && isOpen} label="Review" onClick={() => onSelect("review")}>
+        <Workflow size={20} />
+      </ActivityButton>
+      <ActivityButton active={activePanel === "references" && isOpen} label="References" onClick={() => onSelect("references")}>
+        <Link2 size={20} />
+      </ActivityButton>
+      <ActivityButton active={activePanel === "history" && isOpen} label="History" onClick={() => onSelect("history")}>
+        <HistoryIcon size={20} />
+      </ActivityButton>
+      <ActivityButton active={activePanel === "export" && isOpen} label="Export" onClick={() => onSelect("export")}>
+        <Download size={20} />
+      </ActivityButton>
+      <div className="activity-spacer" />
+      <ActivityButton active={activePanel === "settings" && isOpen} label="Settings" onClick={() => onSelect("settings")}>
+        <Settings size={20} />
+      </ActivityButton>
+    </nav>
+  );
+}
+
+function ActivityButton({
+  active,
+  label,
+  onClick,
+  children
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      className={active ? "activity-button active" : "activity-button"}
+      type="button"
+      aria-label={`${label} panel`}
+      aria-pressed={active}
+      title={`${label} panel`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -1090,6 +1260,18 @@ function ReferencePanel({
 
 function targetMatchesReferenceQuery(target: ReferenceTargetSummary, query: string): boolean {
   return [target.id, target.type, target.label, target.anchor ?? ""].some((value) => value.toLowerCase().includes(query));
+}
+
+function getActivityPanelLabel(panel: ActivityPanel): string {
+  const labels: Record<ActivityPanel, string> = {
+    files: "Files",
+    review: "Review",
+    references: "References",
+    history: "History",
+    export: "Export",
+    settings: "Settings"
+  };
+  return labels[panel];
 }
 
 function getReferenceStatusClass(diagnostics: ReferenceDiagnosticsModel): string {

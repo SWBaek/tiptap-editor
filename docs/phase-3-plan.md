@@ -58,12 +58,19 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Keep rename operations local to the snapshot label; do not change the captured document or metadata.
 - Persist renamed snapshot labels in localStorage and use them in compare/delete UI.
 
-## Current Slice: VS Code-Like UI Shell Planning
+## Completed Slice: VS Code-Like UI Shell Planning
 
 - Treat the current left sidebar as a prototype status/metadata panel, not the final product layout.
 - Adopt a VS Code-like Activity Bar plus toggled SidePanel as the target shell.
 - Use `docs/ui-shell-plan.md` as the implementation reference for Files, Review, References, History, Export, and Settings panels.
 - Keep browser `Files` scope limited to current/recent documents and open/save actions until Tauri filesystem integration exists.
+
+## Current Slice: Activity Bar Shell
+
+- Add a left Activity Bar with Files, Review, References, History, Export, and Settings buttons.
+- Let users toggle the side panel by clicking the active Activity Bar button.
+- Keep the existing Settings/status panel open by default so current metadata and validation workflows remain available.
+- Provide lightweight side-panel entry points for Files, Review, References, History, and Export before moving full workflows out of preview tabs.
 
 ## Acceptance Evidence
 
@@ -79,6 +86,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that reference targets and broken inline references can be revealed in the editor.
 - Playwright verifies that stale reference labels can be detected and updated after a target heading changes.
 - `docs/ui-shell-plan.md` records the VS Code-like Activity Bar and toggle sidebar direction.
+- Playwright verifies the Activity Bar default Settings panel, Files panel switch, and side panel collapse/restore behavior.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

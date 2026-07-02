@@ -39,6 +39,14 @@ const blockToolbarCases: BlockToolbarCase[] = [
 test("loads the Phase 3 playground and exercises preview/export basics", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Phase 3 Playground")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Settings panel" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Files panel" }).click();
+  await expect(page.getByRole("complementary", { name: "Files side panel" })).toContainText("Current file");
+  await page.getByRole("button", { name: "Files panel" }).click();
+  await expect(page.getByRole("complementary", { name: "Files side panel" })).toBeHidden();
+  await page.getByRole("button", { name: "Settings panel" }).click();
+  await expect(page.getByRole("complementary", { name: "Settings side panel" })).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
   await expect(page.getByRole("button", { name: "Heading 1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download .sdoc" })).toBeVisible();

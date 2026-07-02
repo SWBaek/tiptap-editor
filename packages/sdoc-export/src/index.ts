@@ -1,5 +1,10 @@
 import { getNodeAnchor, getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocMark, type SDocNode } from "@sdoc/schema";
 
+export interface HtmlExportOptions {
+  title?: string;
+  assetResolver?: (assetId: string) => string | undefined;
+}
+
 export interface DerivedOutputs extends Record<string, string> {
   "plain.md": string;
   "outline.json": string;
@@ -18,6 +23,30 @@ export function exportMarkdown(document: SDocDocument): string {
   const references = collectReferenceTargets(document);
   const blocks = document.content.map((node) => renderBlock(node, references)).filter(Boolean);
   return `${blocks.join("\n\n")}\n`;
+}
+
+export function exportHtml(document: SDocDocument, options: HtmlExportOptions = {}): string {
+  const references = collectReferenceTargets(document);
+  const title = options.title?.trim() || getDocumentTitle(document) || "SDoc Document";
+  const blocks = document.content.map((node) => renderHtmlBlock(node, references, options)).filter(Boolean);
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <style>
+${PUBLISH_HTML_CSS}
+  </style>
+</head>
+<body>
+  <main class="sdoc-document">
+${blocks.map((block) => indentHtml(block, 4)).join("\n\n")}
+  </main>
+</body>
+</html>
+`;
 }
 
 export function exportDerivedOutputs(document: SDocDocument): DerivedOutputs {
@@ -218,6 +247,166 @@ function escapeMarkdownAlt(value: string): string {
   return value.replaceAll("[", "\\[").replaceAll("]", "\\]");
 }
 
+function renderHtmlBlock(node: SDocNode, references: Map<string, ReferenceTarget>, options: HtmlExportOptions, depth = 0): string {
+  switch (node.type) {
+    case "heading": {
+      const level = typeof node.attrs?.level === "number" ? Math.min(Math.max(node.attrs.level, 1), 6) : 1;
+      const anchor = getNodeAnchor(node) ?? getNodeId(node);
+      const idAttribute = anchor ? ` id="${escapeHtmlAttribute(anchor)}"` : "";
+      return `<h${level}${idAttribute}>${renderHtmlInlineChildren(node, references, options)}</h${level}>`;
+    }
+
+    case "paragraph":
+      return `<p>${renderHtmlInlineChildren(node, references, options)}</p>`;
+
+    case "blockquote":
+      return `<blockquote>${renderHtmlChildrenAsBlocks(node, references, options, depth)}</blockquote>`;
+
+    case "codeBlock": {
+      const language = typeof node.attrs?.language === "string" && node.attrs.language ? ` language-${node.attrs.language}` : "";
+      return `<pre><code class="${escapeHtmlAttribute(language.trim())}">${escapeHtml(getPlainText(node))}</code></pre>`;
+    }
+
+    case "callout": {
+      const kind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "note";
+      return `<aside class="sdoc-callout sdoc-callout-${escapeHtmlAttribute(kind)}" data-kind="${escapeHtmlAttribute(kind)}">
+${indentHtml(renderHtmlChildrenAsBlocks(node, references, options, depth), 2)}
+</aside>`;
+    }
+
+    case "figure": {
+      const assetId = typeof node.attrs?.assetId === "string" ? node.attrs.assetId : "";
+      const caption = renderHtmlInlineChildren(node, references, options).trim();
+      const alt = typeof node.attrs?.alt === "string" && node.attrs.alt.length > 0 ? node.attrs.alt : getPlainText(node).trim();
+      const src = options.assetResolver?.(assetId) ?? `assets/${encodeURI(assetId)}`;
+      return `<figure id="${escapeHtmlAttribute(getNodeId(node) ?? "")}">
+  <img src="${escapeHtmlAttribute(src)}" alt="${escapeHtmlAttribute(alt)}">
+  <figcaption>${caption}</figcaption>
+</figure>`;
+    }
+
+    case "equationBlock": {
+      const latex = typeof node.attrs?.latex === "string" ? node.attrs.latex : "";
+      return `<div class="sdoc-equation-block" data-latex="${escapeHtmlAttribute(latex)}">\\[${escapeHtml(latex)}\\]</div>`;
+    }
+
+    case "diagram": {
+      const kind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "mermaid";
+      const source = typeof node.attrs?.source === "string" ? node.attrs.source : "";
+      return `<pre class="sdoc-diagram" data-kind="${escapeHtmlAttribute(kind)}"><code>${escapeHtml(source)}</code></pre>`;
+    }
+
+    case "table":
+      return renderHtmlTable(node, references, options);
+
+    case "bulletList":
+      return `<ul>${renderHtmlListItems(node, references, options, depth)}</ul>`;
+
+    case "orderedList":
+      return `<ol>${renderHtmlListItems(node, references, options, depth)}</ol>`;
+
+    case "listItem":
+      return `<li>${renderHtmlChildrenAsBlocks(node, references, options, depth + 1)}</li>`;
+
+    default:
+      return renderHtmlInlineChildren(node, references, options);
+  }
+}
+
+function renderHtmlChildrenAsBlocks(node: SDocNode, references: Map<string, ReferenceTarget>, options: HtmlExportOptions, depth: number): string {
+  const blocks = (node.content ?? []).map((child) => renderHtmlBlock(child, references, options, depth)).filter(Boolean);
+  return blocks.length > 0 ? blocks.join("\n") : renderHtmlInlineChildren(node, references, options);
+}
+
+function renderHtmlListItems(node: SDocNode, references: Map<string, ReferenceTarget>, options: HtmlExportOptions, depth: number): string {
+  return (node.content ?? [])
+    .map((child) => indentHtml(renderHtmlBlock(child, references, options, depth + 1), 2))
+    .join("\n");
+}
+
+function renderHtmlInlineChildren(node: SDocNode, references: Map<string, ReferenceTarget>, options: HtmlExportOptions): string {
+  return (node.content ?? []).map((child) => renderHtmlInline(child, references, options)).join("");
+}
+
+function renderHtmlInline(node: SDocNode, references: Map<string, ReferenceTarget>, options: HtmlExportOptions): string {
+  if (isBlockNode(node)) {
+    return renderHtmlInlineChildren(node, references, options);
+  }
+
+  if (node.type === "text") {
+    return applyHtmlMarks(escapeHtml(node.text ?? ""), node.marks ?? []);
+  }
+
+  if (node.type === "hardBreak") {
+    return "<br>";
+  }
+
+  if (node.type === "equation") {
+    const latex = typeof node.attrs?.latex === "string" ? node.attrs.latex : "";
+    return `<span class="sdoc-inline-equation" data-latex="${escapeHtmlAttribute(latex)}">\\(${escapeHtml(latex)}\\)</span>`;
+  }
+
+  if (node.type === "crossReference") {
+    const targetId = node.attrs?.targetId;
+    if (typeof targetId !== "string") {
+      return '<span class="sdoc-missing-reference">@missing-reference</span>';
+    }
+
+    const target = references.get(targetId);
+    const label = getPlainText(node).trim() || target?.label || targetId;
+    if (!target) {
+      return `<span class="sdoc-missing-reference">${escapeHtml(label)}</span>`;
+    }
+
+    return `<a href="#${escapeHtmlAttribute(target.anchor ?? target.id)}">${escapeHtml(label)}</a>`;
+  }
+
+  return renderHtmlInlineChildren(node, references, options);
+}
+
+function applyHtmlMarks(html: string, marks: SDocMark[]): string {
+  return marks.reduce((current, mark) => {
+    switch (mark.type) {
+      case "bold":
+        return `<strong>${current}</strong>`;
+      case "italic":
+        return `<em>${current}</em>`;
+      case "code":
+        return `<code>${current}</code>`;
+      case "strike":
+        return `<s>${current}</s>`;
+      case "link": {
+        const href = sanitizeHref(mark.attrs?.href);
+        return href ? `<a href="${escapeHtmlAttribute(href)}">${current}</a>` : current;
+      }
+      default:
+        return current;
+    }
+  }, html);
+}
+
+function renderHtmlTable(node: SDocNode, references: Map<string, ReferenceTarget>, options: HtmlExportOptions): string {
+  const rows = (node.content ?? []).filter((child) => child.type === "tableRow");
+  const htmlRows = rows
+    .map((row) => {
+      const cells = (row.content ?? []).filter((child) => child.type === "tableCell" || child.type === "tableHeader");
+      const htmlCells = cells
+        .map((cell) => {
+          const tag = cell.type === "tableHeader" ? "th" : "td";
+          return `<${tag}>${renderHtmlChildrenAsBlocks(cell, references, options, 0)}</${tag}>`;
+        })
+        .join("");
+      return `  <tr>${htmlCells}</tr>`;
+    })
+    .join("\n");
+
+  return `<table>
+<tbody>
+${htmlRows}
+</tbody>
+</table>`;
+}
+
 function renderMarkdownTable(node: SDocNode, references: Map<string, ReferenceTarget>): string {
   const rows = (node.content ?? []).filter((child) => child.type === "tableRow");
   const cells = rows.map((row) =>
@@ -259,6 +448,40 @@ function collectReferenceTargets(document: SDocDocument): Map<string, ReferenceT
   return references;
 }
 
+function getDocumentTitle(document: SDocDocument): string {
+  const heading = document.content.find((node) => node.type === "heading");
+  return heading ? getPlainText(heading).trim() : "";
+}
+
+function escapeHtml(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return escapeHtml(value).replaceAll('"', "&quot;");
+}
+
+function sanitizeHref(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (/^(https?:|mailto:|#|\/|\.\/|\.\.\/)/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
+}
+
+function indentHtml(value: string, spaces: number): string {
+  const padding = " ".repeat(spaces);
+  return value
+    .split("\n")
+    .map((line) => (line.length > 0 ? `${padding}${line}` : line))
+    .join("\n");
+}
+
 function visitBlocks(document: SDocDocument, visitor: (node: SDocNode) => void): void {
   function visit(node: SDocNode): void {
     if (isBlockNode(node)) {
@@ -270,3 +493,148 @@ function visitBlocks(document: SDocDocument, visitor: (node: SDocNode) => void):
 
   document.content.forEach(visit);
 }
+
+const PUBLISH_HTML_CSS = `    :root {
+      color: #182026;
+      background: #eef1f4;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px 18px;
+    }
+
+    .sdoc-document {
+      width: min(860px, 100%);
+      margin: 0 auto;
+      padding: 40px;
+      background: #ffffff;
+      border: 1px solid #dfe5ea;
+      border-radius: 8px;
+      box-shadow: 0 12px 30px rgba(17, 24, 39, 0.06);
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      margin: 1.4em 0 0.45em;
+      color: #17212b;
+      line-height: 1.22;
+    }
+
+    h1:first-child, h2:first-child, h3:first-child {
+      margin-top: 0;
+    }
+
+    a {
+      color: #0c5f70;
+      text-underline-offset: 2px;
+    }
+
+    blockquote {
+      margin: 1em 0;
+      padding-left: 16px;
+      color: #4e5d6b;
+      border-left: 3px solid #92a4b4;
+    }
+
+    code {
+      padding: 2px 5px;
+      background: #eef3f6;
+      border-radius: 4px;
+    }
+
+    pre {
+      padding: 14px;
+      overflow: auto;
+      color: #f4f7fa;
+      background: #15202b;
+      border-radius: 6px;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+    }
+
+    table {
+      width: 100%;
+      margin: 18px 0;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      vertical-align: top;
+      border: 1px solid #cfd8e1;
+    }
+
+    th {
+      background: #eef3f6;
+      text-align: left;
+    }
+
+    figure {
+      display: grid;
+      gap: 10px;
+      margin: 20px 0;
+      padding: 12px;
+      background: #f8fafb;
+      border: 1px solid #d8e0e6;
+      border-radius: 6px;
+    }
+
+    figure img {
+      display: block;
+      max-width: 100%;
+      max-height: 520px;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+
+    figcaption {
+      color: #4e5d6b;
+      font-size: 0.92rem;
+      text-align: center;
+    }
+
+    .sdoc-callout {
+      margin: 18px 0;
+      padding: 12px 14px;
+      background: #eef8f0;
+      border: 1px solid #b9dfc0;
+      border-left: 4px solid #35a65b;
+      border-radius: 6px;
+    }
+
+    .sdoc-callout-warning {
+      background: #fff7e8;
+      border-color: #efcd84;
+      border-left-color: #c98209;
+    }
+
+    .sdoc-equation-block,
+    .sdoc-diagram {
+      margin: 18px 0;
+      overflow-x: auto;
+    }
+
+    .sdoc-equation-block {
+      padding: 14px 16px;
+      background: #f8fafb;
+      border: 1px solid #d8e0e6;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .sdoc-inline-equation {
+      padding: 0 3px;
+      background: #f7fafb;
+      border: 1px solid #dce5ec;
+      border-radius: 4px;
+    }
+
+    .sdoc-missing-reference {
+      color: #a33a32;
+    }`;

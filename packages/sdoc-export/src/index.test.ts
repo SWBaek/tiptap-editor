@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exportDerivedOutputs, exportMarkdown } from "./index";
+import { exportDerivedOutputs, exportHtml, exportMarkdown } from "./index";
 import type { SDocDocument } from "@sdoc/schema";
 
 const document: SDocDocument = {
@@ -111,6 +111,65 @@ describe("exportMarkdown", () => {
 
   it("exports Mermaid diagrams as fenced source blocks", () => {
     expect(exportMarkdown(createDiagramDocument())).toContain("```mermaid\nflowchart TD\nA[Start] --> B[Done]\n```");
+  });
+});
+
+describe("exportHtml", () => {
+  it("exports a complete themed HTML document with anchors and cross references", () => {
+    const html = exportHtml(document, { title: "Published Spec" });
+
+    expect(html).toContain("<!doctype html>");
+    expect(html).toContain("<title>Published Spec</title>");
+    expect(html).toContain('<main class="sdoc-document">');
+    expect(html).toContain('<h1 id="overview">Overview</h1>');
+    expect(html).toContain('<a href="#overview">the overview</a>');
+    expect(html).toContain(".sdoc-document");
+  });
+
+  it("escapes HTML text and blocks unsafe link hrefs", () => {
+    const unsafeDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_unsafe" },
+      content: [
+        {
+          type: "paragraph",
+          attrs: { id: "blk_unsafe" },
+          content: [
+            { type: "text", text: "<script>alert(1)</script> " },
+            { type: "text", text: "blocked", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }] }
+          ]
+        }
+      ]
+    };
+
+    const html = exportHtml(unsafeDocument);
+
+    expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(html).toContain("blocked");
+    expect(html).not.toContain("javascript:alert");
+  });
+
+  it("uses an asset resolver for single-file browser HTML exports", () => {
+    const withFigure: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_figure" },
+      content: [
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "System architecture" }] }]
+        }
+      ]
+    };
+
+    const html = exportHtml(withFigure, {
+      assetResolver: (assetId) => `data:image/png;base64,${assetId}`
+    });
+
+    expect(html).toContain('src="data:image/png;base64,asset_architecture.png"');
+    expect(html).toContain("<figcaption>System architecture</figcaption>");
   });
 });
 

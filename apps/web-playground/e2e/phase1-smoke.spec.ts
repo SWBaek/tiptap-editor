@@ -145,6 +145,7 @@ test("exports readable and AI/RAG outputs from the Export side panel", async ({ 
   await expect(exportPanel).toBeVisible();
   await expect(exportPanel.getByLabel("Portable document exports")).toContainText("Export Panel Spec.sdoc");
   await expect(exportPanel.getByLabel("Readable exports")).toContainText("Export Panel Spec.md");
+  await expect(exportPanel.getByLabel("Readable exports")).toContainText("Export Panel Spec.html");
   await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("plain.md");
   await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("chunks.jsonl");
   await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("outline.json");
@@ -154,6 +155,11 @@ test("exports readable and AI/RAG outputs from the Export side panel", async ({ 
   await exportPanel.getByRole("button", { name: "Export Markdown" }).click();
   expect((await markdownDownload).suggestedFilename()).toBe("Export Panel Spec.md");
   await expect(page.locator(".status-note")).toContainText("Exported Markdown");
+
+  const htmlDownload = page.waitForEvent("download");
+  await exportPanel.getByRole("button", { name: "Export HTML" }).click();
+  expect((await htmlDownload).suggestedFilename()).toBe("Export Panel Spec.html");
+  await expect(page.locator(".status-note")).toContainText("Exported HTML");
 
   const plainDownload = page.waitForEvent("download");
   await exportPanel.getByRole("button", { name: "Export plain.md" }).click();

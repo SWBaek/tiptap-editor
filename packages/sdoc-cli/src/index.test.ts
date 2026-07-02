@@ -65,6 +65,15 @@ describe("sdoc CLI", () => {
     expect(references.stdout).toContain('"anchor": "overview"');
   });
 
+  it("exports themed HTML", async () => {
+    const html = await runSdoc(["export", validDocumentPath, "--format", "html"]);
+
+    expect(html.stdout).toContain("<!doctype html>");
+    expect(html.stdout).toContain('<main class="sdoc-document">');
+    expect(html.stdout).toContain('<h1 id="overview">System Overview</h1>');
+    expect(html.stdout).toContain(".sdoc-document");
+  });
+
   it("runs the Phase 0 pack/unpack/diff/export smoke flow", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const basicFolder = path.join(tempDir, "basic.sdoc.d");

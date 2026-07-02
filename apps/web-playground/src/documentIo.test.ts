@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEmptySdocContainer, packSdoc, unpackSdoc, type SDocMetadata } from "@sdoc/format";
 import type { SDocDocument } from "@sdoc/schema";
-import { createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename } from "./documentIo";
+import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename } from "./documentIo";
 
 const document: SDocDocument = {
   schemaVersion: 1,
@@ -93,6 +93,39 @@ describe("createMarkdownPayload", () => {
     expect(payload.filename).toBe("Round Trip Spec.md");
     expect(payload.text).toContain("# Round Trip {#title}");
     expect(payload.text).toContain("The saved file should reopen with metadata and derived output.");
+  });
+});
+
+describe("createHtmlPayload", () => {
+  it("creates a title-based single-file HTML export payload", () => {
+    const payload = createHtmlPayload(document, metadata);
+
+    expect(payload.filename).toBe("Round Trip Spec.html");
+    expect(payload.text).toContain("<!doctype html>");
+    expect(payload.text).toContain("<title>Round Trip Spec</title>");
+    expect(payload.text).toContain('<h1 id="title">Round Trip</h1>');
+  });
+
+  it("embeds available figure assets as data URLs", () => {
+    const figureDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_figure" },
+      content: [
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "Architecture diagram" }] }]
+        }
+      ]
+    };
+
+    const payload = createHtmlPayload(figureDocument, metadata, {
+      "asset_architecture.png": new Uint8Array([137, 80, 78, 71])
+    });
+
+    expect(payload.text).toContain('src="data:image/png;base64,iVBORw=="');
+    expect(payload.text).toContain("<figcaption>Architecture diagram</figcaption>");
   });
 });
 

@@ -3,7 +3,7 @@
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
-import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
+import { exportDerivedOutputs, exportHtml, exportMarkdown } from "@sdoc/export";
 import { isLikelyZipContainer, normalizeDocument, packSdoc, stableStringify, unpackSdoc, type SDocContainer } from "@sdoc/format";
 import { validateDocument, type SDocDocument, type ValidationIssue } from "@sdoc/schema";
 
@@ -47,7 +47,7 @@ async function runDiff(args: string[]): Promise<void> {
 async function runExport(args: string[]): Promise<void> {
   const [inputPath, ...rest] = args;
   if (!inputPath) {
-    throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|chunks|outline|references> [-o output]");
+    throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|chunks|outline|references> [-o output]");
   }
 
   const positionals = rest.filter((value) => !value.startsWith("-"));
@@ -201,7 +201,7 @@ function printHelp(): void {
 
 Commands:
   sdoc diff <old.sdoc|old.document.json> <new.sdoc|new.document.json>
-  sdoc export <input.sdoc|document.json> <markdown|chunks|outline|references> [output]
+  sdoc export <input.sdoc|document.json> <markdown|html|chunks|outline|references> [output]
   sdoc pack <folder> <output.sdoc>
   sdoc unpack <input.sdoc> <folder>
   sdoc validate <input.sdoc|document.json|unpacked-folder>
@@ -212,6 +212,10 @@ function renderExport(document: SDocDocument, format: string): string {
   const normalizedFormat = format.toLowerCase();
   if (normalizedFormat === "markdown" || normalizedFormat === "plain" || normalizedFormat === "plain.md") {
     return exportMarkdown(document);
+  }
+
+  if (normalizedFormat === "html" || normalizedFormat === "html.html") {
+    return exportHtml(document);
   }
 
   const derived = exportDerivedOutputs(document);

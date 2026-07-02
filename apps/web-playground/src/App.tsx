@@ -60,7 +60,7 @@ import {
   toSdocDocument,
   type BlockMoveDirection
 } from "@sdoc/editor-tiptap";
-import { createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
+import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
 import {
   addLocalHistoryEntry,
   createChangeReview,
@@ -206,7 +206,8 @@ export function App() {
   const exportFilenames = {
     sdoc: `${exportBaseName}.sdoc`,
     json: "document.json",
-    markdown: `${exportBaseName}.md`
+    markdown: `${exportBaseName}.md`,
+    html: `${exportBaseName}.html`
   };
   const preview = activeTab === "json" ? json : markdown;
 
@@ -249,6 +250,16 @@ export function App() {
     const payload = createMarkdownPayload(document, metadata);
     downloadBlob(new Blob([payload.text], { type: "text/markdown" }), payload.filename);
     setStatusMessage("Exported Markdown");
+  }
+
+  function downloadHtml() {
+    if (!requireValidDocument("export HTML")) {
+      return;
+    }
+
+    const payload = createHtmlPayload(document, metadata, assets);
+    downloadBlob(new Blob([payload.text], { type: "text/html" }), payload.filename);
+    setStatusMessage("Exported HTML");
   }
 
   function downloadDerivedOutput(name: DerivedOutputName) {
@@ -707,6 +718,7 @@ export function App() {
               onExportSdoc={downloadSdoc}
               onExportJson={downloadJson}
               onExportMarkdown={downloadMarkdown}
+              onExportHtml={downloadHtml}
               onExportDerived={downloadDerivedOutput}
             />
           )}
@@ -1071,17 +1083,20 @@ function ExportPanel({
   onExportSdoc,
   onExportJson,
   onExportMarkdown,
+  onExportHtml,
   onExportDerived
 }: {
   filenames: {
     sdoc: string;
     json: string;
     markdown: string;
+    html: string;
   };
   derivedOutputs: Record<DerivedOutputName, string>;
   onExportSdoc: () => void;
   onExportJson: () => void;
   onExportMarkdown: () => void;
+  onExportHtml: () => void;
   onExportDerived: (name: DerivedOutputName) => void;
 }) {
   return (
@@ -1100,6 +1115,7 @@ function ExportPanel({
       <section className="export-section" aria-label="Readable exports">
         <h3>Readable</h3>
         <ExportAction label="Export Markdown" filename={filenames.markdown} description="Human-readable Markdown with stable block anchors." onClick={onExportMarkdown} />
+        <ExportAction label="Export HTML" filename={filenames.html} description="Single-file themed HTML for browser reading and lightweight publishing." onClick={onExportHtml} />
       </section>
 
       <section className="export-section" aria-label="AI/RAG exports">

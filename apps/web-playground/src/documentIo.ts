@@ -1,4 +1,4 @@
-import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
+import { exportDerivedOutputs, exportHtml, exportMarkdown } from "@sdoc/export";
 import { createEmptySdocContainer, packSdoc, unpackSdoc, type SDocMetadata } from "@sdoc/format";
 import { createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
 
@@ -21,6 +21,11 @@ export interface CreateSdocPayloadResult {
 }
 
 export interface CreateMarkdownPayloadResult {
+  text: string;
+  filename: string;
+}
+
+export interface CreateHtmlPayloadResult {
   text: string;
   filename: string;
 }
@@ -65,6 +70,19 @@ export function createMarkdownPayload(document: SDocDocument, metadata: SDocMeta
   return {
     text: exportMarkdown(document),
     filename: `${safeFilename(metadata.title || "document")}.md`
+  };
+}
+
+export function createHtmlPayload(document: SDocDocument, metadata: SDocMetadata, assets: SDocAssets = {}): CreateHtmlPayloadResult {
+  return {
+    text: exportHtml(document, {
+      title: metadata.title || undefined,
+      assetResolver: (assetId) => {
+        const asset = assets[assetId];
+        return asset ? bytesToDataUrl(assetId, asset) : undefined;
+      }
+    }),
+    filename: `${safeFilename(metadata.title || "document")}.html`
   };
 }
 
@@ -164,4 +182,37 @@ function collectReferencedAssetIds(document: SDocDocument): string[] {
 
   document.content.forEach(visit);
   return [...assetIds].sort((a, b) => a.localeCompare(b));
+}
+
+function bytesToDataUrl(assetId: string, bytes: Uint8Array): string {
+  return `data:${mimeTypeFromAssetId(assetId)};base64,${bytesToBase64(bytes)}`;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.slice(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function mimeTypeFromAssetId(assetId: string): string {
+  const extension = assetId.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+  switch (extension) {
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "svg":
+      return "image/svg+xml";
+    default:
+      return "application/octet-stream";
+  }
 }

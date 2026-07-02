@@ -52,11 +52,18 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Show stale reference labels separately from broken references.
 - Let users update a stale reference label to the current target label from the References panel.
 
-## Current Slice: Local History Rename
+## Completed Slice: Local History Rename
 
 - Let users rename browser-local history snapshots from the History panel.
 - Keep rename operations local to the snapshot label; do not change the captured document or metadata.
 - Persist renamed snapshot labels in localStorage and use them in compare/delete UI.
+
+## Current Slice: VS Code-Like UI Shell Planning
+
+- Treat the current left sidebar as a prototype status/metadata panel, not the final product layout.
+- Adopt a VS Code-like Activity Bar plus toggled SidePanel as the target shell.
+- Use `docs/ui-shell-plan.md` as the implementation reference for Files, Review, References, History, Export, and Settings panels.
+- Keep browser `Files` scope limited to current/recent documents and open/save actions until Tauri filesystem integration exists.
 
 ## Acceptance Evidence
 
@@ -71,6 +78,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that a reference can be inserted from the target picker and that imported missing-target references are reported.
 - Playwright verifies that reference targets and broken inline references can be revealed in the editor.
 - Playwright verifies that stale reference labels can be detected and updated after a target heading changes.
+- `docs/ui-shell-plan.md` records the VS Code-like Activity Bar and toggle sidebar direction.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

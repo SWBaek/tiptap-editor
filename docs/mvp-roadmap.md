@@ -63,7 +63,7 @@
 
 ## Phase 3: Review & Integration
 
-상태: started on 2026-07-02. 현재 slice는 `docs/phase-3-plan.md`의 local history rename workflow다.
+상태: started on 2026-07-02. 현재 slice는 `docs/phase-3-plan.md`의 VS Code-like UI shell planning workflow다.
 
 목표는 diff와 개발자 workflow를 제품 가치로 만드는 것이다.
 
@@ -73,6 +73,7 @@
 - local document history
 - cross-reference autocomplete
 - broken reference detection
+- VS Code-like Activity Bar and toggle sidebar shell
 - unpacked folder workflow
 - optional Git integration
 

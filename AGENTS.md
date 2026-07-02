@@ -27,6 +27,7 @@ Key design documents:
 - `docs/serialization.md`: canonical JSON and deterministic ZIP rules.
 - `docs/diff-model.md`: semantic diff event model.
 - `docs/ai-export.md`: Markdown, chunk, outline, and reference exports.
+- `docs/ui-shell-plan.md`: VS Code-like Activity Bar and toggle sidebar direction.
 - `docs/mvp-roadmap.md`: phased scope and exclusions.
 
 Planned later layout:
@@ -46,6 +47,7 @@ Planned later layout:
 - Use optional human-readable `anchor` values for exported references; internal references should rely on stable IDs.
 - Semantic diff must compare normalized `document.json`, not raw Git line diff, Markdown text, or UI state.
 - Git is optional integration, hidden from non-developer UX. Do not make Git knowledge required for normal use.
+- The final editor shell should use a VS Code-like Activity Bar plus toggle sidebar; the current metadata/status sidebar is a prototype surface.
 - Format/schema/diff docs must be updated before changing `.sdoc`, node schema, serialization, or diff behavior.
 
 ## Build, Test, and Development Commands

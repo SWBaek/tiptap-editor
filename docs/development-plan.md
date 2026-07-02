@@ -231,6 +231,7 @@ Git 연동은 Phase 3 이후로 미룬다. 초기에는 CLI 기반 unpack/pack/d
 - local document history
 - cross-reference autocomplete
 - broken reference detection
+- VS Code-like Activity Bar and toggle sidebar shell
 - unpacked folder workflow
 - Git integration prototype
 
@@ -343,6 +344,7 @@ docs/
 | Tiptap JSON | canonical과 거의 동일한 구조로 유지하되 런타임 상태 제거 |
 | Diff | `document.json` 기반 semantic diff |
 | Git | 숨겨진 선택 기능, CLI/unpacked workflow로 지원 |
+| UI shell | VS Code-like Activity Bar plus toggle sidebar; see `docs/ui-shell-plan.md` |
 | MVP 핵심 | format, ID, save/load, basic editor, semantic diff CLI |
 
 ## 13. 다음 작업

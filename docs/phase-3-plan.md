@@ -123,11 +123,12 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Connect Git-oriented review flows to semantic diff and unpacked-folder workflows without making Git the canonical storage model.
 - Use `docs/git-integration-boundary.md` as the browser, CLI, and future Tauri boundary document.
 
-## Current Slice: Phase 3 Closure Audit
+## Completed Slice: Phase 3 Closure Audit
 
 - Review Phase 3 completed slices against the roadmap and acceptance evidence.
 - Identify which remaining review/integration items are ready to close and which should move to later phases.
 - Keep any closure claim evidence-based, using tests, docs, and current UI behavior.
+- Use `docs/phase-3-closure.md` as the closure record for accepted scope, verification, and deferred work.
 
 ## Acceptance Evidence
 
@@ -152,6 +153,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that the Settings Activity SidePanel keeps metadata and schema status while omitting Review, References, and current-file status now owned by dedicated panels.
 - Playwright verifies that the Files Activity SidePanel exposes the unpacked-folder boundary as CLI/Tauri-only and provides an unpack CLI command without claiming browser folder access.
 - Playwright verifies that the Review Activity SidePanel marks Git as optional and exposes a semantic diff CLI command without running Git in the browser.
+- `docs/phase-3-closure.md` records Phase 3 as accepted for the MVP slice with explicit boundaries for side-by-side diff, inline autocomplete, native filesystem access, and Git-backed history.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

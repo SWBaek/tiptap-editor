@@ -63,7 +63,7 @@
 
 ## Phase 3: Review & Integration
 
-상태: started on 2026-07-02. 현재 slice는 `docs/phase-3-plan.md`의 Phase 3 Closure Audit이다.
+상태: MVP slice accepted on 2026-07-03. 세부 증거와 경계는 `docs/phase-3-closure.md`를 기준으로 한다.
 
 목표는 diff와 개발자 workflow를 제품 가치로 만드는 것이다.
 

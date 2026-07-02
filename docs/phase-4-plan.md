@@ -68,11 +68,19 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Add a small storage policy or adapter boundary so the default asset-backed model can evolve without rewriting schema, CLI, or UI code.
 - Preserve Draw.io source assets through validation, pack/unpack, export, and semantic diff workflows before attempting embedded editor integration.
 
-## Current Slice: Advanced Table Editing Boundary
+## Completed Slice: Advanced Table Editing Boundary
 
 - Decide the smallest table editing model beyond simple tables: resize/reorder, header toggles, cell alignment, or merge/split.
 - Keep table editing state canonical only when it represents document semantics; do not store transient column widths or selection state in `document.json`.
 - Prefer a boundary document before expanding schema or Tiptap table behavior.
+- Use `docs/advanced-table-editing-boundary.md` as the boundary document.
+
+## Current Slice: Advanced Table Editing Minimal Controls
+
+- Add table commands for row/column insert/delete, header row/column toggles, and cell alignment while keeping tables rectangular.
+- Preserve stable IDs for unchanged table blocks and generate fresh IDs for new rows/cells.
+- Extend schema/export/diff only for semantic table attributes such as cell alignment; do not store selection or column width state.
+- Add focused unit tests and Playwright coverage for the browser editing workflow.
 
 ## Acceptance Evidence
 
@@ -85,6 +93,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - `docs/slide-export-boundary.md` records that slide export is a derived projection and defers PPTX/native deck generation until renderer decisions are made.
 - `docs/drawio-integration-boundary.md` records that Draw.io source is stored as an asset-backed diagram source and defers embedded editing until the asset lifecycle is proven.
 - Unit tests cover Draw.io schema validation, asset-backed `.sdoc` round trip, export fallback, semantic diff summaries, editor conversion, and browser save/export asset selection.
+- `docs/advanced-table-editing-boundary.md` records that v1 advanced tables stay rectangular, source-preserving, and free of transient UI layout state.
 
 ## Boundaries
 
@@ -97,4 +106,5 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Native PPTX slide export
 - Embedded Draw.io editor integration
 - Draw.io structural diff
+- Merged table cells
 - Section folding

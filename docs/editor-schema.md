@@ -123,7 +123,7 @@ Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tab
 
 ## Phase 3 Cross Reference Shape
 
-`crossReference` is an inline semantic node. It stores a stable reference id in `attrs.id`, points to a block id through `attrs.targetId`, and keeps human-readable label text as inline content. The editor preserves this node, and the playground reports references whose `targetId` does not match any current block id.
+`crossReference` is an inline semantic node. It stores a stable reference id in `attrs.id`, points to a block id through `attrs.targetId`, and keeps human-readable label text as inline content. The editor preserves this node, the References panel can insert it from target blocks, and the playground reports references whose `targetId` does not match any current block id.
 
 ```json
 {

@@ -564,7 +564,7 @@ describe("BlockIdExtension", () => {
     });
 
     editor.commands.setTextSelection(editor.state.doc.content.size - 1);
-    const inserted = insertCrossReference(editor, "blk_target", "ref_target");
+    const inserted = insertCrossReference(editor, "blk_target", "ref_target", "Target");
     const document = toSdocDocument(editor.getJSON(), "doc_reference");
     editor.destroy();
 
@@ -572,6 +572,7 @@ describe("BlockIdExtension", () => {
     expect(JSON.stringify(document)).toContain('"type":"crossReference"');
     expect(JSON.stringify(document)).toContain('"targetId":"blk_target"');
     expect(JSON.stringify(document)).toContain('"id":"ref_target"');
+    expect(JSON.stringify(document)).toContain('"text":"Target"');
     expect(validateDocument(document).ok).toBe(true);
   });
 

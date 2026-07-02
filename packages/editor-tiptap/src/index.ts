@@ -343,11 +343,12 @@ export function insertInlineEquation(editor: EquationInsertTarget, latex: string
   return result || fingerprintEditorJson(editor) !== before;
 }
 
-export function insertCrossReference(editor: EquationInsertTarget, targetId: string, id = createReferenceId()): boolean {
+export function insertCrossReference(editor: EquationInsertTarget, targetId: string, id = createReferenceId(), label = targetId): boolean {
   const cleanTargetId = targetId.trim();
   if (cleanTargetId.length === 0) {
     return false;
   }
+  const cleanLabel = label.trim() || cleanTargetId;
 
   const before = fingerprintEditorJson(editor);
   const chain = editor.chain() as InsertContentChain;
@@ -356,7 +357,7 @@ export function insertCrossReference(editor: EquationInsertTarget, targetId: str
     .insertContent({
       type: "crossReference",
       attrs: { id, targetId: cleanTargetId },
-      content: [{ type: "text", text: cleanTargetId }]
+      content: [{ type: "text", text: cleanLabel }]
     })
     .run();
   return result || fingerprintEditorJson(editor) !== before;

@@ -110,18 +110,61 @@ test("persists local history snapshots across reloads", async ({ page }) => {
   await expect(page.locator(".history-item")).toContainText("Playground Document");
 });
 
-test("detects broken cross references in the playground", async ({ page }) => {
+test("inserts cross references from the target picker", async ({ page }) => {
   await page.goto("/");
   await page.locator(".editor-surface p").first().click();
 
-  page.once("dialog", async (dialog) => {
-    expect(dialog.message()).toBe("Target block id");
-    await dialog.accept("blk_missing");
-  });
   await page.getByRole("button", { name: "Insert reference" }).click();
+  await expect(page.locator(".status-note")).toContainText("Choose a reference target");
+  await page.getByLabel("Filter reference targets").fill("overview");
+  await page.getByRole("button", { name: "Insert reference to System Overview" }).click();
 
-  await expect(page.locator(".status-note")).toContainText("Inserted reference to blk_missing");
+  await expect(page.locator(".status-note")).toContainText("Inserted reference to System Overview");
+  await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("References OK");
+  await expect(page.locator(".reference-summary")).toContainText("References");
+
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const document = await readPreviewDocument(page);
+  const reference = findFirstNodeByType(document, "crossReference");
+  expect(reference.attrs?.targetId).toBe("blk_overview");
+  expect(findTextNode(reference, "System Overview").text).toBe("System Overview");
+  expectUniqueIds(collectBlockIds(document));
+  await expect(page.getByText("Valid")).toBeVisible();
+});
+
+test("detects broken cross references in the playground", async ({ page }, testInfo) => {
+  await page.goto("/");
+
+  const brokenReferencePath = testInfo.outputPath("broken-reference.document.json");
+  await writeFile(
+    brokenReferencePath,
+    JSON.stringify(
+      {
+        schemaVersion: 1,
+        type: "doc",
+        attrs: { id: "doc_broken_reference" },
+        content: [
+          { type: "heading", attrs: { id: "blk_overview", level: 1, anchor: "overview" }, content: [{ type: "text", text: "Overview" }] },
+          {
+            type: "paragraph",
+            attrs: { id: "blk_ref" },
+            content: [
+              { type: "text", text: "See " },
+              { type: "crossReference", attrs: { id: "ref_missing", targetId: "blk_missing" }, content: [{ type: "text", text: "Missing section" }] }
+            ]
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+
+  await page.getByLabel("Open document file").setInputFiles(brokenReferencePath);
+  await expect(page.locator(".status-note")).toContainText("Opened broken-reference.document.json");
   await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("1 broken");
+  await page.locator(".tabs").getByRole("button", { name: "References" }).click();
   await expect(page.locator(".reference-summary")).toContainText("Broken");
   await expect(page.locator(".reference-issue-list")).toContainText("blk_missing");
   await expect(page.locator(".reference-target-list")).toContainText("blk_overview");

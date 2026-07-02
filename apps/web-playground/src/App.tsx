@@ -27,6 +27,7 @@ import {
   ListOrdered,
   Quote,
   Save,
+  Search,
   Sigma,
   Table as TableIcon,
   Trash2,
@@ -75,7 +76,8 @@ import {
   serializeLocalHistory,
   type LocalHistoryEntry,
   type ChangeReviewModel,
-  type ReferenceDiagnosticsModel
+  type ReferenceDiagnosticsModel,
+  type ReferenceTargetSummary
 } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff" | "history" | "references";
@@ -362,16 +364,21 @@ export function App() {
     setStatusMessage(inserted ? "Inserted table" : "Cannot insert table");
   }
 
-  function insertCrossReferenceFromPrompt() {
-    const targetId = window.prompt("Target block id", "blk_overview")?.trim();
-    if (!targetId) {
-      setStatusMessage("Canceled reference");
+  function openReferencePicker() {
+    setActiveTab("references");
+    setStatusMessage("Choose a reference target");
+  }
+
+  function insertCrossReferenceToTarget(targetId: string) {
+    const target = referenceDiagnostics.targets.find((current) => current.id === targetId);
+    if (!target) {
+      setStatusMessage(`Reference target is no longer available: ${targetId}`);
       return;
     }
 
-    const inserted = insertCrossReference(editor, targetId);
+    const inserted = insertCrossReference(editor, target.id, undefined, target.label);
     setActiveTab("references");
-    setStatusMessage(inserted ? `Inserted reference to ${targetId}` : `Cannot insert reference to ${targetId}`);
+    setStatusMessage(inserted ? `Inserted reference to ${target.label}` : `Cannot insert reference to ${target.label}`);
   }
 
   function insertInlineEquationFromPrompt() {
@@ -552,7 +559,7 @@ export function App() {
           <ToolbarButton title="Insert image" active={editor.isActive("figure")} onClick={() => imageInputRef.current?.click()}>
             <ImageIcon size={18} />
           </ToolbarButton>
-          <ToolbarButton title="Insert reference" active={editor.isActive("crossReference")} onClick={insertCrossReferenceFromPrompt}>
+          <ToolbarButton title="Insert reference" active={editor.isActive("crossReference")} onClick={openReferencePicker}>
             <Link2 size={18} />
           </ToolbarButton>
           <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={insertTable}>
@@ -651,7 +658,7 @@ export function App() {
                 onCompareSavedBaseline={compareSavedBaseline}
               />
             ) : activeTab === "references" ? (
-              <ReferencePanel diagnostics={referenceDiagnostics} />
+              <ReferencePanel diagnostics={referenceDiagnostics} onInsertReference={insertCrossReferenceToTarget} />
             ) : (
               <pre className="preview-output">{preview}</pre>
             )}
@@ -788,7 +795,18 @@ function HistoryPanel({
   );
 }
 
-function ReferencePanel({ diagnostics }: { diagnostics: ReferenceDiagnosticsModel }) {
+function ReferencePanel({
+  diagnostics,
+  onInsertReference
+}: {
+  diagnostics: ReferenceDiagnosticsModel;
+  onInsertReference: (targetId: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredTargets =
+    normalizedQuery.length === 0 ? diagnostics.targets : diagnostics.targets.filter((target) => targetMatchesReferenceQuery(target, normalizedQuery));
+
   return (
     <div className="reference-panel">
       <div className="reference-summary" aria-label="Reference summary">
@@ -832,15 +850,30 @@ function ReferencePanel({ diagnostics }: { diagnostics: ReferenceDiagnosticsMode
 
       <section className="reference-section">
         <h3>Target blocks</h3>
+        <label className="reference-search">
+          <Search size={15} />
+          <input
+            aria-label="Filter reference targets"
+            value={query}
+            placeholder="Filter targets"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
         {diagnostics.targets.length === 0 ? (
           <p className="reference-muted">No targetable blocks</p>
+        ) : filteredTargets.length === 0 ? (
+          <p className="reference-muted">No matching targets</p>
         ) : (
           <ul className="reference-target-list">
-            {diagnostics.targets.map((target) => (
+            {filteredTargets.map((target) => (
               <li key={target.id}>
                 <span>{target.type}</span>
                 <strong>{target.label}</strong>
                 <code>{target.anchor ? `${target.id} / #${target.anchor}` : target.id}</code>
+                <button type="button" aria-label={`Insert reference to ${target.label}`} onClick={() => onInsertReference(target.id)}>
+                  <Link2 size={14} />
+                  <span>Insert</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -848,6 +881,10 @@ function ReferencePanel({ diagnostics }: { diagnostics: ReferenceDiagnosticsMode
       </section>
     </div>
   );
+}
+
+function targetMatchesReferenceQuery(target: ReferenceTargetSummary, query: string): boolean {
+  return [target.id, target.type, target.label, target.anchor ?? ""].some((value) => value.toLowerCase().includes(query));
 }
 
 function ToolbarButton({

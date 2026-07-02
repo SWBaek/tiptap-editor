@@ -27,12 +27,18 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Clear a deleted snapshot as the comparison target and return to the saved baseline.
 - Persist deletion to localStorage so removed snapshots do not reappear after reload.
 
-## Current Slice: Broken Reference Diagnostics
+## Completed Slice: Broken Reference Diagnostics
 
 - Preserve `crossReference` inline nodes in the Tiptap editor.
 - Show a References panel with target, reference, and broken-reference counts.
 - Flag references whose `targetId` does not match any current block id.
-- Provide a minimal block-id based reference insertion path before autocomplete.
+
+## Current Slice: Cross Reference Target Picker
+
+- Replace prompt-based reference insertion with a References panel picker.
+- Filter target blocks by label, id, type, or anchor.
+- Insert references using the selected target block id and a human-readable label.
+- Keep missing-target diagnostics available for imported or edited `document.json` files.
 
 ## Acceptance Evidence
 
@@ -42,7 +48,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that metadata changes appear in the visual review list and that `Mark saved` clears the review state.
 - Playwright verifies that a history snapshot can be saved, used as a comparison target, and survives page reload.
 - Playwright verifies that deleting a selected history snapshot clears it from comparison and persists after reload.
-- Playwright verifies that inserting a missing-target reference is reported in the References panel.
+- Playwright verifies that a reference can be inserted from the target picker and that imported missing-target references are reported.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

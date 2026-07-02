@@ -38,7 +38,7 @@ import {
 import { diffDocuments, renderReadableDiffEvents } from "@sdoc/diff";
 import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
-import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
+import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, type ValidationResult, validateDocument } from "@sdoc/schema";
 import {
   BlockIdExtension,
   CalloutNode,
@@ -641,52 +641,9 @@ export function App() {
           </div>
 
           <div className="status-note">{statusMessage}</div>
-          <div className="status-block">
-            <span>Schema</span>
-            <strong className={validation.ok ? "ok" : "error"}>{validation.ok ? "Valid" : "Invalid"}</strong>
-          </div>
 
           {activePanel === "settings" && (
-            <>
-              <div className="status-block">
-                <span>Saved</span>
-                <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
-              </div>
-              <div className="status-block">
-                <span>Review</span>
-                <strong className={hasUnsavedChanges ? "warning" : "ok"}>{changeReview.label}</strong>
-              </div>
-              <div className="status-block">
-                <span>References</span>
-                <strong className={getReferenceStatusClass(referenceDiagnostics)}>{referenceDiagnostics.label}</strong>
-              </div>
-              <div className="status-block">
-                <span>File</span>
-                <strong>{fileLabel}</strong>
-              </div>
-              <label className="metadata-field">
-                <span>Title</span>
-                <input value={metadata.title} onChange={(event) => setMetadata({ ...metadata, title: event.target.value })} />
-              </label>
-              <label className="metadata-field">
-                <span>Author</span>
-                <input value={String(metadata.author ?? "")} onChange={(event) => setMetadata({ ...metadata, author: event.target.value })} />
-              </label>
-              <label className="metadata-field">
-                <span>Version</span>
-                <input value={String(metadata.version ?? "")} onChange={(event) => setMetadata({ ...metadata, version: event.target.value })} />
-              </label>
-              {!validation.ok && (
-                <div className="issue-list">
-                  {validation.issues.slice(0, 5).map((issue) => (
-                    <div key={`${issue.path}-${issue.message}`}>
-                      <strong>{issue.path}</strong>
-                      <span>{issue.message}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+            <SettingsPanel metadata={metadata} validation={validation} document={document} assetCount={Object.keys(assets).length} onMetadataChange={setMetadata} />
           )}
 
           {activePanel === "files" && (
@@ -945,6 +902,74 @@ function ActivityButton({
     >
       {children}
     </button>
+  );
+}
+
+function SettingsPanel({
+  metadata,
+  validation,
+  document,
+  assetCount,
+  onMetadataChange
+}: {
+  metadata: SDocMetadata;
+  validation: ValidationResult;
+  document: SDocDocument;
+  assetCount: number;
+  onMetadataChange: (metadata: SDocMetadata) => void;
+}) {
+  return (
+    <div className="side-panel-section settings-panel">
+      <section className="settings-section" aria-label="Document metadata">
+        <h3>Metadata</h3>
+        <label className="metadata-field">
+          <span>Title</span>
+          <input value={metadata.title} onChange={(event) => onMetadataChange({ ...metadata, title: event.target.value })} />
+        </label>
+        <label className="metadata-field">
+          <span>Author</span>
+          <input value={String(metadata.author ?? "")} onChange={(event) => onMetadataChange({ ...metadata, author: event.target.value })} />
+        </label>
+        <label className="metadata-field">
+          <span>Version</span>
+          <input value={String(metadata.version ?? "")} onChange={(event) => onMetadataChange({ ...metadata, version: event.target.value })} />
+        </label>
+      </section>
+
+      <section className="settings-section" aria-label="Schema status">
+        <h3>Schema</h3>
+        <div className="status-block">
+          <span>Status</span>
+          <strong className={validation.ok ? "ok" : "error"}>{validation.ok ? "Valid" : "Invalid"}</strong>
+        </div>
+        <div className="status-block">
+          <span>Version</span>
+          <strong>{document.schemaVersion}</strong>
+        </div>
+        <div className="status-block">
+          <span>Document ID</span>
+          <strong title={document.attrs.id}>{document.attrs.id}</strong>
+        </div>
+        <div className="status-block">
+          <span>Top blocks</span>
+          <strong>{document.content.length}</strong>
+        </div>
+        <div className="status-block">
+          <span>Assets</span>
+          <strong>{assetCount}</strong>
+        </div>
+        {!validation.ok && (
+          <div className="issue-list">
+            {validation.issues.slice(0, 5).map((issue) => (
+              <div key={`${issue.path}-${issue.message}`}>
+                <strong>{issue.path}</strong>
+                <span>{issue.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -1488,14 +1513,6 @@ function getActivityPanelLabel(panel: ActivityPanel): string {
     settings: "Settings"
   };
   return labels[panel];
-}
-
-function getReferenceStatusClass(diagnostics: ReferenceDiagnosticsModel): string {
-  if (diagnostics.brokenCount > 0) {
-    return "error";
-  }
-
-  return diagnostics.staleCount > 0 ? "warning" : "ok";
 }
 
 function findEditorElementByDataId(nodeId: string): HTMLElement | null {

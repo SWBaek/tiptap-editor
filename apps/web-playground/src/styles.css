@@ -173,6 +173,29 @@ button {
   font-size: 13px;
 }
 
+.settings-panel {
+  align-content: start;
+}
+
+.settings-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.settings-section + .settings-section {
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.settings-section h3 {
+  margin: 0;
+  color: #d9e1e8;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
 .review-panel {
   align-content: start;
 }

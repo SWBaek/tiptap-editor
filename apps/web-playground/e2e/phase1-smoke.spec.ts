@@ -46,7 +46,13 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await page.getByRole("button", { name: "Files panel" }).click();
   await expect(page.getByRole("complementary", { name: "Files side panel" })).toBeHidden();
   await page.getByRole("button", { name: "Settings panel" }).click();
-  await expect(page.getByRole("complementary", { name: "Settings side panel" })).toBeVisible();
+  const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
+  await expect(settingsPanel).toBeVisible();
+  await expect(settingsPanel.getByLabel("Document metadata")).toContainText("Metadata");
+  await expect(settingsPanel.getByLabel("Schema status")).toContainText("Valid");
+  await expect(settingsPanel).not.toContainText("Review");
+  await expect(settingsPanel).not.toContainText("References");
+  await expect(settingsPanel).not.toContainText("Current file");
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
   await expect(page.getByRole("button", { name: "Heading 1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download .sdoc" })).toBeVisible();
@@ -62,10 +68,9 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await expect(metadataSection).toContainText("Metadata changes");
   await expect(metadataSection.locator(".diff-review-list")).toContainText('Metadata title changed: "Playground Document" -> "Smoke Spec"');
   await expect(page.locator(".preview-output")).toContainText('Metadata title changed: "Playground Document" -> "Smoke Spec"');
-  await expect(page.locator(".status-block").filter({ hasText: "Review" })).toContainText("1 change");
+  await expect(page.locator(".diff-review-summary")).toContainText("1");
 
   await page.getByRole("button", { name: "Mark saved" }).click();
-  await expect(page.locator(".status-block").filter({ hasText: "Review" })).toContainText("No changes");
   await expect(page.locator(".diff-empty")).toContainText("No changes");
 
   const markdownDownload = page.waitForEvent("download");
@@ -257,7 +262,8 @@ test("inserts cross references from the target picker", async ({ page }) => {
   expect(reference.attrs?.targetId).toBe("blk_overview");
   expect(findTextNode(reference, "Platform Overview").text).toBe("Platform Overview");
   expectUniqueIds(collectBlockIds(document));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await page.getByRole("button", { name: "Settings panel" }).click();
+  await expect(page.getByRole("complementary", { name: "Settings side panel" }).getByLabel("Schema status")).toContainText("Valid");
 });
 
 test("detects broken cross references in the playground", async ({ page }, testInfo) => {
@@ -291,9 +297,9 @@ test("detects broken cross references in the playground", async ({ page }, testI
 
   await page.getByLabel("Open document file").setInputFiles(brokenReferencePath);
   await expect(page.locator(".status-note")).toContainText("Opened broken-reference.document.json");
-  await expect(page.locator(".status-block").filter({ hasText: "References" })).toContainText("1 broken");
   await page.getByRole("button", { name: "References panel" }).click();
   await expect(page.getByRole("complementary", { name: "References side panel" })).toBeVisible();
+  await expect(page.locator(".reference-summary")).toContainText("1");
   await expect(page.locator(".reference-summary")).toContainText("Broken");
   await expect(page.locator(".reference-issue-list")).toContainText("blk_missing");
   await expect(page.locator(".reference-target-list")).toContainText("blk_overview");
@@ -307,7 +313,8 @@ test("detects broken cross references in the playground", async ({ page }, testI
   const document = await readPreviewDocument(page);
   expect(findFirstNodeByType(document, "crossReference").attrs?.targetId).toBe("blk_missing");
   expectUniqueIds(collectBlockIds(document));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await page.getByRole("button", { name: "Settings panel" }).click();
+  await expect(page.getByRole("complementary", { name: "Settings side panel" }).getByLabel("Schema status")).toContainText("Valid");
 });
 
 test("round-trips a downloaded .sdoc through the browser open flow", async ({ page }, testInfo) => {

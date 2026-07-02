@@ -103,11 +103,17 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Keep export status and filenames visible without mixing export controls into file browsing.
 - Preserve toolbar shortcuts for speed while making the side panel workflow complete enough for non-developer users.
 
-## Current Slice: Settings SidePanel Refinement
+## Completed Slice: Settings SidePanel Refinement
 
 - Keep document metadata, schema validation, and editor-level options in Settings.
 - Reduce duplication with Review, Files, References, and Export panels now that those workflows have dedicated homes.
 - Keep Settings useful as the default landing side panel without making it a catch-all status sidebar.
+
+## Current Slice: Unpacked Folder Workflow Boundary
+
+- Define the browser-safe and Tauri-only parts of unpacked `.sdoc` folder workflows.
+- Keep single-file `.sdoc` as the normal user-facing document format.
+- Add implementation hooks only where they do not imply browser access to arbitrary folders.
 
 ## Acceptance Evidence
 
@@ -129,6 +135,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that the Review Activity SidePanel shows review counts, opens the Diff preview, marks the current state saved, and switches from a history base back to the saved baseline.
 - Playwright verifies that the Files Activity SidePanel shows browser-local recent file metadata after `.sdoc` save, persists it across reload, and explains that browser recent entries cannot auto-reopen files.
 - Playwright verifies that the Export Activity SidePanel exposes `.sdoc`, Markdown, and AI/RAG exports with visible filenames and downloads `plain.md` and `chunks.jsonl`.
+- Playwright verifies that the Settings Activity SidePanel keeps metadata and schema status while omitting Review, References, and current-file status now owned by dedicated panels.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

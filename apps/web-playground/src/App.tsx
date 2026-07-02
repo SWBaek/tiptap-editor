@@ -36,7 +36,7 @@ import {
   Workflow
 } from "lucide-react";
 import { diffDocuments, renderReadableDiffEvents } from "@sdoc/diff";
-import { exportMarkdown } from "@sdoc/export";
+import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
 import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
 import {
@@ -60,7 +60,7 @@ import {
   toSdocDocument,
   type BlockMoveDirection
 } from "@sdoc/editor-tiptap";
-import { createMarkdownPayload, createSdocPayload, openDocumentInput, type SDocAssets } from "./documentIo";
+import { createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
 import {
   addLocalHistoryEntry,
   createChangeReview,
@@ -87,6 +87,7 @@ type PreviewTab = "json" | "markdown" | "diff";
 type ActivityPanel = "files" | "review" | "references" | "history" | "export" | "settings";
 type CalloutKind = "note" | "warning";
 type RecentFileAction = "opened" | "saved";
+type DerivedOutputName = "plain.md" | "chunks.jsonl" | "outline.json" | "references.json";
 interface RecentFileEntry {
   id: string;
   name: string;
@@ -105,6 +106,7 @@ interface EditorHighlightOverlay {
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
 const RECENT_FILES_STORAGE_KEY = "sdoc.recentFiles.v1";
 const RECENT_FILES_LIMIT = 6;
+const DERIVED_OUTPUT_NAMES: DerivedOutputName[] = ["plain.md", "chunks.jsonl", "outline.json", "references.json"];
 
 const initialDocument = toSdocDocument(initialContent);
 const initialMetadata: SDocMetadata = {
@@ -184,6 +186,7 @@ export function App() {
   const validation = validateDocument(document);
   const json = stableStringify(document);
   const markdown = exportMarkdown(document);
+  const derivedOutputs = useMemo(() => exportDerivedOutputs(document), [document]);
   const selectedHistoryEntry = historyEntries.find((entry) => entry.id === selectedHistoryId) ?? null;
   const reviewBaseDocument = selectedHistoryEntry?.document ?? baselineDocument;
   const reviewBaseMetadata = selectedHistoryEntry?.metadata ?? baselineMetadata;
@@ -199,6 +202,12 @@ export function App() {
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges;
   const fileLabel = getFileLabel(currentFilename, metadata);
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
+  const exportBaseName = safeFilename(metadata.title || "document");
+  const exportFilenames = {
+    sdoc: `${exportBaseName}.sdoc`,
+    json: "document.json",
+    markdown: `${exportBaseName}.md`
+  };
   const preview = activeTab === "json" ? json : markdown;
 
   async function downloadSdoc() {
@@ -240,6 +249,15 @@ export function App() {
     const payload = createMarkdownPayload(document, metadata);
     downloadBlob(new Blob([payload.text], { type: "text/markdown" }), payload.filename);
     setStatusMessage("Exported Markdown");
+  }
+
+  function downloadDerivedOutput(name: DerivedOutputName) {
+    if (!requireValidDocument(`export ${name}`)) {
+      return;
+    }
+
+    downloadBlob(new Blob([derivedOutputs[name]], { type: getDerivedOutputMimeType(name) }), name);
+    setStatusMessage(`Exported ${name}`);
   }
 
   async function openFile(file: File) {
@@ -718,17 +736,14 @@ export function App() {
           )}
 
           {activePanel === "export" && (
-            <div className="side-panel-section">
-              <button type="button" onClick={downloadSdoc}>
-                Export .sdoc
-              </button>
-              <button type="button" onClick={downloadJson}>
-                Export document.json
-              </button>
-              <button type="button" onClick={downloadMarkdown}>
-                Export Markdown
-              </button>
-            </div>
+            <ExportPanel
+              filenames={exportFilenames}
+              derivedOutputs={derivedOutputs}
+              onExportSdoc={downloadSdoc}
+              onExportJson={downloadJson}
+              onExportMarkdown={downloadMarkdown}
+              onExportDerived={downloadDerivedOutput}
+            />
           )}
         </aside>
       )}
@@ -992,6 +1007,87 @@ function FilesPanel({
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+function ExportPanel({
+  filenames,
+  derivedOutputs,
+  onExportSdoc,
+  onExportJson,
+  onExportMarkdown,
+  onExportDerived
+}: {
+  filenames: {
+    sdoc: string;
+    json: string;
+    markdown: string;
+  };
+  derivedOutputs: Record<DerivedOutputName, string>;
+  onExportSdoc: () => void;
+  onExportJson: () => void;
+  onExportMarkdown: () => void;
+  onExportDerived: (name: DerivedOutputName) => void;
+}) {
+  return (
+    <div className="side-panel-section export-panel">
+      <section className="export-section" aria-label="Portable document exports">
+        <h3>Document</h3>
+        <ExportAction
+          label="Export .sdoc"
+          filename={filenames.sdoc}
+          description="Portable single-file container with document, metadata, assets, and derived AI outputs."
+          onClick={onExportSdoc}
+        />
+        <ExportAction label="Export document.json" filename={filenames.json} description="Canonical semantic document JSON for debugging and tooling." onClick={onExportJson} />
+      </section>
+
+      <section className="export-section" aria-label="Readable exports">
+        <h3>Readable</h3>
+        <ExportAction label="Export Markdown" filename={filenames.markdown} description="Human-readable Markdown with stable block anchors." onClick={onExportMarkdown} />
+      </section>
+
+      <section className="export-section" aria-label="AI/RAG exports">
+        <h3>AI/RAG</h3>
+        {DERIVED_OUTPUT_NAMES.map((name) => (
+          <ExportAction
+            key={name}
+            label={`Export ${name}`}
+            filename={name}
+            description={getDerivedOutputDescription(name)}
+            detail={formatBytes(derivedOutputs[name])}
+            onClick={() => onExportDerived(name)}
+          />
+        ))}
+      </section>
+    </div>
+  );
+}
+
+function ExportAction({
+  label,
+  filename,
+  description,
+  detail,
+  onClick
+}: {
+  label: string;
+  filename: string;
+  description: string;
+  detail?: string;
+  onClick: () => void;
+}) {
+  return (
+    <div className="export-action">
+      <div>
+        <strong title={filename}>{filename}</strong>
+        <span>{description}</span>
+        {detail && <em>{detail}</em>}
+      </div>
+      <button type="button" onClick={onClick}>
+        {label}
+      </button>
     </div>
   );
 }
@@ -1548,6 +1644,40 @@ function formatRecentFileTime(value: string): string {
   }
 
   return date.toLocaleString();
+}
+
+function getDerivedOutputDescription(name: DerivedOutputName): string {
+  switch (name) {
+    case "plain.md":
+      return "LLM-friendly Markdown generated from the canonical document.";
+    case "chunks.jsonl":
+      return "Block-level JSONL chunks for RAG indexing.";
+    case "outline.json":
+      return "Heading outline with stable IDs and anchors.";
+    case "references.json":
+      return "Reference targets for headings, figures, tables, equations, and diagrams.";
+  }
+}
+
+function getDerivedOutputMimeType(name: DerivedOutputName): string {
+  switch (name) {
+    case "plain.md":
+      return "text/markdown";
+    case "chunks.jsonl":
+      return "application/x-ndjson";
+    case "outline.json":
+    case "references.json":
+      return "application/json";
+  }
+}
+
+function formatBytes(value: string): string {
+  const bytes = new TextEncoder().encode(value).byteLength;
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
 function formatHistoryTime(value: string): string {

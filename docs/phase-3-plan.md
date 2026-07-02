@@ -97,11 +97,17 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Avoid pretending that the browser can browse arbitrary folders before Tauri filesystem integration exists.
 - Prepare the Files Activity SidePanel to become the bridge into recent files and later unpacked-folder workflows.
 
-## Current Slice: Export SidePanel Refinement
+## Completed Slice: Export SidePanel Refinement
 
 - Make the Export Activity SidePanel the primary home for `.sdoc`, Markdown, and AI/RAG export actions.
 - Keep export status and filenames visible without mixing export controls into file browsing.
 - Preserve toolbar shortcuts for speed while making the side panel workflow complete enough for non-developer users.
+
+## Current Slice: Settings SidePanel Refinement
+
+- Keep document metadata, schema validation, and editor-level options in Settings.
+- Reduce duplication with Review, Files, References, and Export panels now that those workflows have dedicated homes.
+- Keep Settings useful as the default landing side panel without making it a catch-all status sidebar.
 
 ## Acceptance Evidence
 
@@ -122,6 +128,7 @@ Phase 3 turns the semantic diff engine into a review workflow. The first slice s
 - Playwright verifies that history save, rename, compare, delete, and reload workflows work from the History Activity SidePanel.
 - Playwright verifies that the Review Activity SidePanel shows review counts, opens the Diff preview, marks the current state saved, and switches from a history base back to the saved baseline.
 - Playwright verifies that the Files Activity SidePanel shows browser-local recent file metadata after `.sdoc` save, persists it across reload, and explains that browser recent entries cannot auto-reopen files.
+- Playwright verifies that the Export Activity SidePanel exposes `.sdoc`, Markdown, and AI/RAG exports with visible filenames and downloads `plain.md` and `chunks.jsonl`.
 - Existing Phase 2 tests keep covering schema, export, diff, and round-trip behavior.
 
 ## Out Of Scope

@@ -284,6 +284,73 @@ button {
   font-size: 11px;
 }
 
+.export-panel {
+  align-content: start;
+}
+
+.export-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.export-section + .export-section {
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.export-section h3 {
+  margin: 0;
+  color: #d9e1e8;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.export-action {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+}
+
+.export-action div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.export-action strong,
+.export-action span,
+.export-action em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.export-action strong {
+  color: #f7f9fb;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.export-action span {
+  color: #aeb8c2;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.export-action em {
+  color: #d9e1e8;
+  font-size: 11px;
+  font-style: normal;
+}
+
 .metadata-field {
   display: grid;
   gap: 6px;

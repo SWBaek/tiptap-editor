@@ -126,6 +126,35 @@ test("tracks browser recent files in the Files side panel", async ({ page }) => 
   await expect(page.locator(".status-note")).toContainText("Recent file metadata only: reopen Files Panel Spec.sdoc");
 });
 
+test("exports readable and AI/RAG outputs from the Export side panel", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Title").fill("Export Panel Spec");
+  await page.getByRole("button", { name: "Export panel" }).click();
+  const exportPanel = page.getByRole("complementary", { name: "Export side panel" });
+  await expect(exportPanel).toBeVisible();
+  await expect(exportPanel.getByLabel("Portable document exports")).toContainText("Export Panel Spec.sdoc");
+  await expect(exportPanel.getByLabel("Readable exports")).toContainText("Export Panel Spec.md");
+  await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("plain.md");
+  await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("chunks.jsonl");
+  await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("outline.json");
+  await expect(exportPanel.getByLabel("AI/RAG exports")).toContainText("references.json");
+
+  const markdownDownload = page.waitForEvent("download");
+  await exportPanel.getByRole("button", { name: "Export Markdown" }).click();
+  expect((await markdownDownload).suggestedFilename()).toBe("Export Panel Spec.md");
+  await expect(page.locator(".status-note")).toContainText("Exported Markdown");
+
+  const plainDownload = page.waitForEvent("download");
+  await exportPanel.getByRole("button", { name: "Export plain.md" }).click();
+  expect((await plainDownload).suggestedFilename()).toBe("plain.md");
+  await expect(page.locator(".status-note")).toContainText("Exported plain.md");
+
+  const chunksDownload = page.waitForEvent("download");
+  await exportPanel.getByRole("button", { name: "Export chunks.jsonl" }).click();
+  expect((await chunksDownload).suggestedFilename()).toBe("chunks.jsonl");
+  await expect(page.locator(".status-note")).toContainText("Exported chunks.jsonl");
+});
+
 test("stores local history snapshots and compares them with the current document", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "History panel" }).click();

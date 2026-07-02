@@ -207,7 +207,8 @@ export function App() {
     sdoc: `${exportBaseName}.sdoc`,
     json: "document.json",
     markdown: `${exportBaseName}.md`,
-    html: `${exportBaseName}.html`
+    html: `${exportBaseName}.html`,
+    pdf: `${exportBaseName}.pdf`
   };
   const preview = activeTab === "json" ? json : markdown;
 
@@ -720,6 +721,7 @@ export function App() {
               onExportMarkdown={downloadMarkdown}
               onExportHtml={downloadHtml}
               onExportDerived={downloadDerivedOutput}
+              onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
         </aside>
@@ -1084,13 +1086,15 @@ function ExportPanel({
   onExportJson,
   onExportMarkdown,
   onExportHtml,
-  onExportDerived
+  onExportDerived,
+  onCopyDeveloperCommand
 }: {
   filenames: {
     sdoc: string;
     json: string;
     markdown: string;
     html: string;
+    pdf: string;
   };
   derivedOutputs: Record<DerivedOutputName, string>;
   onExportSdoc: () => void;
@@ -1098,7 +1102,10 @@ function ExportPanel({
   onExportMarkdown: () => void;
   onExportHtml: () => void;
   onExportDerived: (name: DerivedOutputName) => void;
+  onCopyDeveloperCommand: (command: string) => void;
 }) {
+  const pdfCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pdf -o ${quoteCliPath(filenames.pdf)}`;
+
   return (
     <div className="side-panel-section export-panel">
       <section className="export-section" aria-label="Portable document exports">
@@ -1116,6 +1123,20 @@ function ExportPanel({
         <h3>Readable</h3>
         <ExportAction label="Export Markdown" filename={filenames.markdown} description="Human-readable Markdown with stable block anchors." onClick={onExportMarkdown} />
         <ExportAction label="Export HTML" filename={filenames.html} description="Single-file themed HTML for browser reading and lightweight publishing." onClick={onExportHtml} />
+      </section>
+
+      <section className="export-section" aria-label="PDF publishing boundary">
+        <h3>PDF</h3>
+        <div className="workspace-boundary">
+          <strong>CLI/Tauri PDF</strong>
+          <span>Save .sdoc first, then generate PDF through the CLI print pipeline; the browser exports print-ready HTML today.</span>
+        </div>
+        <ExportAction
+          label="Copy PDF CLI command"
+          filename={filenames.pdf}
+          description="Generates from the saved .sdoc file with Playwright/Chromium print emulation."
+          onClick={() => onCopyDeveloperCommand(pdfCommand)}
+        />
       </section>
 
       <section className="export-section" aria-label="AI/RAG exports">

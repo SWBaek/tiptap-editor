@@ -14,6 +14,8 @@ Acceptable browser behavior:
 
 - download single-file `.html`;
 - include print CSS for browser Save as PDF;
+- show PDF as a CLI/Tauri workflow rather than a browser download;
+- provide a copyable CLI command for saved `.sdoc` files;
 - keep `.sdoc`, Markdown, HTML, and AI/RAG exports user-facing;
 - avoid storing PDF output or print settings in `document.json`.
 

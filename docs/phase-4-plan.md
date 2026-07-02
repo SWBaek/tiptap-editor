@@ -40,11 +40,18 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Render PDF through the existing `exportHtml` projection and Playwright/Chromium print emulation.
 - Require an output path because PDF is binary output.
 
-## Current Slice: Browser PDF UX Boundary
+## Completed Slice: Browser PDF UX Boundary
 
 - Decide whether the web playground should expose a print command, a PDF-ready HTML action, or defer direct PDF UX to Tauri.
 - Avoid claiming browser PDF generation unless it can produce a file reliably.
 - Keep the Export panel focused on outputs that the browser can actually download today.
+- Expose PDF as a CLI/Tauri workflow in the Export panel with a copyable `sdoc export --format pdf` command.
+
+## Current Slice: Slide Export Boundary
+
+- Decide whether slides should be generated from sections/headings, explicit slide nodes, or a separate projection of the canonical document.
+- Avoid adding slide-specific canonical state until the mapping from technical documents to decks is clear.
+- Prefer an export boundary document before implementation.
 
 ## Acceptance Evidence
 
@@ -53,6 +60,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - CLI tests cover `sdoc export <document> --format html`.
 - CLI tests cover PDF generation through the HTML print pipeline.
 - Playwright verifies the Export side panel exposes and downloads `.html`.
+- Playwright verifies the Export side panel marks PDF as CLI/Tauri-only and exposes a PDF CLI command without pretending the browser downloads PDF.
 
 ## Boundaries
 
@@ -62,7 +70,6 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 
 ## Later Slices
 
-- Browser/Tauri PDF export UX
 - Slide export
 - Draw.io integration
 - Advanced table editing

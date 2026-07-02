@@ -336,8 +336,58 @@ function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
     return summarizeTableChanges(oldNode, newNode);
   }
 
+  if (oldNode.type === "diagram" && newNode.type === "diagram") {
+    return summarizeDiagramChanges(oldNode, newNode);
+  }
+
   const oldText = getPlainText(oldNode);
   const newText = getPlainText(newNode);
+  if (oldText !== newText) {
+    changes.push(summarizeTextChange(oldText, newText));
+  }
+
+  const oldAttrs = stableStringify(omitDiffAttrs(oldNode));
+  const newAttrs = stableStringify(omitDiffAttrs(newNode));
+  if (oldAttrs !== newAttrs) {
+    changes.push("attrs changed");
+  }
+
+  return changes.length > 0 ? changes : ["content changed"];
+}
+
+function summarizeDiagramChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
+  const oldKind = typeof oldNode.attrs?.kind === "string" ? oldNode.attrs.kind : "mermaid";
+  const newKind = typeof newNode.attrs?.kind === "string" ? newNode.attrs.kind : "mermaid";
+  if (oldKind === "drawio" || newKind === "drawio") {
+    const changes: string[] = [];
+    if (oldKind !== newKind) {
+      changes.push(`diagram kind changed ${oldKind} -> ${newKind}`);
+    }
+
+    const oldSourceAssetId = typeof oldNode.attrs?.sourceAssetId === "string" ? oldNode.attrs.sourceAssetId : "";
+    const newSourceAssetId = typeof newNode.attrs?.sourceAssetId === "string" ? newNode.attrs.sourceAssetId : "";
+    if (oldSourceAssetId !== newSourceAssetId) {
+      changes.push(`source asset changed ${quote(oldSourceAssetId)} -> ${quote(newSourceAssetId)}`);
+    }
+
+    const oldPreviewAssetId = typeof oldNode.attrs?.previewAssetId === "string" ? oldNode.attrs.previewAssetId : "";
+    const newPreviewAssetId = typeof newNode.attrs?.previewAssetId === "string" ? newNode.attrs.previewAssetId : "";
+    if (oldPreviewAssetId !== newPreviewAssetId) {
+      changes.push(`preview asset changed ${quote(oldPreviewAssetId)} -> ${quote(newPreviewAssetId)}`);
+    }
+
+    const oldAttrs = stableStringify(omitDrawioDiffAttrs(oldNode));
+    const newAttrs = stableStringify(omitDrawioDiffAttrs(newNode));
+    if (oldAttrs !== newAttrs) {
+      changes.push("attrs changed");
+    }
+
+    return changes.length > 0 ? changes : ["diagram changed"];
+  }
+
+  const oldText = getPlainText(oldNode);
+  const newText = getPlainText(newNode);
+  const changes: string[] = [];
   if (oldText !== newText) {
     changes.push(summarizeTextChange(oldText, newText));
   }
@@ -550,6 +600,12 @@ function omitDiffAttrs(node: SDocNode): Record<string, unknown> {
     return rest;
   }
   return attrs;
+}
+
+function omitDrawioDiffAttrs(node: SDocNode): Record<string, unknown> {
+  const attrs = omitId(node.attrs ?? {});
+  const { sourceAssetId: _sourceAssetId, previewAssetId: _previewAssetId, ...rest } = attrs;
+  return rest;
 }
 
 function quote(value: string): string {

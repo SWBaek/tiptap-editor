@@ -155,6 +155,16 @@ function renderBlock(node: SDocNode, references: Map<string, ReferenceTarget>, d
 
     case "diagram": {
       const kind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "mermaid";
+      if (kind === "drawio") {
+        const sourceAssetId = typeof node.attrs?.sourceAssetId === "string" ? node.attrs.sourceAssetId : "";
+        const previewAssetId = typeof node.attrs?.previewAssetId === "string" ? node.attrs.previewAssetId : "";
+        if (previewAssetId.length > 0) {
+          return `![Draw.io diagram](assets/${encodeURI(previewAssetId)})\n\n_Draw.io source: assets/${encodeURI(sourceAssetId)}_`;
+        }
+
+        return `> Draw.io diagram: source asset \`${sourceAssetId}\``;
+      }
+
       const source = typeof node.attrs?.source === "string" ? node.attrs.source : "";
       return `\`\`\`${kind}\n${source}\n\`\`\``;
     }
@@ -292,6 +302,21 @@ ${indentHtml(renderHtmlChildrenAsBlocks(node, references, options, depth), 2)}
 
     case "diagram": {
       const kind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "mermaid";
+      if (kind === "drawio") {
+        const id = getNodeId(node) ?? "";
+        const sourceAssetId = typeof node.attrs?.sourceAssetId === "string" ? node.attrs.sourceAssetId : "";
+        const previewAssetId = typeof node.attrs?.previewAssetId === "string" ? node.attrs.previewAssetId : "";
+        if (previewAssetId.length > 0) {
+          const src = options.assetResolver?.(previewAssetId) ?? `assets/${encodeURI(previewAssetId)}`;
+          return `<figure id="${escapeHtmlAttribute(id)}" class="sdoc-diagram-figure" data-kind="drawio" data-source-asset-id="${escapeHtmlAttribute(sourceAssetId)}">
+  <img src="${escapeHtmlAttribute(src)}" alt="Draw.io diagram">
+  <figcaption>Draw.io source: ${escapeHtml(sourceAssetId)}</figcaption>
+</figure>`;
+        }
+
+        return `<div id="${escapeHtmlAttribute(id)}" class="sdoc-diagram sdoc-diagram-placeholder" data-kind="drawio" data-source-asset-id="${escapeHtmlAttribute(sourceAssetId)}">Draw.io diagram source: ${escapeHtml(sourceAssetId)}</div>`;
+      }
+
       const source = typeof node.attrs?.source === "string" ? node.attrs.source : "";
       return `<pre class="sdoc-diagram" data-kind="${escapeHtmlAttribute(kind)}"><code>${escapeHtml(source)}</code></pre>`;
     }
@@ -615,9 +640,18 @@ const PUBLISH_HTML_CSS = `    :root {
     }
 
     .sdoc-equation-block,
-    .sdoc-diagram {
+    .sdoc-diagram,
+    .sdoc-diagram-figure {
       margin: 18px 0;
       overflow-x: auto;
+    }
+
+    .sdoc-diagram-placeholder {
+      padding: 14px 16px;
+      color: #4e5d6b;
+      background: #f8fafb;
+      border: 1px dashed #92a4b4;
+      border-radius: 6px;
     }
 
     .sdoc-equation-block {
@@ -675,7 +709,8 @@ const PUBLISH_HTML_CSS = `    :root {
       blockquote,
       .sdoc-callout,
       .sdoc-equation-block,
-      .sdoc-diagram {
+      .sdoc-diagram,
+      .sdoc-diagram-figure {
         break-inside: avoid;
         page-break-inside: avoid;
       }

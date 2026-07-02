@@ -61,12 +61,18 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Prefer a boundary document before schema/editor implementation.
 - Use `docs/drawio-integration-boundary.md` as the boundary document.
 
-## Current Slice: Draw.io Minimal Asset Model
+## Completed Slice: Draw.io Minimal Asset Model
 
 - Extend the existing `diagram` shape for `attrs.kind = "drawio"` with `sourceAssetId` and optional `previewAssetId`.
 - Keep editable Draw.io source in `.sdoc/assets/`; do not embed XML or generated preview bytes in `document.json`.
 - Add a small storage policy or adapter boundary so the default asset-backed model can evolve without rewriting schema, CLI, or UI code.
 - Preserve Draw.io source assets through validation, pack/unpack, export, and semantic diff workflows before attempting embedded editor integration.
+
+## Current Slice: Advanced Table Editing Boundary
+
+- Decide the smallest table editing model beyond simple tables: resize/reorder, header toggles, cell alignment, or merge/split.
+- Keep table editing state canonical only when it represents document semantics; do not store transient column widths or selection state in `document.json`.
+- Prefer a boundary document before expanding schema or Tiptap table behavior.
 
 ## Acceptance Evidence
 
@@ -78,6 +84,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Playwright verifies the Export side panel marks PDF as CLI/Tauri-only and exposes a PDF CLI command without pretending the browser downloads PDF.
 - `docs/slide-export-boundary.md` records that slide export is a derived projection and defers PPTX/native deck generation until renderer decisions are made.
 - `docs/drawio-integration-boundary.md` records that Draw.io source is stored as an asset-backed diagram source and defers embedded editing until the asset lifecycle is proven.
+- Unit tests cover Draw.io schema validation, asset-backed `.sdoc` round trip, export fallback, semantic diff summaries, editor conversion, and browser save/export asset selection.
 
 ## Boundaries
 
@@ -90,5 +97,4 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Native PPTX slide export
 - Embedded Draw.io editor integration
 - Draw.io structural diff
-- Advanced table editing
 - Section folding

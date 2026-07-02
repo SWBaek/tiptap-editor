@@ -201,8 +201,67 @@ describe("validateDocument", () => {
 
     const result = validateDocument(document);
     expect(result.ok).toBe(false);
-    expect(result.issues.some((issue) => issue.message.includes("diagram kind must be mermaid"))).toBe(true);
-    expect(result.issues.some((issue) => issue.message.includes("diagram source is required"))).toBe(true);
+    expect(result.issues.some((issue) => issue.message.includes("Draw.io diagram sourceAssetId is required"))).toBe(true);
+    expect(result.issues.some((issue) => issue.message.includes("Draw.io diagram source must be stored as an asset reference"))).toBe(false);
+  });
+
+  it("accepts Draw.io diagrams with asset-backed source references", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_drawio" },
+      content: [
+        {
+          type: "diagram",
+          attrs: {
+            id: "blk_drawio",
+            kind: "drawio",
+            sourceAssetId: "asset_architecture.drawio",
+            previewAssetId: "asset_architecture.svg"
+          }
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(true);
+    expect(getPlainText(document.content[0])).toBe("asset_architecture.drawio");
+  });
+
+  it("rejects Draw.io diagrams with embedded source text", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_drawio_bad" },
+      content: [
+        {
+          type: "diagram",
+          attrs: {
+            id: "blk_drawio",
+            kind: "drawio",
+            sourceAssetId: "asset_architecture.drawio",
+            source: "<mxfile>embedded</mxfile>"
+          }
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("Draw.io diagram source must be stored as an asset reference"))).toBe(true);
+  });
+
+  it("rejects unsupported diagram kinds", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_diagram_bad_kind" },
+      content: [{ type: "diagram", attrs: { id: "blk_diagram", kind: "plantuml", source: "@startuml\n@enduml" } }]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("diagram kind must be mermaid or drawio"))).toBe(true);
   });
 
   it("rejects nodes outside the current scope", () => {

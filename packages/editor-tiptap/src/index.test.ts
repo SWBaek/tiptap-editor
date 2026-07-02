@@ -14,6 +14,7 @@ import {
   insertCrossReference,
   InlineEquationNode,
   insertEquationBlock,
+  insertDrawioDiagram,
   insertInlineEquation,
   insertMermaidDiagram,
   moveSelectedTopLevelBlock,
@@ -355,6 +356,50 @@ describe("SDoc conversion", () => {
       ]
     });
   });
+
+  it("round-trips Draw.io diagrams across SDoc conversion without preview runtime state", () => {
+    const document = toSdocDocument(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "diagram",
+            attrs: {
+              id: "blk_drawio",
+              kind: "drawio",
+              sourceAssetId: "asset_architecture.drawio",
+              previewAssetId: "asset_architecture.svg",
+              previewSrc: "blob:preview"
+            }
+          }
+        ]
+      },
+      "doc_drawio"
+    );
+
+    expect(validateDocument(document).ok).toBe(true);
+    expect(document.content[0].attrs).toEqual({
+      id: "blk_drawio",
+      kind: "drawio",
+      sourceAssetId: "asset_architecture.drawio",
+      previewAssetId: "asset_architecture.svg"
+    });
+    expect(fromSdocDocument(document, { "asset_architecture.svg": "blob:asset_architecture" })).toEqual({
+      type: "doc",
+      content: [
+        {
+          type: "diagram",
+          attrs: {
+            id: "blk_drawio",
+            kind: "drawio",
+            sourceAssetId: "asset_architecture.drawio",
+            previewAssetId: "asset_architecture.svg",
+            previewSrc: "blob:asset_architecture"
+          }
+        }
+      ]
+    });
+  });
 });
 
 describe("BlockIdExtension", () => {
@@ -596,6 +641,30 @@ describe("BlockIdExtension", () => {
       kind: "mermaid",
       source: "flowchart TD\nA[Start] --> B[Done]"
     });
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
+  it("inserts Draw.io diagrams with asset-backed source references", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, InlineEquationNode, EquationBlockNode, DiagramNode, ...TableExtensions, FigureNode, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_initial" }, content: [{ type: "text", text: "Initial" }] }]
+      }
+    });
+
+    const inserted = insertDrawioDiagram(editor, "asset_architecture.drawio", "asset_architecture.svg", "blk_drawio");
+    const document = toSdocDocument(editor.getJSON(), "doc_drawio");
+    editor.destroy();
+
+    expect(inserted).toBe(true);
+    expect(document.content.find((node) => node.type === "diagram")?.attrs).toEqual({
+      id: "blk_drawio",
+      kind: "drawio",
+      sourceAssetId: "asset_architecture.drawio",
+      previewAssetId: "asset_architecture.svg"
+    });
+    expect(JSON.stringify(document)).not.toContain("previewSrc");
     expect(validateDocument(document).ok).toBe(true);
   });
 });

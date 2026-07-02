@@ -48,3 +48,7 @@ Semantic diff should initially report Draw.io changes at the diagram block level
 - Live preview generation in browser.
 - External path references for normal users.
 - Tauri file watching and external editor integration.
+
+## Minimal Asset Model Implementation
+
+The first implementation slice accepts `diagram.attrs.kind = "drawio"` in schema validation, requires `sourceAssetId`, and preserves optional `previewAssetId`. `.sdoc` pack/save paths include both referenced assets, deterministic serialization omits `null` runtime attributes, and semantic diff reports source/preview asset changes without diffing raw XML. Markdown and HTML exports prefer the preview asset when present and otherwise emit a source-preserving placeholder.

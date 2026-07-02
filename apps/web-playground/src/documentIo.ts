@@ -1,5 +1,5 @@
 import { exportDerivedOutputs, exportHtml, exportMarkdown } from "@sdoc/export";
-import { createEmptySdocContainer, packSdoc, unpackSdoc, type SDocMetadata } from "@sdoc/format";
+import { collectReferencedAssetIds, createEmptySdocContainer, packSdoc, unpackSdoc, type SDocMetadata } from "@sdoc/format";
 import { createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
 
 export interface OpenDocumentInput {
@@ -167,21 +167,6 @@ function selectReferencedAssets(document: SDocDocument, assets: SDocAssets): SDo
   }
 
   return selected;
-}
-
-function collectReferencedAssetIds(document: SDocDocument): string[] {
-  const assetIds = new Set<string>();
-
-  function visit(node: SDocDocument["content"][number]): void {
-    if (node.type === "figure" && typeof node.attrs?.assetId === "string" && node.attrs.assetId.length > 0) {
-      assetIds.add(node.attrs.assetId);
-    }
-
-    node.content?.forEach(visit);
-  }
-
-  document.content.forEach(visit);
-  return [...assetIds].sort((a, b) => a.localeCompare(b));
 }
 
 function bytesToDataUrl(assetId: string, bytes: Uint8Array): string {

@@ -96,6 +96,10 @@ export function getPlainText(node: SDocNode): string {
   }
 
   if (node.type === "diagram") {
+    if (node.attrs?.kind === "drawio") {
+      return typeof node.attrs.sourceAssetId === "string" ? node.attrs.sourceAssetId : "";
+    }
+
     return typeof node.attrs?.source === "string" ? node.attrs.source : "";
   }
 
@@ -213,13 +217,28 @@ function validateNode(
 
   if (typedNode.type === "diagram") {
     const kind = typedNode.attrs?.kind;
-    if (kind !== "mermaid") {
-      issues.push({ path: `${path}.attrs.kind`, message: "diagram kind must be mermaid" });
-    }
+    if (kind === "mermaid") {
+      const source = typedNode.attrs?.source;
+      if (typeof source !== "string" || source.trim().length === 0) {
+        issues.push({ path: `${path}.attrs.source`, message: "Mermaid diagram source is required" });
+      }
+    } else if (kind === "drawio") {
+      const sourceAssetId = typedNode.attrs?.sourceAssetId;
+      if (typeof sourceAssetId !== "string" || sourceAssetId.length === 0) {
+        issues.push({ path: `${path}.attrs.sourceAssetId`, message: "Draw.io diagram sourceAssetId is required" });
+      }
 
-    const source = typedNode.attrs?.source;
-    if (typeof source !== "string" || source.trim().length === 0) {
-      issues.push({ path: `${path}.attrs.source`, message: "diagram source is required" });
+      const previewAssetId = typedNode.attrs?.previewAssetId;
+      if (previewAssetId !== undefined && (typeof previewAssetId !== "string" || previewAssetId.length === 0)) {
+        issues.push({ path: `${path}.attrs.previewAssetId`, message: "Draw.io diagram previewAssetId must be a non-empty string" });
+      }
+
+      const source = typedNode.attrs?.source;
+      if (typeof source === "string" && source.trim().length > 0) {
+        issues.push({ path: `${path}.attrs.source`, message: "Draw.io diagram source must be stored as an asset reference" });
+      }
+    } else {
+      issues.push({ path: `${path}.attrs.kind`, message: "diagram kind must be mermaid or drawio" });
     }
   }
 

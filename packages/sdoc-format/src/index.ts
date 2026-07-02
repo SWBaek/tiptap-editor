@@ -63,6 +63,31 @@ export interface SDocContainer {
   derived?: Record<string, string>;
 }
 
+export interface DiagramSourceStore {
+  collectReferencedAssetIds(node: SDocNode): string[];
+}
+
+export const assetBackedDiagramSourceStore: DiagramSourceStore = {
+  collectReferencedAssetIds(node) {
+    if (node.type !== "diagram" || node.attrs?.kind !== "drawio") {
+      return [];
+    }
+
+    const assetIds: string[] = [];
+    const sourceAssetId = node.attrs.sourceAssetId;
+    if (typeof sourceAssetId === "string" && sourceAssetId.length > 0) {
+      assetIds.push(sourceAssetId);
+    }
+
+    const previewAssetId = node.attrs.previewAssetId;
+    if (typeof previewAssetId === "string" && previewAssetId.length > 0) {
+      assetIds.push(previewAssetId);
+    }
+
+    return assetIds;
+  }
+};
+
 export function createEmptySdocContainer(options: Partial<SDocMetadata> = {}): SDocContainer {
   const document = createEmptyDocument();
   const now = new Date().toISOString();
@@ -222,12 +247,19 @@ function assertValidContainer(container: SDocContainer): void {
   }
 }
 
-function collectReferencedAssetIds(document: SDocDocument): string[] {
+export function collectReferencedAssetIds(
+  document: SDocDocument,
+  diagramSourceStore: DiagramSourceStore = assetBackedDiagramSourceStore
+): string[] {
   const assetIds = new Set<string>();
 
   function visit(node: SDocNode): void {
     if (node.type === "figure" && typeof node.attrs?.assetId === "string" && node.attrs.assetId.length > 0) {
       assetIds.add(node.attrs.assetId);
+    }
+
+    for (const assetId of diagramSourceStore.collectReferencedAssetIds(node)) {
+      assetIds.add(assetId);
     }
 
     node.content?.forEach(visit);

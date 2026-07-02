@@ -112,6 +112,14 @@ describe("exportMarkdown", () => {
   it("exports Mermaid diagrams as fenced source blocks", () => {
     expect(exportMarkdown(createDiagramDocument())).toContain("```mermaid\nflowchart TD\nA[Start] --> B[Done]\n```");
   });
+
+  it("exports Draw.io diagrams as asset-backed references", () => {
+    const markdown = exportMarkdown(createDrawioDocument());
+
+    expect(markdown).toContain("![Draw.io diagram](assets/asset_architecture.svg)");
+    expect(markdown).toContain("_Draw.io source: assets/asset_architecture.drawio_");
+    expect(markdown).not.toContain("<mxfile");
+  });
 });
 
 describe("exportHtml", () => {
@@ -180,6 +188,17 @@ describe("exportHtml", () => {
     expect(html).toContain('src="data:image/png;base64,asset_architecture.png"');
     expect(html).toContain("<figcaption>System architecture</figcaption>");
   });
+
+  it("exports Draw.io HTML using preview assets and source references", () => {
+    const html = exportHtml(createDrawioDocument(), {
+      assetResolver: (assetId) => `data:image/svg+xml;base64,${assetId}`
+    });
+
+    expect(html).toContain('data-kind="drawio"');
+    expect(html).toContain('data-source-asset-id="asset_architecture.drawio"');
+    expect(html).toContain('src="data:image/svg+xml;base64,asset_architecture.svg"');
+    expect(html).not.toContain("<mxfile");
+  });
 });
 
 describe("exportDerivedOutputs", () => {
@@ -240,6 +259,15 @@ describe("exportDerivedOutputs", () => {
     expect(outputs["references.json"]).toContain('"type": "diagram"');
     expect(outputs["chunks.jsonl"]).toContain("flowchart TD");
   });
+
+  it("includes Draw.io source asset references in derived outputs", () => {
+    const outputs = exportDerivedOutputs(createDrawioDocument());
+
+    expect(outputs["plain.md"]).toContain("asset_architecture.drawio");
+    expect(outputs["references.json"]).toContain('"type": "diagram"');
+    expect(outputs["chunks.jsonl"]).toContain("asset_architecture.drawio");
+    expect(outputs["chunks.jsonl"]).not.toContain("<mxfile");
+  });
 });
 
 function createDiagramDocument(): SDocDocument {
@@ -254,6 +282,25 @@ function createDiagramDocument(): SDocDocument {
           id: "blk_diagram",
           kind: "mermaid",
           source: "flowchart TD\nA[Start] --> B[Done]"
+        }
+      }
+    ]
+  };
+}
+
+function createDrawioDocument(): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_drawio" },
+    content: [
+      {
+        type: "diagram",
+        attrs: {
+          id: "blk_drawio",
+          kind: "drawio",
+          sourceAssetId: "asset_architecture.drawio",
+          previewAssetId: "asset_architecture.svg"
         }
       }
     ]

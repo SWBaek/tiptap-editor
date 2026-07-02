@@ -226,6 +226,20 @@ describe("diffDocuments", () => {
     expect(modified?.kind).toBe("modified");
     expect(modified?.kind === "modified" ? modified.changes : []).toEqual(['text changed "flowchart TD A --> [-B-] [+C+]"']);
   });
+
+  it("summarizes Draw.io diagram asset reference changes without XML diffing", () => {
+    const oldDiagramDocument = createDrawioDocument("asset_architecture.drawio", "asset_architecture.svg");
+    const newDiagramDocument = createDrawioDocument("asset_architecture_v2.drawio", "asset_architecture_v2.svg");
+    const modified = diffDocuments(oldDiagramDocument, newDiagramDocument).find(
+      (event) => event.kind === "modified" && event.id === "blk_drawio"
+    );
+
+    expect(modified?.kind).toBe("modified");
+    expect(modified?.kind === "modified" ? modified.changes : []).toEqual([
+      'source asset changed "asset_architecture.drawio" -> "asset_architecture_v2.drawio"',
+      'preview asset changed "asset_architecture.svg" -> "asset_architecture_v2.svg"'
+    ]);
+  });
 });
 
 describe("renderReadableDiffEvents", () => {
@@ -319,5 +333,24 @@ function createDiagramDocument(source: string): SDocDocument {
     type: "doc",
     attrs: { id: "doc_diagram" },
     content: [{ type: "diagram", attrs: { id: "blk_diagram", kind: "mermaid", source } }]
+  };
+}
+
+function createDrawioDocument(sourceAssetId: string, previewAssetId?: string): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_drawio" },
+    content: [
+      {
+        type: "diagram",
+        attrs: {
+          id: "blk_drawio",
+          kind: "drawio",
+          sourceAssetId,
+          ...(previewAssetId ? { previewAssetId } : {})
+        }
+      }
+    ]
   };
 }

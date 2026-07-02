@@ -23,7 +23,7 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 | `callout` | yes | `kind: note/info/warning/danger/tip` |
 | `figure` | yes | Phase 2 asset-backed image with caption; `assetId` required |
 | `equationBlock` | yes | Phase 2 block math; `latex` source required |
-| `diagram` | yes | Phase 2 Mermaid diagram; `kind` and `source` required |
+| `diagram` | yes | Mermaid source diagram or Draw.io asset-backed diagram |
 | `table` | yes | Phase 2 simple table container |
 | `tableRow` | yes | Table row; children are `tableCell` or `tableHeader` |
 | `tableCell` | yes | Table body cell; contains block content |
@@ -33,7 +33,7 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 | `crossReference` | no | 내부 참조 inline node |
 | `equation` | no | Phase 2 inline math; `latex` source required |
 
-PDF, slide, Draw.io deep integration은 schema foundation 이후로 미룬다.
+PDF, slide, and embedded Draw.io editing are schema extensions after the source-preserving foundation.
 
 ## Phase 2 Figure Shape
 
@@ -93,6 +93,20 @@ Mermaid diagrams store source text in `attrs.source` with `attrs.kind = "mermaid
     "id": "blk_diagram",
     "kind": "mermaid",
     "source": "flowchart TD\nA[Start] --> B[Done]"
+  }
+}
+```
+
+Draw.io diagrams use the same `diagram` node, but the editable Draw.io source is stored in `.sdoc/assets/`. Canonical `document.json` stores only asset references and must not embed Draw.io XML or generated preview bytes. `sourceAssetId` is required. `previewAssetId` is optional and points to a non-canonical SVG/PNG preview asset when available.
+
+```json
+{
+  "type": "diagram",
+  "attrs": {
+    "id": "blk_drawio",
+    "kind": "drawio",
+    "sourceAssetId": "asset_architecture.drawio",
+    "previewAssetId": "asset_architecture.svg"
   }
 }
 ```

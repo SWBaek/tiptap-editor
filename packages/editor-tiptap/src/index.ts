@@ -276,6 +276,21 @@ export const DiagramNode = Node.create({
         default: "",
         parseHTML: (element) => element.getAttribute("data-source") ?? element.textContent ?? "",
         renderHTML: () => ({})
+      },
+      sourceAssetId: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-source-asset-id"),
+        renderHTML: () => ({})
+      },
+      previewAssetId: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-preview-asset-id"),
+        renderHTML: () => ({})
+      },
+      previewSrc: {
+        default: null,
+        parseHTML: (element) => element.querySelector("img")?.getAttribute("src") ?? null,
+        renderHTML: () => ({})
       }
     };
   },
@@ -286,6 +301,24 @@ export const DiagramNode = Node.create({
 
   renderHTML({ HTMLAttributes, node }) {
     const source = String(node.attrs.source ?? "");
+    const kind = String(node.attrs.kind ?? "mermaid");
+    if (kind === "drawio") {
+      const sourceAssetId = String(node.attrs.sourceAssetId ?? "");
+      const previewAssetId = String(node.attrs.previewAssetId ?? "");
+      const previewSrc = typeof node.attrs.previewSrc === "string" ? node.attrs.previewSrc : "";
+      const attrs = mergeAttributes(HTMLAttributes, {
+        "data-type": "diagram",
+        "data-kind": "drawio",
+        "data-source-asset-id": sourceAssetId,
+        "data-preview-asset-id": previewAssetId,
+        class: "sdoc-diagram"
+      });
+
+      return previewSrc
+        ? ["div", attrs, ["img", { src: previewSrc, alt: "Draw.io diagram" }]]
+        : ["div", attrs, ["pre", `Draw.io diagram source: ${sourceAssetId}`]];
+    }
+
     return [
       "div",
       mergeAttributes(HTMLAttributes, { "data-type": "diagram", class: "sdoc-diagram" }),
@@ -382,6 +415,29 @@ export function insertMermaidDiagram(editor: DiagramInsertTarget, source: string
   return result || fingerprintEditorJson(editor) !== before;
 }
 
+export function insertDrawioDiagram(
+  editor: DiagramInsertTarget,
+  sourceAssetId: string,
+  previewAssetId?: string,
+  id = createBlockId()
+): boolean {
+  const cleanSourceAssetId = sourceAssetId.trim();
+  if (cleanSourceAssetId.length === 0) {
+    return false;
+  }
+
+  const attrs: Record<string, string> = { id, kind: "drawio", sourceAssetId: cleanSourceAssetId };
+  const cleanPreviewAssetId = previewAssetId?.trim();
+  if (cleanPreviewAssetId) {
+    attrs.previewAssetId = cleanPreviewAssetId;
+  }
+
+  const before = fingerprintEditorJson(editor);
+  const chain = editor.chain() as InsertContentChain;
+  const result = chain.focus().insertContent({ type: "diagram", attrs }).run();
+  return result || fingerprintEditorJson(editor) !== before;
+}
+
 function fingerprintEditorJson(editor: EquationInsertTarget): string {
   return editor.getJSON ? JSON.stringify(editor.getJSON()) : "";
 }
@@ -459,6 +515,9 @@ function createDiagramNodeView() {
     function render(currentNode: typeof node): void {
       const source = typeof currentNode.attrs.source === "string" ? currentNode.attrs.source : "";
       const kind = typeof currentNode.attrs.kind === "string" ? currentNode.attrs.kind : "mermaid";
+      const sourceAssetId = typeof currentNode.attrs.sourceAssetId === "string" ? currentNode.attrs.sourceAssetId : "";
+      const previewAssetId = typeof currentNode.attrs.previewAssetId === "string" ? currentNode.attrs.previewAssetId : "";
+      const previewSrc = typeof currentNode.attrs.previewSrc === "string" ? currentNode.attrs.previewSrc : "";
       renderVersion += 1;
       const version = renderVersion;
 
@@ -466,7 +525,16 @@ function createDiagramNodeView() {
       dom.setAttribute("data-type", "diagram");
       dom.setAttribute("data-kind", kind);
       dom.setAttribute("data-source", source);
+      dom.setAttribute("data-source-asset-id", sourceAssetId);
+      dom.setAttribute("data-preview-asset-id", previewAssetId);
       dom.innerHTML = `<pre>${escapeHtml(source)}</pre>`;
+
+      if (kind === "drawio") {
+        dom.innerHTML = previewSrc
+          ? `<img src="${escapeHtml(previewSrc)}" alt="Draw.io diagram">`
+          : `<pre>Draw.io diagram source: ${escapeHtml(sourceAssetId)}</pre>`;
+        return;
+      }
 
       if (kind !== "mermaid" || source.trim().length === 0) {
         return;
@@ -773,9 +841,21 @@ function getCanonicalAttrs(node: JSONContent): Record<string, JsonValue> | undef
     return undefined;
   }
 
-  const attrs = { ...(node.attrs as Record<string, JsonValue>) };
+  const attrs = Object.fromEntries(
+    Object.entries(node.attrs as Record<string, JsonValue>).filter(([, value]) => value !== null && value !== undefined)
+  ) as Record<string, JsonValue>;
   if (node.type === "figure") {
     delete attrs.src;
+  }
+  if (node.type === "diagram") {
+    const kind = attrs.kind;
+    delete attrs.previewSrc;
+    if (kind === "drawio") {
+      delete attrs.source;
+    } else {
+      delete attrs.sourceAssetId;
+      delete attrs.previewAssetId;
+    }
   }
   return attrs;
 }
@@ -791,6 +871,13 @@ function getEditorAttrs(node: SDocNode, assetSources: Record<string, string>): R
     const src = assetId ? assetSources[assetId] : undefined;
     if (src) {
       attrs.src = src;
+    }
+  }
+  if (node.type === "diagram") {
+    const previewAssetId = typeof attrs.previewAssetId === "string" ? attrs.previewAssetId : undefined;
+    const previewSrc = previewAssetId ? assetSources[previewAssetId] : undefined;
+    if (previewSrc) {
+      attrs.previewSrc = previewSrc;
     }
   }
   return attrs;

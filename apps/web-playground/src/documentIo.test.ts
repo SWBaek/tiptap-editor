@@ -80,6 +80,36 @@ describe("createSdocPayload", () => {
     expect(Array.from(opened.assets["asset_architecture.png"] ?? [])).toEqual([137, 80, 78, 71]);
   });
 
+  it("creates a .sdoc with referenced Draw.io source and preview assets", async () => {
+    const drawioDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_drawio" },
+      content: [
+        {
+          type: "diagram",
+          attrs: {
+            id: "blk_drawio",
+            kind: "drawio",
+            sourceAssetId: "asset_architecture.drawio",
+            previewAssetId: "asset_architecture.svg"
+          }
+        }
+      ]
+    };
+
+    const payload = await createSdocPayload(drawioDocument, metadata, new Date("2026-07-01T00:00:00.000Z"), {
+      "asset_architecture.drawio": new Uint8Array([60, 109, 120, 62]),
+      "asset_architecture.svg": new Uint8Array([60, 115, 118, 103, 62]),
+      "asset_unused.drawio": new Uint8Array([0])
+    });
+    const container = await unpackSdoc(payload.bytes);
+
+    expect(Object.keys(container.assets ?? {})).toEqual(["asset_architecture.drawio", "asset_architecture.svg"]);
+    expect(container.document).toEqual(drawioDocument);
+    expect(container.derived?.["plain.md"]).toContain("asset_architecture.drawio");
+  });
+
   it("sanitizes filenames", () => {
     expect(safeFilename('  A:B/C*D?  ')).toBe("A-B-C-D-");
     expect(safeFilename("   ")).toBe("document");
@@ -126,6 +156,32 @@ describe("createHtmlPayload", () => {
 
     expect(payload.text).toContain('src="data:image/png;base64,iVBORw=="');
     expect(payload.text).toContain("<figcaption>Architecture diagram</figcaption>");
+  });
+
+  it("embeds available Draw.io preview assets as data URLs", () => {
+    const drawioDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_drawio" },
+      content: [
+        {
+          type: "diagram",
+          attrs: {
+            id: "blk_drawio",
+            kind: "drawio",
+            sourceAssetId: "asset_architecture.drawio",
+            previewAssetId: "asset_architecture.svg"
+          }
+        }
+      ]
+    };
+
+    const payload = createHtmlPayload(drawioDocument, metadata, {
+      "asset_architecture.svg": new Uint8Array([60, 115, 118, 103, 62])
+    });
+
+    expect(payload.text).toContain('src="data:image/svg+xml;base64,PHN2Zz4="');
+    expect(payload.text).toContain('data-source-asset-id="asset_architecture.drawio"');
   });
 });
 

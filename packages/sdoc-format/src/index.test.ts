@@ -130,6 +130,59 @@ describe("packSdoc", () => {
       })
     ).rejects.toThrow("missing assets: asset_missing.png");
   });
+
+  it("round-trips Draw.io source and preview asset references", async () => {
+    const container = createEmptySdocContainer({ title: "Draw.io Asset" });
+    const document: SDocDocument = {
+      schemaVersion: 1 as const,
+      type: "doc" as const,
+      attrs: { id: "doc_drawio" },
+      content: [
+        {
+          type: "diagram",
+          attrs: {
+            id: "blk_drawio",
+            kind: "drawio",
+            sourceAssetId: "asset_architecture.drawio",
+            previewAssetId: "asset_architecture.svg"
+          }
+        }
+      ]
+    };
+
+    const packed = await packSdoc({
+      ...container,
+      manifest: { ...container.manifest, documentId: document.attrs.id },
+      document,
+      assets: {
+        "asset_architecture.drawio": new Uint8Array([60, 109, 120, 62]),
+        "asset_architecture.svg": new Uint8Array([60, 115, 118, 103, 62])
+      }
+    });
+    const unpacked = await unpackSdoc(packed);
+
+    expect(unpacked.document.content[0]?.attrs?.sourceAssetId).toBe("asset_architecture.drawio");
+    expect(Array.from(unpacked.assets?.["asset_architecture.drawio"] ?? [])).toEqual([60, 109, 120, 62]);
+    expect(Array.from(unpacked.assets?.["asset_architecture.svg"] ?? [])).toEqual([60, 115, 118, 103, 62]);
+  });
+
+  it("rejects Draw.io references to missing source assets", async () => {
+    const container = createEmptySdocContainer({ title: "Missing Draw.io Asset" });
+    const document: SDocDocument = {
+      schemaVersion: 1 as const,
+      type: "doc" as const,
+      attrs: { id: "doc_drawio" },
+      content: [{ type: "diagram", attrs: { id: "blk_drawio", kind: "drawio", sourceAssetId: "asset_missing.drawio" } }]
+    };
+
+    await expect(
+      packSdoc({
+        ...container,
+        manifest: { ...container.manifest, documentId: document.attrs.id },
+        document
+      })
+    ).rejects.toThrow("missing assets: asset_missing.drawio");
+  });
 });
 
 describe("tryUnpackSdoc", () => {

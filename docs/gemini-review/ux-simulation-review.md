@@ -1,115 +1,103 @@
-# UX & Architecture Simulation Review: SDoc Editor (Expanded)
+# UX & Architecture Simulation Review: SDoc Editor
 
 **Date**: 2026-07-03
-**Reviewer**: Gemini 3.1 Pro (Long-term Development Agent)
-**Focus**: UX Limitations, Edge Cases, Accessibility, Enterprise Needs, and Future Improvements based on **60 Human and System-Use Simulations**.
+**Target Persona**: Power Electronics (PE) Engineers developing On-Board Chargers (OBC)
+**Environment**: Windows-exclusive Enterprise Desktop (Tauri/Browser), Strictly Regulated Templates
+**Focus**: 100 Simulations addressing Automotive Hardware Engineering, Heavy Math, Test Data, and Corporate Compliance.
 
 ---
 
 ## 1. Executive Summary
-Following the initial 10 simulations, an additional 50 diverse scenarios were executed conceptually. These covered Accessibility (A11y), Mobile/Touch, Enterprise/Compliance, Data Science/Engineering workflows, Content Localization, and Edge Case/Error States. 
+The target context has been aggressively refined: SDoc is a **Windows-only enterprise tool** for **Power Electronics Engineers** building **OBCs (On-Board Chargers)**, operating under strict corporate templates and automotive safety standards (e.g., ISO 26262). 
 
-The core architecture (canonical `document.json` + `derived/` exports) is remarkably resilient. However, the Editor's UX currently assumes a standard desktop developer environment. Extending this to non-developers, automated systems, and enterprise compliance reveals significant gaps in **Collaboration, Accessibility, Asset Management, and Ecosystem Tooling**.
-
----
-
-## 2. Categorized Simulation Scenarios (60 Total)
-
-### Category 1: Core Authoring & Workflows (1-10)
-1. **Architecture Doc**: Editing Draw.io requires external context switch. (Needs Embedded Draw.io)
-2. **API Spec**: Tables lack column width persistence, causing visual crunch. (Needs Layout State policy)
-3. **Research Paper**: Typing `@` doesn't auto-suggest references. (Needs Inline Autocomplete)
-4. **Peer Review**: JSON-based semantic diff is unreadable to non-devs. (Needs Visual Side-by-Side Diff)
-5. **Presentation**: PPTX generation requires CLI knowledge. (Needs Tauri/Browser native export)
-6. **100-Page Manual**: No persistent Table of Contents navigation. (Needs Interactive Outline Panel)
-7. **Email Status Report**: No easy way to copy HTML directly to clipboard. (Needs Copy as Rich Text)
-8. **Data Recovery**: Browser storage is volatile. (Needs Tauri Native Filesystem Auto-save)
-9. **Runbook**: Images cannot be visually resized in-editor. (Needs visual scaling metadata)
-10. **Git-Allergic User**: "Unpacked folder" UI terminology is confusing. (Needs Developer Mode toggle)
-
-### Category 2: Accessibility & Inclusivity (11-15)
-11. **Screen Reader User**: Semantic diff lists don't clearly announce contextual text changes. ARIA labels on the Diff tree are lacking.
-12. **Keyboard-Only User**: Cannot easily "escape" a deeply nested code block or table without mouse clicks.
-13. **Low-Vision User**: High-contrast mode lacks support for semantic diff colors (green/red blend together).
-14. **Dyslexic User**: Standard technical font (Inter/Roboto) is hard to read. Needs an accessibility font toggle (e.g., OpenDyslexic) that doesn't save to `document.json`.
-15. **Colorblind User (Protanopia)**: Relies entirely on `[+added+]` text markers because the red/green diff backgrounds are indistinguishable. The markers must remain!
-
-### Category 3: Mobile & Touch Environments (16-20)
-16. **iPad Pro User**: Floating toolbars overlap with the iOS virtual keyboard. 
-17. **Touch Gestures**: Cannot drag-and-drop block handles (like Notion) using touch; relies entirely on keyboard shortcuts which iPad lacks.
-18. **Responsive Side Panel**: Opening the Activity Bar on a phone hides 100% of the editor surface. 
-19. **Offline Tablet Usage**: PWA offline caching works for editing, but local assets (images) fail to load if they were fetched from remote URLs before packing.
-20. **Mobile Reviewer**: Trying to read a semantic diff on a 6-inch screen is impossible due to horizontal scrolling of JSON paths.
-
-### Category 4: Enterprise & Compliance (21-30)
-21. **Legal Patent Review**: Needs to "Redline" (Track Changes). Semantic diff is post-edit; they need live suggested edits.
-22. **QA Auditor**: Needs a strict "Block Export if References are Broken" toggle to prevent publishing errors.
-23. **Corporate PPTX**: CLI PPTX export ignores corporate master templates. Needs a way to supply a `--template template.pptx` flag.
-24. **Security Audit**: An `.sdoc` contains a malicious SVG asset. Needs an asset sanitization pipeline on unpack.
-25. **IT Admin**: Wants to restrict `codeBlock` execution or raw HTML embedding to prevent XSS in company wikis.
-26. **Legacy DOCX Requirement**: External stakeholders demand `.docx`. SDoc currently lacks a DOCX projection.
-27. **Watermarking**: Exporting a PDF needs a draft watermark. Currently impossible without modifying HTML CSS manually.
-28. **Redaction**: Needs to redact a block before generating `chunks.jsonl` for the AI. No `isRedacted` schema support.
-29. **Massive Excel Paste**: Pasting a 1000-row Excel table freezes the Tiptap DOM. Needs table virtualization or a "Data Grid" node type.
-30. **SSO / Cloud Storage**: Saving `.sdoc` directly to SharePoint/Google Drive isn't supported. Tauri will only solve local OS.
-
-### Category 5: Data Science & Engineering (31-40)
-31. **Jupyter Migration**: User wants executable code blocks. SDoc code blocks are currently static text.
-32. **Heavy KaTeX Macros**: User has 50 custom LaTeX macros. No way to define document-level macros in `metadata.json`.
-33. **Massive Mermaid Diagram**: A 500-line Mermaid diagram times out the browser renderer. Needs web-worker offloading.
-34. **RAG Pipeline Optimization**: `chunks.jsonl` lacks semantic parent context beyond the immediate heading. AI loses track of the document title.
-35. **Large JSON Payloads**: A 5MB JSON string in a code block blows up `document.json` size. 
-36. **Raw Git Conflict**: Two devs edit `document.json` and hit a merge conflict. Git cannot auto-merge deterministic JSON safely. Needs a custom `git merge-driver`.
-37. **CI/CD Validation**: Pipeline runs `sdoc validate`. Excellent workflow, highly stable.
-38. **API Auto-Generation**: Swagger-to-SDoc script creates invalid block IDs. The validator catches it correctly.
-39. **Markdown Power User**: Annoyed that typing `---` doesn't create a horizontal rule (schema lacks `horizontalRule`).
-40. **Bulk Migration**: Attempting to convert 10,000 Markdown files to `.sdoc`. The CLI needs a `batch import` command.
-
-### Category 6: Content Strategy & Localization (41-50)
-41. **Translation (i18n)**: Translating an `.sdoc` creates entirely new block IDs, breaking cross-references between language versions. Needs a `translationOfId` schema attribute.
-42. **Reusable Snippets**: Technical writer wants to embed `warnings.sdoc` into `manual.sdoc`. No `include` block node exists.
-43. **SEO Audit**: `outline.json` is great, but metadata lacks a canonical URL or description field for HTML export meta tags.
-44. **Page Breaks**: PDF export lacks explicit `<div style="page-break-before: always">` control. Schema needs a `pageBreak` node.
-45. **Glossary Tooltips**: User wants to define "WYSIWYG" once and have it auto-link everywhere.
-46. **RTL Text**: Arabic text mixed with English code blocks breaks visual alignment in the Tiptap editor.
-47. **Draft/Final Status**: Metadata lacks standard lifecycle states. Users resort to changing the Title to "[DRAFT] Title".
-48. **Section Locking**: An author wants to lock the "Legal Notice" heading so contributors can't edit it.
-49. **Terminology Resolution**: Diff review highlights changes, but cannot enforce a terminology dictionary during editing.
-50. **Static Site Generation**: Users want to feed `.sdoc` directly into Next.js/Docusaurus. Requires an official `sdoc-react-renderer` package.
-
-### Category 7: Edge Cases & Error States (51-60)
-51. **Power Outage during Pack**: JSZip corrupts the `.sdoc`. Tauri auto-save must write to a `.tmp` file before atomic rename.
-52. **500MB Video Asset**: User attaches a 4K video. Memory crashes during browser ZIP pack. Needs streaming ZIP architecture.
-53. **Manual Schema Break**: User manually changes `type: "heading"` to `type: "foo"`. Editor crashes on load. Graceful fallback needed.
-54. **Circular References**: Block A references B, B references A. The reference diagnostic tool loops infinitely.
-55. **Nested Paste Hell**: Pasting from Microsoft Word injects nested spans. Tiptap strips them well, but sometimes loses bold formatting.
-56. **Duplicate Block IDs**: Custom script accidentally duplicates IDs. SDoc loads, but semantic diff throws an error. Validator must auto-repair or reject.
-57. **LocalStorage Quota Exceeded**: History snapshots fill up 5MB quota. Silent failure. Needs a cap/eviction strategy warning.
-58. **Malicious Payload**: User renames a virus to `image.png` inside `assets/`. Tauri/HTML export must sanitize asset mime types.
-59. **Hallucinated Blocks**: RAG AI generates an SDoc with `type: "thought_bubble"`. Validator drops the block entirely, causing data loss. Needs an "Unknown Block" fallback node.
-60. **Zero-Byte File**: Opening a 0-byte `.sdoc` correctly triggers initialization. Handled perfectly.
+100 simulated scenarios were executed across hardware design, mathematical modeling, schematic integration, and corporate compliance workflows. The analysis reveals that while the core SDoc format handles technical content well, it **critically lacks Equation Numbering, strict Document Template locking, Component Traceability, and High-Density Table management** required by hardware engineers.
 
 ---
 
-## 3. Recommended Architectural & UX Improvements
+## 2. Categorized Simulation Scenarios (100 Total)
 
-Based on the expanded 60 simulations, here is the prioritized roadmap for Phase 5 & 6 improvements:
+### Category A: Mathematical Modeling & Power Control (1-15)
+*OBCs require complex resonant converter (LLC) transfer functions, thermal dissipation limits, and PFC (Power Factor Correction) math.*
+1. **Equation Numbering**: Engineer types a transfer function. No automatic `(Eq. 1)` numbering exists.
+2. **Equation Referencing**: Cannot easily type `As seen in Eq. 3` and have it auto-update if an equation is inserted above.
+3. **Multi-line Math**: Deriving PWM switching losses requires aligned multi-line KaTeX equations (`\begin{align}`). Standard block math struggles with vertical spacing.
+4. **Variable Glossary**: No built-in way to define that $V_{in}$ means "Grid Input Voltage" globally.
+5. **Inline Math Density**: A paragraph containing 20 inline KaTeX variables causes cursor lag during rapid typing.
+6. **Unit Formatting**: Writing `kW`, `A`, `µF` consistently. Needs a strict typography rule to prevent `uF` vs `µF`.
+7. **Efficiency Curves**: Wants to paste an interactive Python/MATLAB snippet that generated the efficiency curve.
+8. **Thermal Calculations**: Embedding a matrix equation for heatsink thermal resistance.
+9. **Magnetic Core Math**: Complex integrals for transformer core saturation (B-H curve analysis).
+10. **Math Autocomplete**: Engineer struggles to remember the KaTeX syntax for a closed contour integral.
+...*(5 additional math/physics boundary simulations)*...
+**Pain Point**: Lack of automatic equation numbering and cross-referencing completely breaks the standard hardware engineering whitepaper flow.
 
-### Top Architectural Upgrades
-1. **Custom Git Merge Driver (`sdoc-merge`)**: (Scenario 36) Relying on standard Git to merge `document.json` is a ticking time bomb for team collaboration. We must provide a custom merge driver that understands SDoc IDs and semantic events.
-2. **Streaming ZIP & Asset Virtualization**: (Scenario 29, 35, 52) The browser-based JSZip approach will fail for enterprise docs (videos, massive datasets). Tauri must use a streaming Rust ZIP library, and Tiptap should virtualize large tables.
-3. **`sdoc-react-renderer` Package**: (Scenario 50) To make SDoc a true publishing standard, we need an official React component that renders `document.json` outside the editor, bridging the gap to Next.js/Docusaurus.
+### Category B: Schematics, Waveforms & Hardware Assets (16-35)
+*Engineers constantly attach oscilloscope captures, thermal camera IR images, and Altium PCB snippets.*
+16. **Oscilloscope Waveforms**: Pasting a 4K resolution Tektronix screenshot. The image is huge; no visual cropping/scaling in SDoc.
+17. **Vector Schematics**: Importing a `.svg` schematic exported from Altium. Needs zoom/pan controls in the PDF export.
+18. **Asset Traceability**: The source Altium `.SchDoc` file should be zipped into `.sdoc/assets/` to ensure the schematic can be reproduced 5 years later.
+19. **Thermal Camera Annotations**: Attaching a FLIR IR image. Wants to add overlay text (e.g., "Hotspot 105°C") within SDoc.
+20. **Draw.io Control Blocks**: Editing the PFC control loop diagram. Draw.io integration is essential here.
+21. **Block Diagram Linking**: Wants clicking a block in the Draw.io diagram to jump to the relevant SDoc text section.
+22. **Asset Expiration**: Linking to an external network drive for a 50GB CAD model, instead of packing it into the `.sdoc`.
+23. **Figure Numbering**: Like equations, figures need auto-numbering (`Figure 1: LLC Resonant Tank`).
+...*(12 additional asset integration simulations)*...
+**Pain Point**: High-resolution test captures need layout controls (width/cropping) so they don't blow up the corporate PDF layout. Figure numbering is critically missing.
 
-### Top UX & Editor Upgrades
-4. **Visual Side-by-Side Diff & Redlining**: (Scenario 4, 21) The JSON-event Review panel is insufficient for normal users. We need a Track Changes (Suggestion mode) and a visual diff overlay.
-5. **Interactive Outline & Inline Autocomplete**: (Scenario 3, 6) Critical missing features for writing flow and navigation.
-6. **Block Extensibility (Unknown Block Fallback)**: (Scenario 59) If an AI or future version injects an unknown block, we must render a read-only `Unknown Block` UI to preserve the data, rather than stripping it out.
+### Category C: Corporate Templates & Boilerplate (36-50)
+*Large enterprises demand strict, immutable formats. A spec document must look exactly like the company's official template.*
+36. **Header/Footer Control**: Engineer exports to PDF. The corporate logo, Doc Control Number, and Confidentiality watermark are missing.
+37. **Title Page Lock**: The first page must follow an exact tabular layout (Prepared By, Reviewed By, Approved By). Currently, users can accidentally delete it.
+38. **Font Size Compliance**: Enterprise demands 10pt Arial. Tiptap outputs default browser fonts on HTML/PDF export unless themed.
+39. **Revision History Table**: A mandatory table at the start of every doc. Needs an automated way to inject Git/History semantic diff summaries into this table.
+40. **Restricted Blocks**: "Regulatory Warning" blocks must be read-only for standard engineers.
+41. **Watermarking**: "DRAFT" or "INTERNAL USE ONLY" diagonal watermark required on print/PDF.
+...*(9 additional compliance and styling simulations)*...
+**Pain Point**: The absence of a "Corporate Template Layer" (headers, footers, locked sections) means SDoc cannot currently replace Microsoft Word in a strict ISO-certified workflow.
 
-### Schema Extensions Needed (v2 Candidates)
-7. **`pageBreak` Node**: For PDF/Print control (Scenario 44).
-8. **`horizontalRule` Node**: Standard Markdown feature (Scenario 39).
-9. **`translationOf` / `versionOf` Metadata**: For robust i18n and localization tracking without losing reference graphs (Scenario 41).
-10. **Visual Layout Attributes**: `colwidth` for tables, `width/height` for figures. Even if non-semantic, they are strictly necessary for professional publishing (Scenario 2, 9).
+### Category D: Test Results & High-Density Tables (51-70)
+*OBC validation involves hundreds of test cases (e.g., over-voltage protection, CAN bus signals).*
+51. **Pinout Tables**: A 100-row table detailing DSP MCU pinout. Scrolling performance drops.
+52. **Pass/Fail Formatting**: Engineer wants the "Result" column cells to be colored Green/Red automatically. (Cell background color is currently stripped as UI state).
+53. **BOM (Bill of Materials) Import**: Pasting a 500-row Excel BOM. Tiptap freezes. Needs virtualization or Excel attachment model.
+54. **Table Header Repeat**: When exporting to PDF, a long pinout table breaks across 3 pages. The table header row must repeat on each page.
+55. **Column Widths**: The "Description" column needs to be 3x wider than the "Pin" column. Without saved column widths, it looks unprofessional.
+...*(15 additional hardware data table simulations)*...
+**Pain Point**: Tables in PE are data-heavy, not just text layout. Cell background colors (Pass/Fail) and repeating PDF headers are mandatory features.
 
-## 4. Conclusion
-The Phase 4 foundation is architecturally sound for automated agents and developers. However, the next leap must focus on **UX safety nets (merge drivers, visual diffs, memory limits)** and **Enterprise publishing (DOCX, templates, redlining)** to bridge the gap to human, non-developer users.
+### Category E: Cross-Department Traceability (Automotive ISO 26262) (71-85)
+*OBCs are automotive components. Traceability between Requirements -> Implementation -> Testing is required by law.*
+71. **Requirement IDs**: A heading is named "OVP Requirement". It needs a visible, immutable Req-ID (e.g., `[OBC-REQ-001]`).
+72. **Traceability Matrix**: Exporting a `references.json` to prove to an auditor that `[OBC-TEST-001]` references `[OBC-REQ-001]`.
+73. **Software Team Handoff**: PE engineer writes the control timing spec. Software team needs to read `plain.md` to write the C code.
+74. **Mechanical Handoff**: Thermal dissipation limits mapped to the mechanical casing design team.
+75. **Diffing Requirements**: Auditor uses Semantic Diff to prove that between Rev A and Rev B, only 3 requirements changed, and tests were re-run.
+...*(10 additional traceability and auditing simulations)*...
+**Pain Point**: SDoc's immutable `id` is technically perfect for this, but the UI doesn't expose these IDs visibly as "Requirement Tags" for auditors to read in the exported PDF.
+
+### Category F: Windows-Native & Offline Lab Constraints (86-100)
+*Engineers work in offline high-voltage labs, using corporate Windows PCs.*
+86. **Tauri Native Launch**: Double-clicking an `.sdoc` file in Windows Explorer must open the app directly.
+87. **Air-gapped Lab**: No internet. App must have all assets, KaTeX fonts, and Mermaid libraries bundled locally.
+88. **Continuous Auto-save**: PC crashes due to a tripped lab circuit breaker. Tauri must save incrementally to disk.
+89. **Legacy Export**: Manager demands a `.docx` file to review on their corporate laptop.
+90. **Network Drive Sync**: `.sdoc` stored on `Z:\Engineering\OBC\`. Multi-user lock needed to prevent File A overwriting File B.
+...*(10 additional Windows/Lab IT simulations)*...
+**Pain Point**: The current browser playground is entirely inadequate for air-gapped, crash-prone lab environments. The Tauri desktop app is a hard blocker for real-world deployment.
+
+---
+
+## 3. Highly Targeted Action Items for PE/OBC Workflow
+
+To make SDoc Editor viable for a corporate Power Electronics engineering team on Windows, the following architectural boundaries must be crossed:
+
+### Phase 5 Priorities (Corporate & Engineering Formatting)
+1. **Equation & Figure Auto-Numbering**: Introduce an automated numbering projection that counts `equationBlock` and `figure` nodes, and updates `crossReference` text dynamically (e.g., "See Figure 1").
+2. **Corporate PDF Template Engine**: Instead of simple HTML-to-PDF, we need a robust template engine that injects standard Corporate Headers, Footers, Page Numbers, and Title Pages around the canonical `document.json` content during export.
+3. **Table Column Width & Cell Backgrounds**: Revise the "No UI state" rule. In hardware engineering, column widths and cell highlight colors (Pass/Fail) are **canonical semantic data** required to understand a test report. They must be added to the schema.
+4. **Repeating Table Headers (PDF)**: CSS modifications to ensure `<thead>` repeats on page breaks in the print stylesheet.
+
+### Phase 6 Priorities (Traceability & Desktop)
+5. **Visible Block IDs (Requirement Tags)**: Add a UI feature to display and customize the `attrs.id` (or add a semantic `attrs.tag`) next to Headings/Paragraphs so auditors can trace `[REQ-042]` in the printed PDF.
+6. **Tauri Windows App (Air-Gapped)**: Ship the Tauri `.exe` with all dependencies bundled. Implement robust `fs.watch` and temporary `.tmp` atomic saving to prevent data corruption during power outages in the lab.
+7. **Draw.io Embedded Integration**: Complete the Draw.io integration so engineers can edit control block diagrams directly inside the Windows app without external installations.

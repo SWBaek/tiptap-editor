@@ -90,7 +90,7 @@ Acceptance evidence:
 
 ## Slice 4: Review UX Hardening
 
-Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, and broken reference repair actions are implemented; side-by-side or accept/reject review remains open.
+Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, broken reference repair actions, and runtime accept/reject action planning are implemented; side-by-side diff and accept/reject apply commands remain open.
 
 Productize the visual semantic diff overlay, requirement tagging diagnostics, and broken reference repair actions. These features must consume existing semantic diff and reference diagnostic sources instead of creating independent review state in canonical JSON.
 
@@ -115,10 +115,14 @@ Acceptance evidence:
 - Broken reference diagnostics include runtime repair candidates ranked from target labels, anchors, `humanId`, and stable block IDs.
 - The References Activity panel supports explicit retarget and remove actions for broken references.
 - Unit and Playwright coverage verify retarget/remove behavior and confirm repair state is not serialized as panel/runtime state.
+- `docs/review-accept-reject-boundary.md` records accept/reject as canonical edit semantics, not stored review state.
+- `apps/web-playground/src/documentState.ts` derives runtime-only accept/reject action availability from semantic review items.
+- Unit coverage verifies action classification and broken-reference routing to the References repair workflow.
 
 Open work:
 
-- Side-by-side or accept/reject review workflow.
+- Accept/reject apply and revert commands with stale-baseline protection.
+- Side-by-side document diff.
 
 ## Slice 5: Enterprise Authoring And Publishing
 

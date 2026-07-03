@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addLocalHistoryEntry,
   createChangeReview,
+  createReviewActionPlan,
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
@@ -134,6 +135,33 @@ describe("document state helpers", () => {
     expect(css).toContain("outline: 3px solid");
     expect(css).toContain('[data-id="ref_missing"]');
     expect(css).not.toContain('[data-id="blk_old"]');
+  });
+
+  it("derives review accept/reject action availability without mutating review items", () => {
+    const items = createVisualDiffOverlayItems([
+      { kind: "added", id: "blk_added", nodeType: "paragraph", path: "doc[0]/blk_added", label: '"Added"' },
+      { kind: "modified", id: "blk_body", nodeType: "paragraph", path: "doc[1]/blk_body", label: '"Body"', changes: ["text changed"] },
+      { kind: "reference-broken", id: "ref_missing", nodeType: "crossReference", path: "doc[2]/ref_missing", label: '"Missing"', targetId: "blk_missing" }
+    ]);
+
+    const plan = createReviewActionPlan(items);
+
+    expect(plan).toMatchObject({
+      total: 3,
+      actionableCount: 2,
+      manualCount: 1,
+      unsupportedCount: 0
+    });
+    expect(plan.items[0].actions).toEqual([
+      expect.objectContaining({ kind: "accept", availability: "current-state", label: "Keep added block" }),
+      expect.objectContaining({ kind: "reject", availability: "available", label: "Remove added block" })
+    ]);
+    expect(plan.items[1].actions).toEqual([
+      expect.objectContaining({ kind: "accept", availability: "current-state", label: "Keep current version" }),
+      expect.objectContaining({ kind: "reject", availability: "available", label: "Restore baseline version" })
+    ]);
+    expect(plan.items[2].actions.every((action) => action.availability === "manual-repair")).toBe(true);
+    expect("actions" in items[0]).toBe(false);
   });
 
   it("projects broken reference diagnostics to inline marker css", () => {

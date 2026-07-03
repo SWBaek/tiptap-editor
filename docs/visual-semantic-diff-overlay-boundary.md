@@ -61,10 +61,17 @@ Implemented on 2026-07-03:
 - Overlay CSS is generated at runtime from filtered review items and selected event ID.
 - No overlay enabled state, selected event, or filter state is written to `document.json`.
 
+Extended on 2026-07-04:
+
+- `docs/review-accept-reject-boundary.md` defines accept/reject as controlled edit semantics over normalized SDoc documents.
+- A runtime-only review action plan classifies accept/reject availability from projected semantic review items.
+- Broken reference events are routed to the References repair workflow instead of direct accept/reject.
+- Actual apply/revert commands remain deferred until stale-baseline and validation behavior are implemented.
+
 ## Deferred Work
 
 - side-by-side document diff;
 - full inline word decoration from token spans;
-- accept/reject change workflow;
+- accept/reject apply and revert commands;
 - comment threads and reviewer assignments;
 - Git-backed PR review integration.

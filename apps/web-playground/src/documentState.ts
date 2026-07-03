@@ -132,6 +132,29 @@ export interface VisualDiffFilterCounts {
   "reference-broken": number;
 }
 
+export type ReviewActionKind = "accept" | "reject";
+
+export type ReviewActionAvailability = "available" | "current-state" | "manual-repair" | "unsupported";
+
+export interface ReviewActionOption {
+  kind: ReviewActionKind;
+  availability: ReviewActionAvailability;
+  label: string;
+  description: string;
+}
+
+export interface ReviewActionPlanItem extends VisualDiffOverlayItem {
+  actions: ReviewActionOption[];
+}
+
+export interface ReviewActionPlan {
+  total: number;
+  actionableCount: number;
+  manualCount: number;
+  unsupportedCount: number;
+  items: ReviewActionPlanItem[];
+}
+
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
   return stableStringify(current) !== stableStringify(baseline);
 }
@@ -247,6 +270,20 @@ export function createVisualDiffFilterCounts(items: VisualDiffOverlayItem[]): Vi
   }
 
   return counts;
+}
+
+export function createReviewActionPlan(items: VisualDiffOverlayItem[]): ReviewActionPlan {
+  const planItems = items.map((item): ReviewActionPlanItem => ({ ...item, actions: getReviewActionOptions(item) }));
+
+  return {
+    total: planItems.length,
+    actionableCount: planItems.filter((item) => item.actions.some((action) => action.availability === "available")).length,
+    manualCount: planItems.filter(
+      (item) => item.actions.some((action) => action.availability === "manual-repair") && item.actions.every((action) => action.availability !== "available")
+    ).length,
+    unsupportedCount: planItems.filter((item) => item.actions.every((action) => action.availability === "unsupported")).length,
+    items: planItems
+  };
 }
 
 export function renderVisualDiffRuntimeCss(items: VisualDiffOverlayItem[], selectedId: string | null = null): string {
@@ -701,6 +738,86 @@ function getVisualDiffDetail(event: SDocDiffEvent): string {
       return `${event.fromPath} -> ${event.toPath}`;
     case "reference-broken":
       return `Missing target ${event.targetId} at ${event.path}`;
+  }
+}
+
+function getReviewActionOptions(item: VisualDiffOverlayItem): ReviewActionOption[] {
+  switch (item.kind) {
+    case "added":
+      return [
+        {
+          kind: "accept",
+          availability: "current-state",
+          label: "Keep added block",
+          description: "Accepting keeps the current document unchanged."
+        },
+        {
+          kind: "reject",
+          availability: "available",
+          label: "Remove added block",
+          description: "Rejecting will remove this current block in a future apply step."
+        }
+      ];
+    case "deleted":
+      return [
+        {
+          kind: "accept",
+          availability: "current-state",
+          label: "Keep deletion",
+          description: "Accepting keeps the current document unchanged."
+        },
+        {
+          kind: "reject",
+          availability: "available",
+          label: "Restore deleted block",
+          description: "Rejecting will restore the baseline block in a future apply step."
+        }
+      ];
+    case "modified":
+      return [
+        {
+          kind: "accept",
+          availability: "current-state",
+          label: "Keep current version",
+          description: "Accepting keeps the current document unchanged."
+        },
+        {
+          kind: "reject",
+          availability: "available",
+          label: "Restore baseline version",
+          description: "Rejecting will restore the baseline block content and attrs in a future apply step."
+        }
+      ];
+    case "moved":
+      return [
+        {
+          kind: "accept",
+          availability: "current-state",
+          label: "Keep new position",
+          description: "Accepting keeps the current document order unchanged."
+        },
+        {
+          kind: "reject",
+          availability: "available",
+          label: "Restore baseline position",
+          description: "Rejecting will restore the baseline parent and order in a future apply step."
+        }
+      ];
+    case "reference-broken":
+      return [
+        {
+          kind: "accept",
+          availability: "manual-repair",
+          label: "Use reference repair",
+          description: "Broken references require explicit retarget or remove actions from the References panel."
+        },
+        {
+          kind: "reject",
+          availability: "manual-repair",
+          label: "Use reference repair",
+          description: "Broken references require explicit retarget or remove actions from the References panel."
+        }
+      ];
   }
 }
 

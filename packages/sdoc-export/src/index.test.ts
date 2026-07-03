@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
-import { createDataGridPreview, createPptxSlideModel, exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx } from "./index";
+import { createDataGridPreview, createPptxSlideModel, exportDerivedOutputs, exportDocx, exportHtml, exportMarkdown, exportPptx } from "./index";
 import type { SDocDocument } from "@sdoc/schema";
 
 const document: SDocDocument = {
@@ -436,6 +436,46 @@ describe("exportPptx", () => {
     expect(bytes.length).toBeGreaterThan(1_000);
     expect(JSON.stringify(figureDocument)).toBe(before);
     expect(JSON.stringify(figureDocument)).not.toContain("pptx");
+  });
+});
+
+describe("exportDocx", () => {
+  it("writes an editable DOCX package derived from document content", async () => {
+    const bytes = await exportDocx(document, { title: "Controlled Spec" });
+    const zip = await JSZip.loadAsync(bytes);
+    const documentXml = await zip.file("word/document.xml")?.async("string");
+
+    expect(Buffer.from(bytes.subarray(0, 2)).toString("utf8")).toBe("PK");
+    expect(zip.file("[Content_Types].xml")).toBeTruthy();
+    expect(zip.file("word/styles.xml")).toBeTruthy();
+    expect(documentXml).toContain("Overview");
+    expect(documentXml).toContain("Read the overview.");
+  });
+
+  it("renders controlled metadata without mutating canonical document JSON", async () => {
+    const before = JSON.stringify(document);
+    const bytes = await exportDocx(document, {
+      title: "Controlled Spec",
+      template: "controlled",
+      metadata: {
+        documentNumber: "DOC-OBC-001",
+        version: "A",
+        author: "Power Electronics",
+        classification: "Internal",
+        approvalStatus: "Approved",
+        effectiveDate: "2026-07-03"
+      }
+    });
+    const zip = await JSZip.loadAsync(bytes);
+    const documentXml = await zip.file("word/document.xml")?.async("string");
+    const coreXml = await zip.file("docProps/core.xml")?.async("string");
+
+    expect(documentXml).toContain("DOC-OBC-001");
+    expect(documentXml).toContain("Approved");
+    expect(documentXml).toContain("Internal");
+    expect(coreXml).toContain("Power Electronics");
+    expect(JSON.stringify(document)).toBe(before);
+    expect(JSON.stringify(document)).not.toContain("DOC-OBC-001");
   });
 });
 

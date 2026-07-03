@@ -1,3 +1,4 @@
+import JSZip from "jszip";
 import { getNodeAnchor, getNodeHumanId, getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocMark, type SDocNode } from "@sdoc/schema";
 
 export interface HtmlExportOptions {
@@ -37,6 +38,12 @@ export interface CorporateTemplateMetadata {
 export interface PptxExportOptions {
   title?: string;
   assetResolver?: (assetId: string) => Uint8Array | undefined;
+}
+
+export interface DocxExportOptions {
+  title?: string;
+  template?: CorporateTemplateName;
+  metadata?: CorporateTemplateMetadata;
 }
 
 export interface DerivedOutputs extends Record<string, string> {
@@ -212,6 +219,147 @@ export async function exportPptx(document: SDocDocument, options: PptxExportOpti
   }
 
   return new Uint8Array(await bytes.arrayBuffer());
+}
+
+export async function exportDocx(document: SDocDocument, options: DocxExportOptions = {}): Promise<Uint8Array> {
+  const zip = new JSZip();
+  const title = options.title?.trim() || getDocumentTitle(document) || "SDoc Document";
+  const body = [
+    ...renderDocxCorporateTemplate(document, title, options),
+    ...document.content.flatMap((node) => renderDocxBlock(node)),
+    '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>'
+  ].join("");
+
+  zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES);
+  zip.folder("_rels")?.file(".rels", DOCX_ROOT_RELS);
+  zip.folder("docProps")?.file("core.xml", renderDocxCoreProperties(title, options.metadata));
+  zip.folder("word")?.file("document.xml", renderDocxDocument(body));
+  zip.folder("word")?.file("styles.xml", DOCX_STYLES);
+  zip.folder("word/_rels")?.file("document.xml.rels", DOCX_DOCUMENT_RELS);
+
+  return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+}
+
+function renderDocxCorporateTemplate(document: SDocDocument, title: string, options: DocxExportOptions): string[] {
+  if (normalizeCorporateTemplate(options.template) !== "controlled") {
+    return [];
+  }
+
+  const metadata = options.metadata;
+  const rows = [
+    ["Document No.", getCorporateMetadataValue(metadata, "documentNumber", document.attrs.id), "Revision", getCorporateMetadataValue(metadata, "version", "Draft")],
+    ["Owner", getCorporateMetadataValue(metadata, "author", "Unassigned"), "Status", getCorporateMetadataValue(metadata, "approvalStatus", "Review required")],
+    ["Effective Date", getCorporateMetadataValue(metadata, "effectiveDate", "Not assigned"), "Classification", getCorporateMetadataValue(metadata, "classification", "CONTROLLED")]
+  ];
+
+  return [
+    renderDocxParagraph(getCorporateMetadataValue(metadata, "classification", "CONTROLLED"), "Subtitle"),
+    renderDocxParagraph(title, "Title"),
+    renderDocxTable(rows, true)
+  ];
+}
+
+function renderDocxBlock(node: SDocNode): string[] {
+  switch (node.type) {
+    case "heading": {
+      const level = typeof node.attrs?.level === "number" ? Math.min(Math.max(node.attrs.level, 1), 6) : 1;
+      return [renderDocxParagraph(getPlainText(node), `Heading${level}`)];
+    }
+    case "paragraph":
+      return [renderDocxParagraph(getPlainText(node))];
+    case "blockquote":
+      return [renderDocxParagraph(getPlainText(node), "Quote")];
+    case "callout":
+      return [renderDocxParagraph(`[${String(node.attrs?.kind ?? "note").toUpperCase()}] ${getPlainText(node)}`)];
+    case "codeBlock":
+      return [renderDocxParagraph(getPlainText(node), "Code")];
+    case "bulletList":
+    case "orderedList":
+      return (node.content ?? []).map((child, index) => {
+        const prefix = node.type === "orderedList" ? `${index + 1}. ` : "- ";
+        return renderDocxParagraph(`${prefix}${getPlainText(child)}`);
+      });
+    case "table":
+      return [renderDocxTable(extractTableRows(node), false)];
+    case "figure":
+      return [renderDocxParagraph(`Figure: ${getPlainText(node).trim() || String(node.attrs?.assetId ?? "")}`)];
+    case "diagram":
+      return [renderDocxParagraph(formatDiagramDocxText(node))];
+    case "equationBlock":
+      return [renderDocxParagraph(`Equation: ${typeof node.attrs?.latex === "string" ? node.attrs.latex : ""}`)];
+    case "dataGrid":
+      return [renderDocxParagraph(formatDataGridLabel(node))];
+    default: {
+      const text = getPlainText(node).trim();
+      return text ? [renderDocxParagraph(text)] : [];
+    }
+  }
+}
+
+function extractTableRows(node: SDocNode): string[][] {
+  return (node.content ?? [])
+    .filter((row) => row.type === "tableRow")
+    .map((row) =>
+      (row.content ?? [])
+        .filter((cell) => cell.type === "tableCell" || cell.type === "tableHeader")
+        .map((cell) => getPlainText(cell).trim())
+    )
+    .filter((row) => row.length > 0);
+}
+
+function renderDocxDocument(body: string): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>${body}</w:body>
+</w:document>`;
+}
+
+function renderDocxCoreProperties(title: string, metadata: CorporateTemplateMetadata | undefined): string {
+  const creator = getCorporateMetadataValue(metadata, "author", "SDoc");
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title>${escapeXml(title)}</dc:title>
+  <dc:creator>${escapeXml(creator)}</dc:creator>
+  <cp:lastModifiedBy>SDoc</cp:lastModifiedBy>
+</cp:coreProperties>`;
+}
+
+function renderDocxParagraph(text: string, style?: string): string {
+  const styleXml = style ? `<w:pPr><w:pStyle w:val="${escapeXmlAttribute(style)}"/></w:pPr>` : "";
+  const runs = text.split("\n").map((line, index) => `${index > 0 ? "<w:br/>" : ""}<w:t xml:space="preserve">${escapeXml(line)}</w:t>`).join("");
+  return `<w:p>${styleXml}<w:r>${runs}</w:r></w:p>`;
+}
+
+function renderDocxTable(rows: string[][], firstColumnBold: boolean): string {
+  if (rows.length === 0) {
+    return "";
+  }
+
+  const rowXml = rows
+    .map((row) => `<w:tr>${row.map((cell, index) => renderDocxTableCell(cell, firstColumnBold && index % 2 === 0)).join("")}</w:tr>`)
+    .join("");
+  return `<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="0" w:type="auto"/></w:tblPr>${rowXml}</w:tbl>`;
+}
+
+function renderDocxTableCell(text: string, bold: boolean): string {
+  const boldStart = bold ? "<w:b/>" : "";
+  return `<w:tc><w:tcPr><w:tcW w:w="2400" w:type="dxa"/></w:tcPr><w:p><w:r><w:rPr>${boldStart}</w:rPr><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p></w:tc>`;
+}
+
+function formatDiagramDocxText(node: SDocNode): string {
+  if (node.attrs?.kind === "drawio") {
+    return `Draw.io source: ${typeof node.attrs.sourceAssetId === "string" ? node.attrs.sourceAssetId : ""}`;
+  }
+
+  return `${String(node.attrs?.kind ?? "diagram")} diagram source: ${typeof node.attrs?.source === "string" ? node.attrs.source : ""}`;
+}
+
+function escapeXml(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function escapeXmlAttribute(value: string): string {
+  return escapeXml(value).replaceAll('"', "&quot;");
 }
 
 async function createPptxPresentation(): Promise<PptxPresentation> {
@@ -1292,6 +1440,40 @@ function visitBlocks(document: SDocDocument, visitor: (node: SDocNode) => void):
 
   document.content.forEach(visit);
 }
+
+const DOCX_CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+</Types>`;
+
+const DOCX_ROOT_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+</Relationships>`;
+
+const DOCX_DOCUMENT_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`;
+
+const DOCX_STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>
+  <w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:qFormat/><w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:basedOn w:val="Normal"/><w:qFormat/><w:rPr><w:color w:val="6A3F00"/><w:b/><w:sz w:val="20"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:ind w:left="360"/></w:pPr><w:rPr><w:i/><w:color w:val="4E5D6B"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Code"><w:name w:val="Code"/><w:basedOn w:val="Normal"/><w:qFormat/><w:rPr><w:rFonts w:ascii="Cascadia Mono" w:hAnsi="Cascadia Mono"/><w:sz w:val="18"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:qFormat/><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:qFormat/><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:qFormat/><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading4"><w:name w:val="heading 4"/><w:basedOn w:val="Normal"/><w:qFormat/><w:rPr><w:b/><w:sz w:val="22"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading5"><w:name w:val="heading 5"/><w:basedOn w:val="Normal"/><w:qFormat/><w:rPr><w:b/><w:sz w:val="20"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading6"><w:name w:val="heading 6"/><w:basedOn w:val="Normal"/><w:qFormat/><w:rPr><w:b/><w:sz w:val="18"/></w:rPr></w:style>
+  <w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:color="CFD8E1"/><w:left w:val="single" w:sz="4" w:color="CFD8E1"/><w:bottom w:val="single" w:sz="4" w:color="CFD8E1"/><w:right w:val="single" w:sz="4" w:color="CFD8E1"/><w:insideH w:val="single" w:sz="4" w:color="CFD8E1"/><w:insideV w:val="single" w:sz="4" w:color="CFD8E1"/></w:tblBorders></w:tblPr></w:style>
+</w:styles>`;
 
 const PUBLISH_HTML_CSS = `    :root {
       color: #182026;

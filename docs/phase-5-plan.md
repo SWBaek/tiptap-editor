@@ -131,7 +131,7 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
-Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, CLI row merge wiring, row diff/merge boundary, and controlled corporate HTML/PDF template export implemented.
+Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, CLI row merge wiring, row diff/merge boundary, and controlled corporate HTML/PDF/DOCX template export implemented.
 
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
 
@@ -151,11 +151,13 @@ Acceptance evidence:
 - `sdoc data-grid diff|apply` exposes row-level CSV/JSON asset source review and guarded apply for developer/reviewer workflows.
 - `exportHtml(..., { template: "controlled" })` renders controlled corporate header/footer/watermark chrome from explicit export metadata.
 - CLI `sdoc export --format html|pdf --template controlled` exposes the controlled template without storing export preferences in `document.json`.
+- `exportDocx(..., { template: "controlled" })` emits a derived OOXML Word document with editable text and controlled metadata without mutating `document.json`.
+- CLI `sdoc export --format docx --template controlled -o output.docx` exposes the Word handoff path.
 
 Open work:
 
 - UI wiring and asset revision policy for row-level CSV/JSON merge apply.
-- `.docx` corporate template export, strict pagination, approval table workflows, and template management UI.
+- external `.dotx` template injection, strict pagination, approval table workflows, and template management UI.
 
 ## Validation Gates
 

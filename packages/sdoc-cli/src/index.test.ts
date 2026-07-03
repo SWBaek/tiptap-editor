@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
@@ -239,6 +240,35 @@ describe("sdoc CLI", () => {
       expect(result.stdout).toBe("");
       expect(pptx.subarray(0, 2).toString("utf8")).toBe("PK");
       expect(pptx.length).toBeGreaterThan(1_000);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("exports controlled DOCX as a binary CLI artifact", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const unpackedPath = path.join(tempDir, "controlled.sdoc.d");
+    const docxPath = path.join(tempDir, "controlled.docx");
+
+    try {
+      await createUnpackedFixture(unpackedPath, validDocumentPath, "Controlled Spec", {
+        documentNumber: "DOC-OBC-001",
+        version: "A",
+        author: "Power Electronics",
+        classification: "Internal",
+        approvalStatus: "Approved",
+        effectiveDate: "2026-07-03"
+      });
+
+      const result = await runSdoc(["export", unpackedPath, "--format", "docx", "--template", "controlled", "-o", docxPath]);
+      const docx = await readFile(docxPath);
+      const zip = await JSZip.loadAsync(docx);
+      const documentXml = await zip.file("word/document.xml")?.async("string");
+
+      expect(result.stdout).toBe("");
+      expect(docx.subarray(0, 2).toString("utf8")).toBe("PK");
+      expect(documentXml).toContain("DOC-OBC-001");
+      expect(documentXml).toContain("System Overview");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

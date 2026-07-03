@@ -3,7 +3,7 @@
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { applyDiffEventAction, diffDocuments, renderDiffEvents, type SDocDiffEvent, type SDocReviewAction } from "@sdoc/diff";
-import { exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx, type CorporateTemplateName } from "@sdoc/export";
+import { exportDerivedOutputs, exportDocx, exportHtml, exportMarkdown, exportPptx, type CorporateTemplateName } from "@sdoc/export";
 import {
   applyDataGridRowMerge,
   createDataGridRowDiff,
@@ -197,6 +197,15 @@ async function runExport(args: string[]): Promise<void> {
     return;
   }
 
+  if (format.toLowerCase() === "docx") {
+    if (!output) {
+      throw new Error("usage: sdoc export <input.sdoc|document.json> --format docx [-o output.docx]");
+    }
+
+    await writeDocxExport(await loadExportInput(inputPath), output, template);
+    return;
+  }
+
   const exportText = renderExport(await loadExportInput(inputPath), format, template);
 
   if (output) {
@@ -210,6 +219,15 @@ async function writePptxExport(input: ExportInput, outputPath: string): Promise<
   const bytes = await exportPptx(input.document, {
     title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
     assetResolver: (assetId) => input.assets[assetId]
+  });
+  await writeFile(outputPath, bytes);
+}
+
+async function writeDocxExport(input: ExportInput, outputPath: string, template?: CorporateTemplateName): Promise<void> {
+  const bytes = await exportDocx(input.document, {
+    title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
+    metadata: input.metadata,
+    template
   });
   await writeFile(outputPath, bytes);
 }
@@ -485,7 +503,7 @@ Commands:
   sdoc data-grid apply <baseline.csv|json> <proposed.csv|json> <current.csv|json> --format csv|json --event <index> [--key col[,col]] [-o output]
   sdoc diff <old.sdoc|old.document.json> <new.sdoc|new.document.json>
   sdoc export <input.sdoc|document.json> <markdown|html|pdf|chunks|outline|references> [output]
-  sdoc export <input.sdoc> --format html|pdf --template controlled [-o output]
+  sdoc export <input.sdoc> --format html|pdf|docx --template controlled [-o output]
   sdoc pack <folder> <output.sdoc>
   sdoc review <accept|reject> <baseline.sdoc|document.json> <current.sdoc|document.json> --event <id> [--kind added|deleted|modified|moved] [-o output.document.json]
   sdoc unpack <input.sdoc> <folder>

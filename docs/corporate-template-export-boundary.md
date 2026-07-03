@@ -10,13 +10,13 @@ Enterprise deliverables that require controlled headers, footers, watermarks, do
 
 ## Export Targets
 
-Supported v1 target:
+Supported v1 targets:
 
 - controlled HTML/PDF template through `sdoc export --format html|pdf --template controlled`.
+- controlled `.docx` handoff through `sdoc export --format docx --template controlled`.
 
 Likely future targets:
 
-- `.docx` for editable enterprise review and controlled document workflows;
 - template-driven PDF for locked deliverables;
 - HTML/PDF with corporate theme presets when strict pagination is not required.
 
@@ -62,12 +62,14 @@ npm run sdoc -- export document.sdoc --format pdf --template controlled -o docum
 
 - `exportHtml(document, { template: "controlled", metadata })` renders controlled enterprise chrome.
 - CLI `sdoc export` accepts `--template controlled` for HTML and PDF.
+- `exportDocx(document, { template: "controlled", metadata })` emits a derived OOXML `.docx` package with editable text, headings, tables, data grid references, and document-control metadata.
+- CLI `sdoc export --format docx --template controlled -o output.docx` exposes the derived Word handoff path.
 - Template selection is an explicit export option and is not stored in `document.json`.
-- `.docx` and strict enterprise pagination remain deferred.
+- Strict enterprise pagination remains deferred.
 
 ## Deferred Work
 
-- `.docx` renderer selection and template format;
+- external `.dotx`/`.docx` template injection and company-specific style mapping;
 - strict page header/footer support;
 - approval table and revision history rendering;
 - watermark and classification markings;

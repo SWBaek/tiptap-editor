@@ -61,12 +61,13 @@ The editor should present row diff as a review tool attached to the `dataGrid` b
 - If no reliable key exists, the function refuses row-level diff instead of comparing raw line numbers.
 - JSON row diff currently supports object-row arrays. JSON array-row diff is deferred until explicit column/key metadata exists.
 - `applyDataGridRowMerge` recomputes the diff before applying a selected row event, refuses conflicting/no-key diffs, refuses stale current asset sources, and returns updated CSV/JSON source text without mutating `document.json`.
+- CLI `sdoc data-grid diff` and `sdoc data-grid apply` expose this headless workflow for developer/reviewer asset-source review without making Git or raw line diff mandatory.
 
 ## Deferred Work
 
 - authored `keyColumns` schema extension;
 - asset revision policy for save-back, including whether a merge updates the current asset ID or creates a new asset ID;
-- CLI or UI wiring for selecting and applying row merge events;
+- UI wiring for selecting and applying row merge events;
 - visual side-by-side cell diff UI;
 - multi-user conflict resolution;
 - formula-aware spreadsheet merge;

@@ -4,13 +4,26 @@ import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { applyDiffEventAction, diffDocuments, renderDiffEvents, type SDocDiffEvent, type SDocReviewAction } from "@sdoc/diff";
 import { exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx, type CorporateTemplateName } from "@sdoc/export";
-import { isLikelyZipContainer, normalizeDocument, packSdoc, stableStringify, unpackSdoc, type SDocContainer } from "@sdoc/format";
+import {
+  applyDataGridRowMerge,
+  createDataGridRowDiff,
+  isLikelyZipContainer,
+  normalizeDocument,
+  packSdoc,
+  stableStringify,
+  unpackSdoc,
+  type DataGridRowDiffEvent,
+  type SDocContainer
+} from "@sdoc/format";
 import { validateDocument, type SDocDocument, type ValidationIssue } from "@sdoc/schema";
 
 async function main(args: string[]): Promise<void> {
   const [command, ...rest] = args;
 
   switch (command) {
+    case "data-grid":
+      await runDataGrid(rest);
+      break;
     case "diff":
       await runDiff(rest);
       break;
@@ -32,6 +45,89 @@ async function main(args: string[]): Promise<void> {
     default:
       printHelp();
       process.exitCode = command ? 1 : 0;
+  }
+}
+
+async function runDataGrid(args: string[]): Promise<void> {
+  const [subcommand, ...rest] = args;
+  switch (subcommand) {
+    case "diff":
+      await runDataGridDiff(rest);
+      break;
+    case "apply":
+      await runDataGridApply(rest);
+      break;
+    default:
+      throw new Error("usage: sdoc data-grid <diff|apply> ...");
+  }
+}
+
+async function runDataGridDiff(args: string[]): Promise<void> {
+  const positionals = getPositionals(args, new Set(["--format", "--grid", "--asset", "--key"]));
+  const [oldSourcePath, newSourcePath] = positionals;
+  const format = parseDataGridFormat(getOption(args, "--format"));
+  if (!oldSourcePath || !newSourcePath) {
+    throw new Error("usage: sdoc data-grid diff <old.csv|json> <new.csv|json> --format <csv|json> [--grid id] [--asset assetId] [--key col[,col]]");
+  }
+
+  const diff = createDataGridRowDiff({
+    gridId: getOption(args, "--grid") ?? "dataGrid",
+    sourceAssetId: getOption(args, "--asset") ?? path.basename(newSourcePath),
+    format,
+    oldSource: await readText(oldSourcePath),
+    newSource: await readText(newSourcePath),
+    keyColumns: parseKeyColumns(getOption(args, "--key"))
+  });
+
+  process.stdout.write(renderDataGridRowDiff(diff.events));
+}
+
+async function runDataGridApply(args: string[]): Promise<void> {
+  const positionals = getPositionals(args, new Set(["--format", "--grid", "--asset", "--key", "--event", "-o"]));
+  const [baselineSourcePath, proposedSourcePath, currentSourcePath] = positionals;
+  const format = parseDataGridFormat(getOption(args, "--format"));
+  const eventIndex = parseEventIndex(getOption(args, "--event"));
+  const output = getOption(args, "-o");
+  if (!baselineSourcePath || !proposedSourcePath || !currentSourcePath || eventIndex === undefined) {
+    throw new Error(
+      "usage: sdoc data-grid apply <baseline.csv|json> <proposed.csv|json> <current.csv|json> --format <csv|json> --event <index> [--grid id] [--asset assetId] [--key col[,col]] [-o output]"
+    );
+  }
+
+  const baselineSource = await readText(baselineSourcePath);
+  const proposedSource = await readText(proposedSourcePath);
+  const currentSource = await readText(currentSourcePath);
+  const diff = createDataGridRowDiff({
+    gridId: getOption(args, "--grid") ?? "dataGrid",
+    sourceAssetId: getOption(args, "--asset") ?? path.basename(proposedSourcePath),
+    format,
+    oldSource: baselineSource,
+    newSource: proposedSource,
+    keyColumns: parseKeyColumns(getOption(args, "--key"))
+  });
+  const event = diff.events[eventIndex];
+  if (!event) {
+    throw new Error(`data-grid event not found: ${eventIndex}`);
+  }
+
+  const result = applyDataGridRowMerge({
+    gridId: diff.gridId,
+    sourceAssetId: diff.sourceAssetId,
+    format,
+    baselineSource,
+    proposedSource,
+    currentSource,
+    event,
+    keyColumns: diff.keyColumns
+  });
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
+
+  if (output) {
+    await writeFile(output, result.source, "utf8");
+  } else {
+    process.stdout.write(result.source);
   }
 }
 
@@ -323,6 +419,39 @@ function parseCorporateTemplate(value: string | undefined): CorporateTemplateNam
   throw new Error(`unsupported export template: ${value}`);
 }
 
+function parseDataGridFormat(value: string | undefined): "csv" | "json" {
+  if (value === "csv" || value === "json") {
+    return value;
+  }
+
+  throw new Error("data-grid --format must be csv or json");
+}
+
+function parseKeyColumns(value: string | undefined): string[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const columns = value
+    .split(",")
+    .map((column) => column.trim())
+    .filter((column) => column.length > 0);
+  return columns.length > 0 ? columns : undefined;
+}
+
+function parseEventIndex(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const index = Number(value);
+  if (!Number.isInteger(index) || index < 0) {
+    throw new Error(`invalid data-grid event index: ${value}`);
+  }
+
+  return index;
+}
+
 function parseReviewAction(value: string | undefined): SDocReviewAction | undefined {
   if (value === "accept" || value === "reject") {
     return value;
@@ -352,6 +481,8 @@ function printHelp(): void {
   process.stdout.write(`sdoc phase0 cli
 
 Commands:
+  sdoc data-grid diff <old.csv|json> <new.csv|json> --format csv|json [--key col[,col]]
+  sdoc data-grid apply <baseline.csv|json> <proposed.csv|json> <current.csv|json> --format csv|json --event <index> [--key col[,col]] [-o output]
   sdoc diff <old.sdoc|old.document.json> <new.sdoc|new.document.json>
   sdoc export <input.sdoc|document.json> <markdown|html|pdf|chunks|outline|references> [output]
   sdoc export <input.sdoc> --format html|pdf --template controlled [-o output]
@@ -392,6 +523,28 @@ function renderExport(input: ExportInput, format: string, template?: CorporateTe
     default:
       throw new Error(`unsupported export format: ${format}`);
   }
+}
+
+function renderDataGridRowDiff(events: DataGridRowDiffEvent[]): string {
+  if (events.length === 0) {
+    return "NO_CHANGES\n";
+  }
+
+  return `${events.map((event, index) => renderDataGridRowDiffEvent(event, index)).join("\n")}\n`;
+}
+
+function renderDataGridRowDiffEvent(event: DataGridRowDiffEvent, index: number): string {
+  const parts = [
+    String(index),
+    event.kind.toUpperCase().replace(/-/g, "_"),
+    event.rowKey ? `row=${event.rowKey}` : undefined,
+    event.column ? `column=${event.column}` : undefined,
+    event.oldValue !== undefined ? `old=${JSON.stringify(event.oldValue)}` : undefined,
+    event.newValue !== undefined ? `new=${JSON.stringify(event.newValue)}` : undefined,
+    event.severity !== "info" ? `severity=${event.severity}` : undefined
+  ].filter((part): part is string => Boolean(part));
+
+  return `${parts.join(" ")} ${event.message}`;
 }
 
 function assertValidDocument(document: unknown, source: string): SDocDocument {

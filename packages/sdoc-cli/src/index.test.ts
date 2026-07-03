@@ -137,6 +137,81 @@ describe("sdoc CLI", () => {
     }
   });
 
+  it("reports row-level dataGrid source diff events", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const baselinePath = path.join(tempDir, "baseline.csv");
+    const proposedPath = path.join(tempDir, "proposed.csv");
+
+    try {
+      await writeFile(baselinePath, "pin,signal\n1,VCC\n2,GND", "utf8");
+      await writeFile(proposedPath, "pin,signal\n1,VCC\n2,GROUND\n3,GPIO", "utf8");
+
+      const result = await runSdoc(["data-grid", "diff", baselinePath, proposedPath, "--format", "csv", "--key", "pin"]);
+
+      expect(result.stdout).toContain('0 CELL_MODIFIED row=2 column=signal old="GND" new="GROUND"');
+      expect(result.stdout).toContain("1 ROW_ADDED row=3");
+      expect(result.stderr).toBe("");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("applies a guarded dataGrid row merge event to asset source output", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const baselinePath = path.join(tempDir, "baseline.csv");
+    const proposedPath = path.join(tempDir, "proposed.csv");
+    const currentPath = path.join(tempDir, "current.csv");
+    const outputPath = path.join(tempDir, "merged.csv");
+
+    try {
+      await writeFile(baselinePath, "pin,signal\n1,VCC\n2,GND", "utf8");
+      await writeFile(proposedPath, "pin,signal\n1,VCC\n2,GROUND", "utf8");
+      await writeFile(currentPath, "pin,signal\n1,VCC\n2,GND", "utf8");
+
+      const result = await runSdoc([
+        "data-grid",
+        "apply",
+        baselinePath,
+        proposedPath,
+        currentPath,
+        "--format",
+        "csv",
+        "--key",
+        "pin",
+        "--event",
+        "0",
+        "-o",
+        outputPath
+      ]);
+
+      expect(result.stdout).toBe("");
+      expect(await readFile(outputPath, "utf8")).toBe("pin,signal\n1,VCC\n2,GROUND\n");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects stale dataGrid row merge events in the CLI", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const baselinePath = path.join(tempDir, "baseline.csv");
+    const proposedPath = path.join(tempDir, "proposed.csv");
+    const currentPath = path.join(tempDir, "current.csv");
+
+    try {
+      await writeFile(baselinePath, "pin,signal\n1,VCC\n2,GND", "utf8");
+      await writeFile(proposedPath, "pin,signal\n1,VCC\n2,GROUND", "utf8");
+      await writeFile(currentPath, "pin,signal\n1,VDD\n2,GND", "utf8");
+
+      await expect(
+        runSdoc(["data-grid", "apply", baselinePath, proposedPath, currentPath, "--format", "csv", "--key", "pin", "--event", "0"])
+      ).rejects.toMatchObject({
+        stderr: expect.stringContaining("Current data grid source changed since the row diff was created")
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("exports PDF through the HTML print pipeline", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const pdfPath = path.join(tempDir, "basic.pdf");

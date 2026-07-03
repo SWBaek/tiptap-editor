@@ -274,13 +274,22 @@ describe("sdoc CLI", () => {
     }
   });
 
-  it("exports DOCX through a validated external Word template skeleton", async () => {
+  it("exports DOCX by injecting SDoc body into a validated external Word template", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const templatePath = path.join(tempDir, "company.dotx");
     const docxPath = path.join(tempDir, "external-template.docx");
 
     try {
-      await writeFile(templatePath, await createWordTemplateBuffer({ styles: ["Normal", "Heading1"], placeholders: ["sdoc-body"] }));
+      await writeFile(
+        templatePath,
+        await createWordTemplateBuffer({
+          styles: ["Normal", "Heading1"],
+          placeholders: ["sdoc-body"],
+          before: "Company cover",
+          placeholderText: "Template placeholder",
+          after: "Company appendix"
+        })
+      );
 
       const result = await runSdoc([
         "export",
@@ -301,7 +310,10 @@ describe("sdoc CLI", () => {
 
       expect(result.stdout).toBe("");
       expect(docx.subarray(0, 2).toString("utf8")).toBe("PK");
+      expect(documentXml).toContain("Company cover");
       expect(documentXml).toContain("System Overview");
+      expect(documentXml).toContain("Company appendix");
+      expect(documentXml).not.toContain("Template placeholder");
       expect(coreXml).toContain("External Word template validated: company.dotx");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -483,11 +495,17 @@ const ROOT_RELS_FOR_TEST = `<?xml version="1.0" encoding="UTF-8"?>
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>`;
 
-async function createWordTemplateBuffer(parts: { styles: string[]; placeholders: string[] }): Promise<Buffer> {
+async function createWordTemplateBuffer(parts: {
+  styles: string[];
+  placeholders: string[];
+  before?: string;
+  placeholderText?: string;
+  after?: string;
+}): Promise<Buffer> {
   const zip = new JSZip();
   zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES_FOR_TEST);
   zip.folder("_rels")?.file(".rels", ROOT_RELS_FOR_TEST);
-  zip.folder("word")?.file("document.xml", createWordDocumentXml(parts.placeholders));
+  zip.folder("word")?.file("document.xml", createWordDocumentXml(parts.placeholders, parts));
   zip.folder("word")?.file("styles.xml", createWordStylesXml(parts.styles));
   return zip.generateAsync({ type: "nodebuffer" });
 }
@@ -498,10 +516,18 @@ function createWordStylesXml(styleIds: string[]): string {
     .join("")}</w:styles>`;
 }
 
-function createWordDocumentXml(placeholders: string[]): string {
-  return `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${placeholders
-    .map((placeholder) => `<w:sdt><w:sdtPr><w:tag w:val="${placeholder}"/></w:sdtPr><w:sdtContent><w:p/></w:sdtContent></w:sdt>`)
-    .join("")}</w:body></w:document>`;
+function createWordDocumentXml(
+  placeholders: string[],
+  options: { before?: string; placeholderText?: string; after?: string } = {}
+): string {
+  const before = options.before ? `<w:p><w:r><w:t>${options.before}</w:t></w:r></w:p>` : "";
+  const after = options.after ? `<w:p><w:r><w:t>${options.after}</w:t></w:r></w:p>` : "";
+  return `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${before}${placeholders
+    .map(
+      (placeholder) =>
+        `<w:sdt><w:sdtPr><w:tag w:val="${placeholder}"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>${options.placeholderText ?? ""}</w:t></w:r></w:p></w:sdtContent></w:sdt>`
+    )
+    .join("")}${after}</w:body></w:document>`;
 }
 
 async function runSdoc(args: string[]): Promise<{ stdout: string; stderr: string }> {

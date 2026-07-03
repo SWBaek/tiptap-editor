@@ -276,25 +276,28 @@ export async function exportPptx(document: SDocDocument, options: PptxExportOpti
 
 export async function exportDocx(document: SDocDocument, options: DocxExportOptions = {}): Promise<Uint8Array> {
   const externalTemplate = options.externalTemplate ? await prepareExternalWordTemplate(options.externalTemplate) : undefined;
-  const zip = new JSZip();
   const title = options.title?.trim() || getDocumentTitle(document) || "SDoc Document";
   const body = [
     ...renderDocxCorporateTemplate(document, title, options),
-    ...document.content.flatMap((node) => renderDocxBlock(node)),
-    '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>'
+    ...document.content.flatMap((node) => renderDocxBlock(node))
   ].join("");
 
+  if (externalTemplate) {
+    return exportDocxWithExternalTemplate(body, title, options.metadata, externalTemplate);
+  }
+
+  const zip = new JSZip();
   zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES);
   zip.folder("_rels")?.file(".rels", DOCX_ROOT_RELS);
-  zip.folder("docProps")?.file("core.xml", renderDocxCoreProperties(title, options.metadata, externalTemplate?.fileName));
-  zip.folder("word")?.file("document.xml", renderDocxDocument(body));
+  zip.folder("docProps")?.file("core.xml", renderDocxCoreProperties(title, options.metadata));
+  zip.folder("word")?.file("document.xml", renderDocxDocument(`${body}${DOCX_SECTION_PROPERTIES}`));
   zip.folder("word")?.file("styles.xml", DOCX_STYLES);
   zip.folder("word/_rels")?.file("document.xml.rels", DOCX_DOCUMENT_RELS);
 
   return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 }
 
-async function prepareExternalWordTemplate(options: ExternalWordTemplateOptions): Promise<{ fileName?: string }> {
+async function prepareExternalWordTemplate(options: ExternalWordTemplateOptions): Promise<{ fileName?: string; zip: JSZip }> {
   const validation = await validateWordTemplateMapping(options.bytes, {
     fileName: options.fileName,
     requiredStyles: options.requiredStyles,
@@ -304,7 +307,38 @@ async function prepareExternalWordTemplate(options: ExternalWordTemplateOptions)
     throw new Error(`invalid external Word template:\n${formatWordTemplateMappingIssues(validation.issues)}`);
   }
 
-  return { fileName: options.fileName?.trim() || undefined };
+  return {
+    fileName: options.fileName?.trim() || undefined,
+    zip: await JSZip.loadAsync(options.bytes)
+  };
+}
+
+async function exportDocxWithExternalTemplate(
+  body: string,
+  title: string,
+  metadata: CorporateTemplateMetadata | undefined,
+  template: { fileName?: string; zip: JSZip }
+): Promise<Uint8Array> {
+  const templateDocumentXml = await template.zip.file("word/document.xml")?.async("string");
+  if (!templateDocumentXml) {
+    throw new Error("invalid external Word template: missing word/document.xml");
+  }
+
+  const injectedDocumentXml = injectWordContentControlBody(templateDocumentXml, "sdoc-body", body);
+  template.zip.file("word/document.xml", injectedDocumentXml);
+  template.zip.folder("docProps")?.file("core.xml", renderDocxCoreProperties(title, metadata, template.fileName));
+
+  const contentTypesXml = await template.zip.file("[Content_Types].xml")?.async("string");
+  if (contentTypesXml) {
+    template.zip.file("[Content_Types].xml", ensureDocxCorePropertiesContentType(contentTypesXml));
+  }
+
+  const rootRelsXml = await template.zip.file("_rels/.rels")?.async("string");
+  if (rootRelsXml) {
+    template.zip.folder("_rels")?.file(".rels", ensureDocxCorePropertiesRelationship(rootRelsXml));
+  }
+
+  return template.zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 }
 
 export async function validateWordTemplatePackage(
@@ -529,6 +563,54 @@ function renderDocxDocument(body: string): string {
 </w:document>`;
 }
 
+function injectWordContentControlBody(documentXml: string, placeholder: string, body: string): string {
+  const sdtPattern = /<w:sdt\b[\s\S]*?<\/w:sdt>/g;
+  let found = false;
+  const injected = documentXml.replace(sdtPattern, (sdtXml) => {
+    if (found || !wordContentControlHasTag(sdtXml, placeholder)) {
+      return sdtXml;
+    }
+
+    found = true;
+    return sdtXml.replace(/<w:sdtContent\b[^>]*>[\s\S]*?<\/w:sdtContent>/, `<w:sdtContent>${body}</w:sdtContent>`);
+  });
+
+  if (!found) {
+    throw new Error(`invalid external Word template: content-control placeholder "${placeholder}" was not found`);
+  }
+
+  return injected;
+}
+
+function wordContentControlHasTag(sdtXml: string, placeholder: string): boolean {
+  const escaped = escapeRegExp(placeholder);
+  return new RegExp(`<w:(?:tag|alias)\\b[^>]*\\bw:val="${escaped}"`, "i").test(sdtXml);
+}
+
+function ensureDocxCorePropertiesContentType(contentTypesXml: string): string {
+  if (contentTypesXml.includes('PartName="/docProps/core.xml"')) {
+    return contentTypesXml;
+  }
+
+  return contentTypesXml.replace(
+    "</Types>",
+    '  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>\n</Types>'
+  );
+}
+
+function ensureDocxCorePropertiesRelationship(rootRelsXml: string): string {
+  if (rootRelsXml.includes("metadata/core-properties") || rootRelsXml.includes('Target="docProps/core.xml"')) {
+    return rootRelsXml;
+  }
+
+  const existingIds = [...rootRelsXml.matchAll(/\bId="rId(\d+)"/g)].map((match) => Number(match[1])).filter(Number.isFinite);
+  const nextId = `rId${Math.max(0, ...existingIds) + 1}`;
+  return rootRelsXml.replace(
+    "</Relationships>",
+    `  <Relationship Id="${nextId}" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>\n</Relationships>`
+  );
+}
+
 function renderDocxCoreProperties(title: string, metadata: CorporateTemplateMetadata | undefined, externalTemplateFileName?: string): string {
   const creator = getCorporateMetadataValue(metadata, "author", "SDoc");
   const description = externalTemplateFileName
@@ -666,6 +748,10 @@ function extractWordContentControlTags(documentXml: string): string[] {
 
 function formatWordTemplateMappingIssues(issues: WordTemplateMappingIssue[]): string {
   return issues.length > 0 ? issues.map((issue) => `- ${issue.path}: ${issue.message}`).join("\n") : "- template mapping validation failed";
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function escapeXml(value: string): string {
@@ -1772,6 +1858,9 @@ const DOCX_ROOT_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 const DOCX_DOCUMENT_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`;
+
+const DOCX_SECTION_PROPERTIES =
+  '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>';
 
 const DOCX_STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">

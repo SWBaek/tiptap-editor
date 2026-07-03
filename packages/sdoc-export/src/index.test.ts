@@ -488,11 +488,15 @@ describe("exportDocx", () => {
     expect(JSON.stringify(document)).not.toContain("DOC-OBC-001");
   });
 
-  it("accepts a validated external Word template skeleton without mutating canonical JSON", async () => {
+  it("injects document body into a validated external Word template without mutating canonical JSON", async () => {
     const before = JSON.stringify(document);
     const templateBytes = await createTemplatePackage({
       stylesXml: createStylesXml(["Normal", "Heading1"]),
-      documentXml: createDocumentXml(["sdoc-body"])
+      documentXml: createDocumentXml(["sdoc-body"], {
+        before: "Template cover",
+        placeholderText: "Replace me",
+        after: "Template appendix"
+      })
     });
 
     const bytes = await exportDocx(document, {
@@ -509,7 +513,11 @@ describe("exportDocx", () => {
     const documentXml = await zip.file("word/document.xml")?.async("string");
 
     expect(coreXml).toContain("External Word template validated: company.dotx");
+    expect(documentXml).toContain("Template cover");
     expect(documentXml).toContain("Overview");
+    expect(documentXml).toContain("Read the overview.");
+    expect(documentXml).toContain("Template appendix");
+    expect(documentXml).not.toContain("Replace me");
     expect(JSON.stringify(document)).toBe(before);
     expect(JSON.stringify(document)).not.toContain("company.dotx");
   });
@@ -722,10 +730,15 @@ function createStylesXml(styleIds: string[]): string {
     .join("")}</w:styles>`;
 }
 
-function createDocumentXml(placeholders: string[]): string {
-  return `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${placeholders
-    .map((placeholder) => `<w:sdt><w:sdtPr><w:tag w:val="${placeholder}"/><w:alias w:val="${placeholder}"/></w:sdtPr><w:sdtContent><w:p/></w:sdtContent></w:sdt>`)
-    .join("")}</w:body></w:document>`;
+function createDocumentXml(placeholders: string[], options: { before?: string; placeholderText?: string; after?: string } = {}): string {
+  const before = options.before ? `<w:p><w:r><w:t>${options.before}</w:t></w:r></w:p>` : "";
+  const after = options.after ? `<w:p><w:r><w:t>${options.after}</w:t></w:r></w:p>` : "";
+  return `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${before}${placeholders
+    .map(
+      (placeholder) =>
+        `<w:sdt><w:sdtPr><w:tag w:val="${placeholder}"/><w:alias w:val="${placeholder}"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>${options.placeholderText ?? ""}</w:t></w:r></w:p></w:sdtContent></w:sdt>`
+    )
+    .join("")}${after}</w:body></w:document>`;
 }
 
 function createDiagramDocument(): SDocDocument {

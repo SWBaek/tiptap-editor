@@ -31,7 +31,7 @@ The adapter should support:
 
 The first mapping implementation validates the contract only. It checks that a safe `.docx/.dotx` package exposes required style IDs and content-control placeholders before any future renderer writes SDoc content into that template.
 
-The first render skeleton accepts `--template-file` for DOCX export, validates the package and mapping contract, then emits the current editable fallback DOCX while recording the validated template file in derived metadata. It does not yet splice SDoc blocks into the template package.
+The first render implementation accepts `--template-file` for DOCX export, validates the package and mapping contract, and replaces the `sdoc-body` content-control body with editable Word XML derived from SDoc blocks. Template chrome around that placeholder is preserved.
 
 ## Safety Boundary
 
@@ -52,12 +52,12 @@ Template injection is one-way: SDoc to derived Word. Editing the generated `.doc
 - `sdoc template validate <template.docx|template.dotx>` exposes the package safety check for developer/reviewer workflows.
 - `validateWordTemplateMapping` reports missing required Word styles and content-control placeholders without mutating canonical document data or rendering a derived file.
 - `sdoc template validate-mapping <template.docx|template.dotx> --style nodeType=StyleId --placeholder tag` exposes mapping diagnostics for developer/reviewer workflows.
-- `exportDocx(..., { externalTemplate })` and `sdoc export --format docx --template-file company.dotx` validate an external template before producing a derived Word handoff.
+- `exportDocx(..., { externalTemplate })` and `sdoc export --format docx --template-file company.dotx` validate an external template before injecting SDoc body content into the `sdoc-body` content control.
 - Future implementation includes tests for template package validation, missing placeholders/styles, canonical document immutability, and deterministic output for the same template/input pair.
 
 ## Deferred Work
 
-- `.dotx` style/content-control rendering from SDoc blocks;
+- broader `.dotx` style/content-control rendering beyond the `sdoc-body` placeholder;
 - company policy registry and template management UI;
 - Word review import/redline workflows;
 - visual/rendered DOCX regression checks.

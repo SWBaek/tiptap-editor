@@ -131,7 +131,7 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
-Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, CLI row merge wiring, row diff/merge boundary, and controlled corporate HTML/PDF/DOCX template export implemented.
+Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, and Word template package validation implemented.
 
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
 
@@ -153,11 +153,13 @@ Acceptance evidence:
 - CLI `sdoc export --format html|pdf --template controlled` exposes the controlled template without storing export preferences in `document.json`.
 - `exportDocx(..., { template: "controlled" })` emits a derived OOXML Word document with editable text and controlled metadata without mutating `document.json`.
 - CLI `sdoc export --format docx --template controlled -o output.docx` exposes the Word handoff path.
+- `validateWordTemplatePackage` verifies `.docx/.dotx` ZIP structure and rejects macro-enabled parts, external relationships, remote targets, and blocked package parts before future template injection uses them.
+- `sdoc template validate <template.docx|template.dotx>` exposes this validation as a developer/reviewer CLI check.
 
 Open work:
 
 - UI wiring and asset revision policy for row-level CSV/JSON merge apply.
-- external `.dotx` template injection following `docs/word-template-injection-boundary.md`, strict pagination, approval table workflows, and template management UI.
+- external `.dotx` template style/content-control mapping and `--template-file` export wiring following `docs/word-template-injection-boundary.md`, strict pagination, approval table workflows, and template management UI.
 
 ## Validation Gates
 

@@ -46,6 +46,27 @@ export interface DocxExportOptions {
   metadata?: CorporateTemplateMetadata;
 }
 
+export type WordTemplatePackageIssueCode =
+  | "invalid-extension"
+  | "invalid-zip"
+  | "missing-required-part"
+  | "macro-enabled-template"
+  | "blocked-package-part"
+  | "external-relationship"
+  | "blocked-relationship";
+
+export interface WordTemplatePackageIssue {
+  code: WordTemplatePackageIssueCode;
+  path: string;
+  message: string;
+}
+
+export interface WordTemplatePackageValidation {
+  ok: boolean;
+  issues: WordTemplatePackageIssue[];
+  partCount: number;
+}
+
 export interface DerivedOutputs extends Record<string, string> {
   "plain.md": string;
   "outline.json": string;
@@ -240,6 +261,87 @@ export async function exportDocx(document: SDocDocument, options: DocxExportOpti
   return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 }
 
+export async function validateWordTemplatePackage(
+  bytes: Uint8Array,
+  options: { fileName?: string } = {}
+): Promise<WordTemplatePackageValidation> {
+  const issues: WordTemplatePackageIssue[] = [];
+  const fileName = options.fileName?.trim() || undefined;
+  const extension = fileName?.split(".").pop()?.toLowerCase();
+  if (extension && extension !== "docx" && extension !== "dotx") {
+    issues.push({
+      code: "invalid-extension",
+      path: fileName ?? "<input>",
+      message: "Word template input must be a .docx or .dotx package."
+    });
+  }
+
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(bytes);
+  } catch (error) {
+    return {
+      ok: false,
+      issues: [
+        ...issues,
+        {
+          code: "invalid-zip",
+          path: fileName ?? "<input>",
+          message: `Template package is not a readable ZIP archive: ${error instanceof Error ? error.message : String(error)}`
+        }
+      ],
+      partCount: 0
+    };
+  }
+
+  const partNames = Object.keys(zip.files).filter((name) => !zip.files[name].dir).sort();
+  for (const requiredPart of ["[Content_Types].xml", "_rels/.rels", "word/document.xml"]) {
+    if (!zip.file(requiredPart)) {
+      issues.push({
+        code: "missing-required-part",
+        path: requiredPart,
+        message: `Template package is missing required OOXML part: ${requiredPart}`
+      });
+    }
+  }
+
+  for (const partName of partNames) {
+    const normalizedPartName = partName.replace(/\\/g, "/");
+    const lowerPartName = normalizedPartName.toLowerCase();
+    const blockedReason = getBlockedWordTemplatePartReason(lowerPartName);
+    if (blockedReason) {
+      issues.push({
+        code: blockedReason === "macro" ? "macro-enabled-template" : "blocked-package-part",
+        path: normalizedPartName,
+        message:
+          blockedReason === "macro"
+            ? "Macro-enabled Office package parts are not allowed for headless template export."
+            : "This Office package part is outside the allowed template validation subset."
+      });
+    }
+
+    if (lowerPartName.endsWith(".rels")) {
+      const relsText = await zip.file(partName)?.async("string");
+      issues.push(...validateWordTemplateRelationships(relsText ?? "", normalizedPartName));
+    }
+  }
+
+  const contentTypes = await zip.file("[Content_Types].xml")?.async("string");
+  if (contentTypes && hasBlockedWordContentType(contentTypes)) {
+    issues.push({
+      code: "macro-enabled-template",
+      path: "[Content_Types].xml",
+      message: "Macro-enabled Word content types are not allowed for headless template export."
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    issues,
+    partCount: partNames.length
+  };
+}
+
 function renderDocxCorporateTemplate(document: SDocDocument, title: string, options: DocxExportOptions): string[] {
   if (normalizeCorporateTemplate(options.template) !== "controlled") {
     return [];
@@ -352,6 +454,75 @@ function formatDiagramDocxText(node: SDocNode): string {
   }
 
   return `${String(node.attrs?.kind ?? "diagram")} diagram source: ${typeof node.attrs?.source === "string" ? node.attrs.source : ""}`;
+}
+
+function getBlockedWordTemplatePartReason(lowerPartName: string): "macro" | "blocked" | undefined {
+  if (
+    lowerPartName.endsWith("vbaproject.bin") ||
+    lowerPartName === "word/vbadata.xml" ||
+    lowerPartName.includes("/vba") ||
+    lowerPartName.includes("macrosheets/")
+  ) {
+    return "macro";
+  }
+
+  if (
+    lowerPartName.startsWith("word/activex/") ||
+    lowerPartName.startsWith("word/embeddings/") ||
+    lowerPartName.startsWith("word/oleobjects/") ||
+    lowerPartName.startsWith("customxml/") ||
+    lowerPartName.endsWith(".bin")
+  ) {
+    return "blocked";
+  }
+
+  return undefined;
+}
+
+function validateWordTemplateRelationships(relationshipsXml: string, path: string): WordTemplatePackageIssue[] {
+  const issues: WordTemplatePackageIssue[] = [];
+  const relationshipPattern = /<Relationship\b[^>]*>/gi;
+  const matches = relationshipsXml.match(relationshipPattern) ?? [];
+
+  for (const relationship of matches) {
+    const target = getXmlAttribute(relationship, "Target");
+    const targetMode = getXmlAttribute(relationship, "TargetMode");
+    const type = getXmlAttribute(relationship, "Type") ?? "";
+    if (targetMode?.toLowerCase() === "external" || isRemoteRelationshipTarget(target)) {
+      issues.push({
+        code: "external-relationship",
+        path,
+        message: `External relationship targets are not allowed in Word templates: ${target ?? "<missing target>"}`
+      });
+    }
+
+    if (isBlockedRelationshipType(type)) {
+      issues.push({
+        code: "blocked-relationship",
+        path,
+        message: `Blocked Office relationship type is not allowed in Word templates: ${type}`
+      });
+    }
+  }
+
+  return issues;
+}
+
+function getXmlAttribute(tag: string, name: string): string | undefined {
+  const pattern = new RegExp(`\\b${name}="([^"]*)"`, "i");
+  return tag.match(pattern)?.[1];
+}
+
+function isRemoteRelationshipTarget(target: string | undefined): boolean {
+  return Boolean(target && /^(https?:|file:|ftp:|\\\\)/i.test(target.trim()));
+}
+
+function isBlockedRelationshipType(type: string): boolean {
+  return /\/(vbaProject|oleObject|activeXControl|attachedTemplate|package)$/i.test(type);
+}
+
+function hasBlockedWordContentType(contentTypesXml: string): boolean {
+  return /macroEnabled|vbaProject|ms-office\.activeX|oleObject/i.test(contentTypesXml);
 }
 
 function escapeXml(value: string): string {

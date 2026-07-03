@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
-import { createDataGridPreview, createPptxSlideModel, exportDerivedOutputs, exportDocx, exportHtml, exportMarkdown, exportPptx } from "./index";
+import {
+  createDataGridPreview,
+  createPptxSlideModel,
+  exportDerivedOutputs,
+  exportDocx,
+  exportHtml,
+  exportMarkdown,
+  exportPptx,
+  validateWordTemplatePackage
+} from "./index";
 import type { SDocDocument } from "@sdoc/schema";
 
 const document: SDocDocument = {
@@ -478,6 +487,89 @@ describe("exportDocx", () => {
     expect(JSON.stringify(document)).not.toContain("DOC-OBC-001");
   });
 });
+
+describe("validateWordTemplatePackage", () => {
+  it("accepts the built-in DOCX handoff package as a valid template subset", async () => {
+    const bytes = await exportDocx(document, { title: "Controlled Spec" });
+    const result = await validateWordTemplatePackage(bytes, { fileName: "controlled.docx" });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([]);
+    expect(result.partCount).toBeGreaterThan(0);
+  });
+
+  it("rejects macro-enabled package parts", async () => {
+    const zip = new JSZip();
+    zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES_FOR_TEST);
+    zip.folder("_rels")?.file(".rels", ROOT_RELS_FOR_TEST);
+    zip.folder("word")?.file("document.xml", "<w:document/>");
+    zip.folder("word")?.file("vbaProject.bin", "macro");
+
+    const result = await validateWordTemplatePackage(await zip.generateAsync({ type: "uint8array" }), { fileName: "template.dotx" });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "macro-enabled-template",
+          path: "word/vbaProject.bin"
+        })
+      ])
+    );
+  });
+
+  it("rejects external relationships and remote targets", async () => {
+    const zip = new JSZip();
+    zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES_FOR_TEST);
+    zip.folder("_rels")?.file(".rels", ROOT_RELS_FOR_TEST);
+    zip.folder("word")?.file("document.xml", "<w:document/>");
+    zip
+      .folder("word/_rels")
+      ?.file(
+        "document.xml.rels",
+        '<Relationships><Relationship Id="rIdImage" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="https://example.test/logo.png" TargetMode="External"/></Relationships>'
+      );
+
+    const result = await validateWordTemplatePackage(await zip.generateAsync({ type: "uint8array" }), { fileName: "template.docx" });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "external-relationship",
+          path: "word/_rels/document.xml.rels"
+        })
+      ])
+    );
+  });
+
+  it("rejects non-template extensions before future injection uses the file", async () => {
+    const bytes = await exportDocx(document, { title: "Controlled Spec" });
+    const result = await validateWordTemplatePackage(bytes, { fileName: "template.docm" });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-extension",
+          path: "template.docm"
+        })
+      ])
+    );
+  });
+});
+
+const DOCX_CONTENT_TYPES_FOR_TEST = `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+const ROOT_RELS_FOR_TEST = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
 
 function createDiagramDocument(): SDocDocument {
   return {

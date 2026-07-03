@@ -274,6 +274,42 @@ describe("sdoc CLI", () => {
     }
   });
 
+  it("validates a safe Word template package in the CLI", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const docxPath = path.join(tempDir, "controlled.docx");
+
+    try {
+      await runSdoc(["export", validDocumentPath, "--format", "docx", "-o", docxPath]);
+
+      const result = await runSdoc(["template", "validate", docxPath]);
+
+      expect(result.stdout).toContain(`VALID_TEMPLATE ${docxPath}`);
+      expect(result.stderr).toBe("");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects unsafe Word template packages in the CLI", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const templatePath = path.join(tempDir, "unsafe.dotx");
+
+    try {
+      const zip = new JSZip();
+      zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES_FOR_TEST);
+      zip.folder("_rels")?.file(".rels", ROOT_RELS_FOR_TEST);
+      zip.folder("word")?.file("document.xml", "<w:document/>");
+      zip.folder("word")?.file("vbaProject.bin", "macro");
+      await writeFile(templatePath, await zip.generateAsync({ type: "nodebuffer" }));
+
+      await expect(runSdoc(["template", "validate", templatePath])).rejects.toMatchObject({
+        stderr: expect.stringContaining("Macro-enabled Office package parts are not allowed")
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("applies a review reject action to a semantic diff event", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const outputPath = path.join(tempDir, "reviewed.document.json");
@@ -324,6 +360,18 @@ describe("sdoc CLI", () => {
     }
   });
 });
+
+const DOCX_CONTENT_TYPES_FOR_TEST = `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+const ROOT_RELS_FOR_TEST = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
 
 async function runSdoc(args: string[]): Promise<{ stdout: string; stderr: string }> {
   const result = await execFileAsync(process.execPath, [cliPath, ...args], { encoding: "utf8" });

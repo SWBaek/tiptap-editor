@@ -44,11 +44,13 @@ Template injection is one-way: SDoc to derived Word. Editing the generated `.doc
 - Boundary documentation defines template source policy, adapter contract, safety rules, and one-way export semantics.
 - `docs/corporate-template-export-boundary.md` links this boundary from deferred external template work.
 - `docs/phase-5-plan.md` distinguishes built-in controlled DOCX export from future external template injection.
+- `validateWordTemplatePackage` inspects `.docx/.dotx` packages before any future injection path uses them.
+- `sdoc template validate <template.docx|template.dotx>` exposes the package safety check for developer/reviewer workflows.
 - Future implementation includes tests for template package validation, missing placeholders/styles, canonical document immutability, and deterministic output for the same template/input pair.
 
 ## Deferred Work
 
-- `--template-file` CLI option and trusted template validation;
+- `--template-file` CLI option that reuses trusted template validation;
 - `.dotx` style/content-control mapping;
 - company policy registry and template management UI;
 - Word review import/redline workflows;

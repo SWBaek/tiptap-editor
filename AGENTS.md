@@ -71,6 +71,7 @@ Use npm workspaces from the repository root.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json chunks`: export RAG-oriented JSONL chunks.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format html --template controlled -o controlled.html`: export controlled corporate HTML without changing `document.json`.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format docx --template controlled -o controlled.docx`: export an editable derived Word handoff without changing `document.json`.
+- `npm run sdoc -- template validate controlled.docx`: validate a `.docx/.dotx` template package before future external template injection uses it.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format pptx -o deck.pptx`: generate a derived native PowerPoint deck.
 - `npm run sdoc -- data-grid diff old.csv new.csv --format csv --key id`: review row-level dataGrid asset changes without storing rows in `document.json`.
 - `npm run sdoc -- data-grid apply baseline.csv proposed.csv current.csv --format csv --key id --event 0 -o merged.csv`: apply one guarded row-level asset change with stale-source protection.

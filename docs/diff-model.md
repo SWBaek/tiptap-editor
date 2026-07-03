@@ -45,7 +45,9 @@ reference-broken
 
 각 event는 `id`, `nodeType`, human-readable label, old/new path를 포함한다. `modified` event는 heading text, paragraph text, callout kind, code language 같은 type별 변경 요약을 포함한다.
 
-Asset-backed blocks are compared by semantic references, not by binary payload. Draw.io changes report source/preview asset reference changes. `dataGrid` changes report source asset, format, title, caption, and display metadata changes at block level. Row-level CSV/JSON validation diagnostics may inspect asset bytes as runtime/export readiness feedback, but row-level semantic diff and merge are deferred and must not be approximated with raw line diff inside `document.json`.
+Asset-backed blocks are compared by semantic references, not by binary payload. Draw.io changes report source/preview asset reference changes. `dataGrid` changes report source asset, format, title, caption, and display metadata changes at block level. Row-level CSV/JSON validation diagnostics may inspect asset bytes as runtime/export readiness feedback.
+
+Row-level `dataGrid` diff and merge is an asset-level review projection, not a replacement for `SDocDiffEvent` block diff. The boundary in `docs/data-grid-row-diff-merge-boundary.md` requires reliable row identity, reports keyed row/cell events through a separate view-model, and refuses raw line-number merge when no key exists. Applying accepted row changes writes updated asset bytes and may update the asset reference; it must not store row patches or merge UI state in `document.json`.
 
 ## Text Diff
 

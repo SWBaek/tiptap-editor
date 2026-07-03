@@ -47,6 +47,8 @@ The following must not be stored in `document.json`:
 
 Semantic diff reports data grids at block level: source asset changed, title changed, caption changed, format changed, or display metadata changed. Row-level CSV/JSON structural diff is deferred until the source format and merge policy are proven.
 
+Row-level CSV/JSON diff and merge is now defined as an asset-level review projection in `docs/data-grid-row-diff-merge-boundary.md`. It requires reliable row identity and must not fall back to raw line-number merge when no key exists.
+
 Markdown and slide export render a source asset label and semantic title/caption. HTML and PDF export may render bounded preview rows from the referenced CSV/JSON asset when the exporter has asset bytes. AI/RAG export includes title, caption, and source asset reference via plain text, but does not dump raw source rows by default.
 
 ## UI Scope
@@ -67,7 +69,7 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 
 ## Deferred Work
 
-- row-level semantic diff and merge;
+- row-level semantic diff and merge implementation following `docs/data-grid-row-diff-merge-boundary.md`;
 - richer CSV/JSON validation rule configuration and authored column typing;
 - full spreadsheet editing;
 - formulas and computed columns;

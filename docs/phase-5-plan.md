@@ -131,7 +131,7 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
-Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, and controlled corporate HTML/PDF template export implemented.
+Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, row diff/merge boundary, and controlled corporate HTML/PDF template export implemented.
 
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
 
@@ -145,12 +145,13 @@ Acceptance evidence:
 - Unit and Playwright coverage verify canonical JSON excludes raw CSV content and round-trips asset references.
 - Headless data grid diagnostics inspect CSV/JSON asset bytes for row shape, parse, header, and missing-column issues while keeping raw rows out of `document.json`.
 - The Export panel shows data grid readiness counts and per-grid issues as runtime-only publishing feedback.
+- `docs/data-grid-row-diff-merge-boundary.md` defines row-level grid diff and merge as an asset-level review projection with reliable row keys, stale-event protection, and asset-only merge writes.
 - `exportHtml(..., { template: "controlled" })` renders controlled corporate header/footer/watermark chrome from explicit export metadata.
 - CLI `sdoc export --format html|pdf --template controlled` exposes the controlled template without storing export preferences in `document.json`.
 
 Open work:
 
-- Row-level CSV/JSON semantic diff and merge.
+- Headless row-level CSV/JSON diff projection and guarded merge apply.
 - `.docx` corporate template export, strict pagination, approval table workflows, and template management UI.
 
 ## Validation Gates

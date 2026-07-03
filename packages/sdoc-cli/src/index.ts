@@ -3,7 +3,7 @@
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
-import { exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx } from "@sdoc/export";
+import { exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx, type CorporateTemplateName } from "@sdoc/export";
 import { isLikelyZipContainer, normalizeDocument, packSdoc, stableStringify, unpackSdoc, type SDocContainer } from "@sdoc/format";
 import { validateDocument, type SDocDocument, type ValidationIssue } from "@sdoc/schema";
 
@@ -47,18 +47,19 @@ async function runDiff(args: string[]): Promise<void> {
 async function runExport(args: string[]): Promise<void> {
   const [inputPath, ...rest] = args;
   if (!inputPath) {
-    throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|pdf|pptx|chunks|outline|references> [-o output]");
+      throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|pdf|pptx|chunks|outline|references> [--template controlled] [-o output]");
   }
 
-  const positionals = rest.filter((value) => !value.startsWith("-"));
+  const positionals = getPositionals(rest, new Set(["--format", "-o", "--template"]));
   const format = getOption(rest, "--format") ?? positionals[0] ?? "markdown";
   const output = getOption(rest, "-o") ?? positionals[1];
+  const template = parseCorporateTemplate(getOption(rest, "--template"));
   if (format.toLowerCase() === "pdf") {
     if (!output) {
       throw new Error("usage: sdoc export <input.sdoc|document.json> --format pdf -o output.pdf");
     }
 
-    await writePdfExport(await loadDocument(inputPath), output);
+    await writePdfExport(await loadExportInput(inputPath), output, template);
     return;
   }
 
@@ -71,7 +72,7 @@ async function runExport(args: string[]): Promise<void> {
     return;
   }
 
-  const exportText = renderExport(await loadDocument(inputPath), format);
+  const exportText = renderExport(await loadExportInput(inputPath), format, template);
 
   if (output) {
     await writeFile(output, exportText, "utf8");
@@ -88,13 +89,20 @@ async function writePptxExport(input: ExportInput, outputPath: string): Promise<
   await writeFile(outputPath, bytes);
 }
 
-async function writePdfExport(document: SDocDocument, outputPath: string): Promise<void> {
+async function writePdfExport(input: ExportInput, outputPath: string, template?: CorporateTemplateName): Promise<void> {
   const { chromium } = await import("playwright");
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
     await page.emulateMedia({ media: "print" });
-    await page.setContent(exportHtml(document), { waitUntil: "load" });
+    await page.setContent(
+      exportHtml(input.document, {
+        title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
+        metadata: input.metadata,
+        template
+      }),
+      { waitUntil: "load" }
+    );
     await page.pdf({
       path: outputPath,
       format: "A4",
@@ -257,26 +265,60 @@ function getOption(args: string[], name: string): string | undefined {
   return index >= 0 ? args[index + 1] : undefined;
 }
 
+function getPositionals(args: string[], optionsWithValues: Set<string>): string[] {
+  const positionals: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const value = args[index];
+    if (optionsWithValues.has(value)) {
+      index += 1;
+      continue;
+    }
+
+    if (!value.startsWith("-")) {
+      positionals.push(value);
+    }
+  }
+  return positionals;
+}
+
+function parseCorporateTemplate(value: string | undefined): CorporateTemplateName | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (value === "controlled") {
+    return value;
+  }
+
+  throw new Error(`unsupported export template: ${value}`);
+}
+
 function printHelp(): void {
   process.stdout.write(`sdoc phase0 cli
 
 Commands:
   sdoc diff <old.sdoc|old.document.json> <new.sdoc|new.document.json>
   sdoc export <input.sdoc|document.json> <markdown|html|pdf|chunks|outline|references> [output]
+  sdoc export <input.sdoc> --format html|pdf --template controlled [-o output]
   sdoc pack <folder> <output.sdoc>
   sdoc unpack <input.sdoc> <folder>
   sdoc validate <input.sdoc|document.json|unpacked-folder>
 `);
 }
 
-function renderExport(document: SDocDocument, format: string): string {
+function renderExport(input: ExportInput, format: string, template?: CorporateTemplateName): string {
+  const document = input.document;
   const normalizedFormat = format.toLowerCase();
   if (normalizedFormat === "markdown" || normalizedFormat === "plain" || normalizedFormat === "plain.md") {
     return exportMarkdown(document);
   }
 
   if (normalizedFormat === "html" || normalizedFormat === "html.html") {
-    return exportHtml(document);
+    return exportHtml(document, {
+      title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
+      metadata: input.metadata,
+      template
+    });
   }
 
   const derived = exportDerivedOutputs(document);

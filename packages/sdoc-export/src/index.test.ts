@@ -178,6 +178,30 @@ describe("exportHtml", () => {
     expect(html).toContain('a[href^="http"]::after');
   });
 
+  it("renders a controlled corporate template without changing document content", () => {
+    const html = exportHtml(document, {
+      title: "Controlled Spec",
+      template: "controlled",
+      metadata: {
+        documentNumber: "DOC-OBC-001",
+        version: "A",
+        author: "Power Electronics",
+        classification: "Internal",
+        approvalStatus: "Approved",
+        effectiveDate: "2026-07-03"
+      }
+    });
+
+    expect(html).toContain('class="sdoc-corporate-template sdoc-corporate-template-controlled"');
+    expect(html).toContain('aria-label="Corporate document control"');
+    expect(html).toContain("DOC-OBC-001");
+    expect(html).toContain("Approved");
+    expect(html).toContain("Internal");
+    expect(html).toContain('<main class="sdoc-document">');
+    expect(html).toContain('<h1 id="overview">Overview</h1>');
+    expect(JSON.stringify(document)).not.toContain("DOC-OBC-001");
+  });
+
   it("exports dataGrid nodes without embedding raw source data", () => {
     const html = exportHtml(createDataGridDocument());
 

@@ -4,11 +4,15 @@ Created: 2026-07-03
 
 ## Decision
 
-Corporate template export is a future publishing renderer, not a replacement for canonical `document.json` and not a reason to store page layout state in the document model. The current HTML-to-PDF pipeline remains the MVP publishing path.
+Corporate template export is a publishing renderer, not a replacement for canonical `document.json` and not a reason to store page layout state in the document model. The current HTML-to-PDF pipeline remains the MVP publishing path.
 
 Enterprise deliverables that require controlled headers, footers, watermarks, document-control blocks, approval tables, page numbering, strict typography, or `.docx` handoff should be handled by a dedicated template exporter.
 
 ## Export Targets
+
+Supported v1 target:
+
+- controlled HTML/PDF template through `sdoc export --format html|pdf --template controlled`.
 
 Likely future targets:
 
@@ -29,6 +33,8 @@ Template choices and export preferences belong outside required canonical docume
 
 Do not store export dialog state, last output path, selected printer, page preview state, or generated document-control numbering cache in `document.json`.
 
+The initial `controlled` template reads optional metadata such as `documentNumber`, `version`, `author`, `classification`, `approvalStatus`, and `effectiveDate`. These values are export metadata and document-control labels; they do not create new canonical body nodes.
+
 ## Renderer Contract
 
 A future template renderer should consume:
@@ -43,7 +49,21 @@ It should produce binary artifacts outside canonical storage. If generated files
 
 ## MVP Relationship
 
-The current CLI PDF export through themed HTML and Playwright is sufficient for MVP publishing. Corporate template export should not block Phase 4 closure unless a pilot user explicitly requires controlled enterprise deliverables before evaluation.
+The current CLI PDF export through themed HTML and Playwright remains the default MVP publishing path. The `controlled` template adds a document-control header, footer, watermark label, and print-friendly CSS when explicitly requested.
+
+Example:
+
+```text
+npm run sdoc -- export document.sdoc --format html --template controlled -o document.controlled.html
+npm run sdoc -- export document.sdoc --format pdf --template controlled -o document.controlled.pdf
+```
+
+## Implemented V1 Slice
+
+- `exportHtml(document, { template: "controlled", metadata })` renders controlled enterprise chrome.
+- CLI `sdoc export` accepts `--template controlled` for HTML and PDF.
+- Template selection is an explicit export option and is not stored in `document.json`.
+- `.docx` and strict enterprise pagination remain deferred.
 
 ## Deferred Work
 

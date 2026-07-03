@@ -105,4 +105,4 @@
 - Draw.io external editor bridge
 - visual semantic diff review UX
 - requirement tagging, traceability diagnostics, broken reference repair UX
-- asset-backed large data grid minimal model 완료; row-level grid workflows와 corporate template export는 후속 slice
+- asset-backed large data grid minimal model 및 controlled corporate HTML/PDF template export 완료; row-level grid workflows와 `.docx`/strict pagination은 후속 slice

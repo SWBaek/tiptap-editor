@@ -3,6 +3,20 @@ import { getNodeAnchor, getNodeHumanId, getNodeId, getPlainText, isBlockNode, ty
 export interface HtmlExportOptions {
   title?: string;
   assetResolver?: (assetId: string) => string | undefined;
+  template?: CorporateTemplateName;
+  metadata?: CorporateTemplateMetadata;
+}
+
+export type CorporateTemplateName = "controlled";
+
+export interface CorporateTemplateMetadata {
+  title?: unknown;
+  author?: unknown;
+  version?: unknown;
+  documentNumber?: unknown;
+  classification?: unknown;
+  approvalStatus?: unknown;
+  effectiveDate?: unknown;
 }
 
 export interface PptxExportOptions {
@@ -67,6 +81,14 @@ export function exportHtml(document: SDocDocument, options: HtmlExportOptions = 
   const references = collectReferenceTargets(document);
   const title = options.title?.trim() || getDocumentTitle(document) || "SDoc Document";
   const blocks = document.content.map((node) => renderHtmlBlock(node, references, options)).filter(Boolean);
+  const corporateTemplate = normalizeCorporateTemplate(options.template);
+  const bodyClass = corporateTemplate ? ' class="sdoc-corporate-template sdoc-corporate-template-controlled"' : "";
+  const corporateHeader = corporateTemplate
+    ? `${renderCorporateHeader(document, title, options.metadata)}
+  <div class="sdoc-corporate-watermark">${escapeHtml(getCorporateMetadataValue(options.metadata, "classification", "CONTROLLED"))}</div>
+`
+    : "";
+  const corporateFooter = corporateTemplate ? `\n${renderCorporateFooter(document, options.metadata)}` : "";
 
   return `<!doctype html>
 <html lang="en">
@@ -78,10 +100,11 @@ export function exportHtml(document: SDocDocument, options: HtmlExportOptions = 
 ${PUBLISH_HTML_CSS}
   </style>
 </head>
-<body>
-  <main class="sdoc-document">
+<body${bodyClass}>
+${corporateHeader}  <main class="sdoc-document">
 ${blocks.map((block) => indentHtml(block, 4)).join("\n\n")}
   </main>
+${corporateFooter}
 </body>
 </html>
 `;
@@ -94,6 +117,52 @@ export function exportDerivedOutputs(document: SDocDocument): DerivedOutputs {
     "references.json": `${JSON.stringify([...collectReferenceTargets(document).values()], null, 2)}\n`,
     "chunks.jsonl": exportChunks(document)
   };
+}
+
+function normalizeCorporateTemplate(template: HtmlExportOptions["template"]): CorporateTemplateName | undefined {
+  return template === "controlled" ? template : undefined;
+}
+
+function renderCorporateHeader(document: SDocDocument, title: string, metadata: CorporateTemplateMetadata | undefined): string {
+  const documentNumber = getCorporateMetadataValue(metadata, "documentNumber", document.attrs.id);
+  const version = getCorporateMetadataValue(metadata, "version", "Draft");
+  const owner = getCorporateMetadataValue(metadata, "author", "Unassigned");
+  const classification = getCorporateMetadataValue(metadata, "classification", "CONTROLLED");
+  const approvalStatus = getCorporateMetadataValue(metadata, "approvalStatus", "Review required");
+  const effectiveDate = getCorporateMetadataValue(metadata, "effectiveDate", "Not assigned");
+
+  return `  <header class="sdoc-corporate-header" aria-label="Corporate document control">
+    <div>
+      <span class="sdoc-corporate-kicker">${escapeHtml(classification)}</span>
+      <strong>${escapeHtml(title)}</strong>
+    </div>
+    <table class="sdoc-document-control">
+      <tbody>
+        <tr><th>Document No.</th><td>${escapeHtml(documentNumber)}</td><th>Revision</th><td>${escapeHtml(version)}</td></tr>
+        <tr><th>Owner</th><td>${escapeHtml(owner)}</td><th>Status</th><td>${escapeHtml(approvalStatus)}</td></tr>
+        <tr><th>Effective Date</th><td>${escapeHtml(effectiveDate)}</td><th>Source</th><td>${escapeHtml(document.attrs.id)}</td></tr>
+      </tbody>
+    </table>
+  </header>`;
+}
+
+function renderCorporateFooter(document: SDocDocument, metadata: CorporateTemplateMetadata | undefined): string {
+  const documentNumber = getCorporateMetadataValue(metadata, "documentNumber", document.attrs.id);
+  const classification = getCorporateMetadataValue(metadata, "classification", "CONTROLLED");
+  return `  <footer class="sdoc-corporate-footer" aria-label="Corporate footer">
+    <span>${escapeHtml(documentNumber)}</span>
+    <span>${escapeHtml(classification)}</span>
+    <span>Page <span class="sdoc-page-number"></span></span>
+  </footer>`;
+}
+
+function getCorporateMetadataValue(
+  metadata: CorporateTemplateMetadata | undefined,
+  key: keyof CorporateTemplateMetadata,
+  fallback: string
+): string {
+  const value = metadata?.[key];
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 }
 
 export async function exportPptx(document: SDocDocument, options: PptxExportOptions = {}): Promise<Uint8Array> {
@@ -1080,6 +1149,85 @@ const PUBLISH_HTML_CSS = `    :root {
       box-shadow: 0 12px 30px rgba(17, 24, 39, 0.06);
     }
 
+    .sdoc-corporate-template {
+      padding-top: 24px;
+    }
+
+    .sdoc-corporate-template .sdoc-document {
+      margin-top: 18px;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .sdoc-corporate-header,
+    .sdoc-corporate-footer {
+      width: min(860px, 100%);
+      margin: 0 auto;
+      color: #17212b;
+      background: #ffffff;
+      border: 1px solid #cfd8e1;
+    }
+
+    .sdoc-corporate-header {
+      display: grid;
+      gap: 12px;
+      padding: 16px 18px;
+    }
+
+    .sdoc-corporate-kicker {
+      display: block;
+      color: #6a3f00;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .sdoc-document-control {
+      width: 100%;
+      margin: 0;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 0.82rem;
+    }
+
+    .sdoc-document-control th,
+    .sdoc-document-control td {
+      padding: 6px 8px;
+      border: 1px solid #cfd8e1;
+    }
+
+    .sdoc-document-control th {
+      width: 18%;
+      background: #eef3f6;
+      text-align: left;
+    }
+
+    .sdoc-corporate-footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 8px 12px;
+      font-size: 0.78rem;
+    }
+
+    .sdoc-corporate-watermark {
+      position: fixed;
+      right: 18mm;
+      bottom: 18mm;
+      z-index: 0;
+      color: rgba(114, 75, 11, 0.16);
+      font-size: 3rem;
+      font-weight: 800;
+      pointer-events: none;
+      transform: rotate(-24deg);
+      transform-origin: center;
+    }
+
+    .sdoc-page-number::after {
+      content: counter(page);
+    }
+
     h1, h2, h3, h4, h5, h6 {
       margin: 1.4em 0 0.45em;
       color: #17212b;
@@ -1244,6 +1392,20 @@ const PUBLISH_HTML_CSS = `    :root {
         border: 0;
         border-radius: 0;
         box-shadow: none;
+      }
+
+      .sdoc-corporate-template {
+        padding: 0;
+      }
+
+      .sdoc-corporate-template .sdoc-document {
+        margin-top: 8mm;
+      }
+
+      .sdoc-corporate-header,
+      .sdoc-corporate-footer {
+        width: auto;
+        border-color: #777777;
       }
 
       h1, h2, h3, h4, h5, h6 {

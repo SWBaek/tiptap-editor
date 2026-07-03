@@ -68,6 +68,7 @@ Use npm workspaces from the repository root.
 - `npm run sdoc -- diff examples/sdoc-json/basic.document.json examples/sdoc-json/modified.document.json`: run the Phase 0 semantic diff CLI.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json markdown`: export a sample document to Markdown.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json chunks`: export RAG-oriented JSONL chunks.
+- `npm run sdoc -- export examples/sdoc-json/basic.document.json --format html --template controlled -o controlled.html`: export controlled corporate HTML without changing `document.json`.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format pptx -o deck.pptx`: generate a derived native PowerPoint deck.
 - `npm run clean`: remove TypeScript build artifacts through `tsc -b --clean`.
 

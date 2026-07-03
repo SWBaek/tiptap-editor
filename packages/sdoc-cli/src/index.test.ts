@@ -74,6 +74,32 @@ describe("sdoc CLI", () => {
     expect(html.stdout).toContain(".sdoc-document");
   });
 
+  it("exports controlled corporate template HTML from .sdoc metadata", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const unpackedPath = path.join(tempDir, "controlled.sdoc.d");
+
+    try {
+      await createUnpackedFixture(unpackedPath, validDocumentPath, "Controlled Spec", {
+        documentNumber: "DOC-OBC-001",
+        version: "A",
+        author: "Power Electronics",
+        classification: "Internal",
+        approvalStatus: "Approved",
+        effectiveDate: "2026-07-03"
+      });
+
+      const html = await runSdoc(["export", unpackedPath, "--format", "html", "--template", "controlled"]);
+
+      expect(html.stdout).toContain('class="sdoc-corporate-template sdoc-corporate-template-controlled"');
+      expect(html.stdout).toContain("Controlled Spec");
+      expect(html.stdout).toContain("DOC-OBC-001");
+      expect(html.stdout).toContain("Approved");
+      expect(html.stdout).toContain('<main class="sdoc-document">');
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("exports PDF through the HTML print pipeline", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const pdfPath = path.join(tempDir, "basic.pdf");
@@ -150,7 +176,12 @@ async function runSdoc(args: string[]): Promise<{ stdout: string; stderr: string
   };
 }
 
-async function createUnpackedFixture(folderPath: string, documentPath = validDocumentPath, title = "CLI Test"): Promise<void> {
+async function createUnpackedFixture(
+  folderPath: string,
+  documentPath = validDocumentPath,
+  title = "CLI Test",
+  metadata: Record<string, unknown> = {}
+): Promise<void> {
   const documentText = await readFile(documentPath, "utf8");
   const document = JSON.parse(documentText) as { attrs?: { id?: string } };
 
@@ -171,5 +202,5 @@ async function createUnpackedFixture(folderPath: string, documentPath = validDoc
     "utf8"
   );
   await writeFile(path.join(folderPath, "document.json"), documentText, "utf8");
-  await writeFile(path.join(folderPath, "metadata.json"), JSON.stringify({ title }, null, 2), "utf8");
+  await writeFile(path.join(folderPath, "metadata.json"), JSON.stringify({ title, ...metadata }, null, 2), "utf8");
 }

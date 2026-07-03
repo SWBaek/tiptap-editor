@@ -122,7 +122,7 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
-Status: large data grid minimal asset model implemented on 2026-07-03. Corporate template export remains open.
+Status: large data grid minimal asset model and controlled corporate HTML/PDF template export implemented on 2026-07-03.
 
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
 
@@ -133,11 +133,13 @@ Acceptance evidence:
 - Markdown, HTML, PDF, slide, AI/RAG, and semantic diff expose semantic metadata and source labels without embedding raw grid rows.
 - Web playground imports CSV/JSON as `.sdoc/assets/` and inserts a compact `dataGrid` preview.
 - Unit and Playwright coverage verify canonical JSON excludes raw CSV content and round-trips asset references.
+- `exportHtml(..., { template: "controlled" })` renders controlled corporate header/footer/watermark chrome from explicit export metadata.
+- CLI `sdoc export --format html|pdf --template controlled` exposes the controlled template without storing export preferences in `document.json`.
 
 Open work:
 
 - Row-level CSV/JSON validation, preview, semantic diff, and merge.
-- Corporate template export implementation.
+- `.docx` corporate template export, strict pagination, approval table workflows, and template management UI.
 
 ## Validation Gates
 

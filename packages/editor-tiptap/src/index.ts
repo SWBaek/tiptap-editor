@@ -685,6 +685,11 @@ export const BlockIdExtension = Extension.create({
             default: null,
             parseHTML: (element) => element.getAttribute("data-id"),
             renderHTML: (attributes) => (attributes.id ? { "data-id": attributes.id } : {})
+          },
+          humanId: {
+            default: null,
+            parseHTML: (element) => element.getAttribute("data-human-id"),
+            renderHTML: (attributes) => (attributes.humanId ? { "data-human-id": attributes.humanId } : {})
           }
         }
       },

@@ -5,6 +5,7 @@ import {
   createLocalHistoryEntry,
   createReferenceDiagnostics,
   createSectionFoldRanges,
+  createVisualDiffOverlayItems,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
@@ -14,7 +15,9 @@ import {
   renameLocalHistoryEntry,
   removeLocalHistoryEntry,
   renderDiffPreview,
+  renderBrokenReferenceRuntimeCss,
   renderMetadataDiff,
+  renderVisualDiffRuntimeCss,
   serializeLocalHistory,
   updateCrossReferenceLabel
 } from "./documentState";
@@ -86,6 +89,27 @@ describe("document state helpers", () => {
       label: "No changes",
       sections: []
     });
+  });
+
+  it("projects semantic diff events to runtime overlay css without canonical state", () => {
+    const items = createVisualDiffOverlayItems([
+      { kind: "modified", id: "blk_body", nodeType: "paragraph", path: "doc[0]/blk_body", label: '"Body"', changes: ["text changed"] },
+      { kind: "deleted", id: "blk_old", nodeType: "paragraph", path: "doc[1]/blk_old", label: '"Old"' }
+    ]);
+
+    expect(items).toEqual([
+      { id: "blk_body", kind: "modified", label: "Modified" },
+      { id: "blk_old", kind: "deleted", label: "Deleted" }
+    ]);
+    expect(renderVisualDiffRuntimeCss(items)).toContain('[data-id="blk_body"]');
+    expect(renderVisualDiffRuntimeCss(items)).not.toContain('[data-id="blk_old"]');
+  });
+
+  it("projects broken reference diagnostics to inline marker css", () => {
+    const css = renderBrokenReferenceRuntimeCss([{ id: "ref_missing", targetId: "blk_missing", label: "Missing", path: "1.0" }]);
+
+    expect(css).toContain('.sdoc-cross-reference[data-id="ref_missing"]');
+    expect(css).toContain("missing blk_missing");
   });
 
   it("detects broken cross references against current block ids", () => {

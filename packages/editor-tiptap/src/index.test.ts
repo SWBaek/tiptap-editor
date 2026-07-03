@@ -526,6 +526,27 @@ describe("BlockIdExtension", () => {
     expect(document.content[0].attrs?.anchor).toBe("overview");
   });
 
+  it("preserves human-facing ids on block nodes", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            attrs: { id: "blk_req", humanId: "REQ-OBC-012" },
+            content: [{ type: "text", text: "Requirement text" }]
+          }
+        ]
+      }
+    });
+
+    const document = toSdocDocument(editor.getJSON(), "doc_req");
+    editor.destroy();
+
+    expect(document.content[0].attrs?.humanId).toBe("REQ-OBC-012");
+  });
+
   it("assigns ids to figure blocks and captions in editor state", () => {
     const editor = new Editor({
       extensions: [StarterKit, FigureNode, CalloutNode, BlockIdExtension],

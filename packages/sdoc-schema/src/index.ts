@@ -88,6 +88,11 @@ export function getNodeAnchor(node: SDocNode): string | undefined {
   return typeof anchor === "string" && anchor.length > 0 ? anchor : undefined;
 }
 
+export function getNodeHumanId(node: SDocNode): string | undefined {
+  const humanId = node.attrs?.humanId;
+  return typeof humanId === "string" && humanId.length > 0 ? humanId : undefined;
+}
+
 export function getPlainText(node: SDocNode): string {
   if (node.type === "text") {
     return node.text ?? "";
@@ -201,6 +206,11 @@ function validateNode(
     } else {
       ids.set(id, path);
     }
+  }
+
+  const humanId = typedNode.attrs?.humanId;
+  if (humanId !== undefined && (typeof humanId !== "string" || humanId.trim().length === 0)) {
+    issues.push({ path: `${path}.attrs.humanId`, message: "humanId must be a non-empty string when present" });
   }
 
   if (typedNode.type === "crossReference") {

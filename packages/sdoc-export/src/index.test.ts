@@ -31,6 +31,25 @@ describe("exportMarkdown", () => {
     expect(exportMarkdown(document)).toContain("[the overview](#overview)");
   });
 
+  it("includes human-facing ids in AI/RAG derived outputs", () => {
+    const withHumanId: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_req" },
+      content: [
+        {
+          type: "paragraph",
+          attrs: { id: "blk_req", humanId: "REQ-OBC-012" },
+          content: [{ type: "text", text: "The converter shall report faults." }]
+        }
+      ]
+    };
+
+    const outputs = exportDerivedOutputs(withHumanId);
+    expect(outputs["chunks.jsonl"]).toContain('"humanId":"REQ-OBC-012"');
+    expect(outputs["references.json"]).toContain('"humanId": "REQ-OBC-012"');
+  });
+
   it("uses block ids as fallback anchors for headings", () => {
     const withoutAnchor: SDocDocument = {
       schemaVersion: 1,

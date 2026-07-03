@@ -16,9 +16,9 @@ Phase 4 Publishing & Advanced Features is accepted for the MVP slice. The work e
 - Draw.io external editor / Tauri bridge boundary.
 - Advanced rectangular table controls.
 - Section folding runtime controls.
-- Visual semantic diff overlay boundary.
-- Requirement tagging boundary.
-- Broken reference inline highlight boundary.
+- Visual semantic diff overlay boundary and minimal runtime overlay.
+- Requirement tagging boundary and minimal `attrs.humanId` schema/export/editor preservation.
+- Broken reference inline highlight boundary and minimal runtime inline marker.
 - Large data grid asset boundary.
 - Corporate template export boundary.
 
@@ -34,7 +34,7 @@ Phase 4 Publishing & Advanced Features is accepted for the MVP slice. The work e
 
 ## Acceptance Evidence
 
-Evidence is recorded in `docs/phase-4-plan.md`. The implemented slices have unit and Playwright coverage for HTML/PDF/PPTX export behavior, Draw.io asset references, advanced table controls, and section folding runtime state. The final planning slices are boundary documents for Phase 5 implementation decisions and do not change runtime behavior.
+Evidence is recorded in `docs/phase-4-plan.md`. The implemented slices have unit and Playwright coverage for HTML/PDF/PPTX export behavior, Draw.io asset references, advanced table controls, section folding runtime state, visual diff overlay runtime projection, broken reference inline markers, and `humanId` validation/export/editor preservation. Large data grids and corporate template export remain boundary-only Phase 5 decisions.
 
 Required closure validation:
 

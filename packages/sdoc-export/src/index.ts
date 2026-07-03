@@ -1,4 +1,4 @@
-import { getNodeAnchor, getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocMark, type SDocNode } from "@sdoc/schema";
+import { getNodeAnchor, getNodeHumanId, getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocMark, type SDocNode } from "@sdoc/schema";
 
 export interface HtmlExportOptions {
   title?: string;
@@ -21,6 +21,7 @@ interface ReferenceTarget {
   id: string;
   type: string;
   anchor?: string;
+  humanId?: string;
   label: string;
 }
 
@@ -218,10 +219,12 @@ export function exportChunks(document: SDocDocument): string {
       return;
     }
 
+    const humanId = getNodeHumanId(node);
     chunks.push({
       id,
       type: node.type,
       heading: currentHeading,
+      ...(humanId ? { humanId } : {}),
       text
     });
   });
@@ -942,6 +945,7 @@ function collectReferenceTargets(document: SDocDocument): Map<string, ReferenceT
       id,
       type: node.type,
       anchor: getNodeAnchor(node),
+      humanId: getNodeHumanId(node),
       label: getPlainText(node).trim() || id
     });
   });

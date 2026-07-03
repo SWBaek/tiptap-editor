@@ -120,29 +120,31 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Define temp checkout, file watching, asset update, preview regeneration, and failure recovery behavior before implementation.
 - Use `docs/drawio-external-editor-bridge.md` as the bridge boundary document.
 
-## Completed Slice: Visual Semantic Diff Overlay Boundary
+## Completed Slice: Visual Semantic Diff Overlay
 
 - Project the existing semantic diff event model into non-developer review UI.
 - Define inserted, deleted, modified, moved, and broken-reference visual states without creating a second diff format.
 - Keep overlay filters, reviewer cursor, expanded panels, and accept/reject preview state out of `document.json`.
-- Prefer a boundary document before implementing editor decorations or review controls.
 - Use `docs/visual-semantic-diff-overlay-boundary.md` as the overlay boundary document.
+- Add a Review panel inline overlay toggle that renders runtime CSS from existing semantic diff events.
+- Keep deleted blocks in the review panel when they no longer have a current editor DOM anchor.
 
-## Completed Slice: Requirement Tagging Boundary
+## Completed Slice: Requirement Tagging Boundary And Minimal Model
 
 - Define optional human-readable requirement IDs or traceability tags without replacing stable `attrs.id`.
 - Decide which nodes may carry `humanId` or trace metadata and how duplicates should be reported.
 - Analyze schema, export, diff, AI/RAG, and editor UI impact before implementation.
 - Keep generated labels, tag picker state, and traceability panel state out of `document.json`.
 - Use `docs/requirement-tagging-boundary.md` as the traceability boundary document.
+- Preserve optional `attrs.humanId` through schema validation, Tiptap conversion, and AI/RAG derived outputs.
 
-## Completed Slice: Broken Reference Inline Highlight Boundary
+## Completed Slice: Broken Reference Inline Highlight
 
 - Define how existing broken-reference diagnostics should surface near inline `crossReference` nodes.
 - Keep diagnostic visibility, selected reference, and panel state out of `document.json`.
 - Reuse the existing reference detection and semantic diff event model instead of creating a second validation system.
-- Prefer a boundary document before implementing editor decorations.
 - Use `docs/broken-reference-inline-highlight-boundary.md` as the inline diagnostic boundary document.
+- Render runtime inline markers for broken `crossReference` nodes without mutating `document.json`.
 
 ## Completed Slice: Large Data Grid Asset Boundary
 
@@ -209,9 +211,9 @@ Rejected or deferred adjustments:
 - Playwright verifies the Export side panel marks PPTX as CLI/Tauri-only and exposes a PPTX CLI command.
 - Gemini UX simulation review outcomes are recorded in the plan without changing canonical `document.json` ownership.
 - `docs/drawio-external-editor-bridge.md` records the future Tauri bridge contract, temp checkout/save-back lifecycle, conflict behavior, preview policy, and web boundary.
-- `docs/visual-semantic-diff-overlay-boundary.md` records how existing semantic diff events should project into editor review overlays without creating a second diff format or storing overlay state in `document.json`.
-- `docs/requirement-tagging-boundary.md` records the optional `attrs.humanId` policy, duplicate handling, export/RAG impact, and the rule that stable `attrs.id` remains the only internal identity key.
-- `docs/broken-reference-inline-highlight-boundary.md` records how broken reference diagnostics should be projected into inline editor UI while keeping diagnostics runtime-only.
+- `docs/visual-semantic-diff-overlay-boundary.md` records how existing semantic diff events should project into editor review overlays without creating a second diff format or storing overlay state in `document.json`; unit and Playwright tests cover the runtime overlay projection.
+- `docs/requirement-tagging-boundary.md` records the optional `attrs.humanId` policy, duplicate handling, export/RAG impact, and the rule that stable `attrs.id` remains the only internal identity key; unit tests cover validation, Tiptap preservation, and derived export inclusion.
+- `docs/broken-reference-inline-highlight-boundary.md` records how broken reference diagnostics should be projected into inline editor UI while keeping diagnostics runtime-only; unit and Playwright tests cover runtime marker projection.
 - `docs/large-data-grid-boundary.md` records that large CSV/JSON engineering tables should be asset-backed future nodes instead of expanding canonical `table` into spreadsheet behavior.
 - `docs/corporate-template-export-boundary.md` records future enterprise `.docx` or template-driven PDF export as a derived renderer with export preferences outside required canonical fields.
 - `docs/phase-4-closure.md` records Phase 4 as accepted for the MVP slice and lists Phase 5 handoff work.

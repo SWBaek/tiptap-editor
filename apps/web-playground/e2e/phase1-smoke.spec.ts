@@ -84,15 +84,20 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
 test("uses the Review side panel for diff workflow controls", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Title").fill("Review Panel Spec");
+  await page.locator(".editor-surface p").first().click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" Updated.");
 
   await page.getByRole("button", { name: "Review panel" }).click();
   const reviewPanel = page.getByRole("complementary", { name: "Review side panel" });
   await expect(reviewPanel).toBeVisible();
-  await expect(reviewPanel.locator(".status-block").filter({ hasText: "Review" })).toContainText("1 change");
+  await expect(reviewPanel.locator(".status-block").filter({ hasText: "Review" })).toContainText("2 changes");
   await expect(reviewPanel.locator(".status-block").filter({ hasText: "Base" })).toContainText("Saved baseline");
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("Total");
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("Metadata");
-  await expect(reviewPanel.getByLabel("Review counts")).toContainText("1");
+  await expect(reviewPanel.getByLabel("Review counts")).toContainText("2");
+  await reviewPanel.getByText("Inline overlay").click();
+  await expect.poll(() => page.locator("style[data-sdoc-diff-overlay-runtime]").evaluate((node) => node.textContent ?? "")).toContain('[data-id="blk_intro"]');
   await expect(reviewPanel.getByLabel("Git integration boundary")).toContainText("Git is optional");
   await reviewPanel.getByRole("button", { name: "Copy semantic diff command" }).click();
   await expect(page.locator(".status-note")).toContainText('npm run sdoc -- diff "old.document.json" "new.document.json"');
@@ -107,6 +112,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(page.locator(".status-note")).toContainText("Marked current state as saved");
   await expect(reviewPanel.locator(".status-block").filter({ hasText: "Review" })).toContainText("No changes");
   await expect(page.locator(".diff-empty")).toContainText("No changes");
+  await expect(page.locator("style[data-sdoc-diff-overlay-runtime]")).toBeHidden();
 });
 
 test("folds editor sections without storing runtime state in document.json", async ({ page }) => {
@@ -350,6 +356,10 @@ test("detects broken cross references in the playground", async ({ page }, testI
   await expect(page.locator(".reference-summary")).toContainText("Broken");
   await expect(page.locator(".reference-issue-list")).toContainText("blk_missing");
   await expect(page.locator(".reference-target-list")).toContainText("blk_overview");
+  await expect
+    .poll(() => page.locator("style[data-sdoc-broken-reference-runtime]").evaluate((node) => node.textContent ?? ""))
+    .toContain("missing blk_missing");
+  await expect(page.locator('.editor-surface .sdoc-cross-reference[data-id="ref_missing"]')).toContainText("Missing section");
 
   const brokenItem = page.locator(".reference-issue-list li").filter({ hasText: "ref_missing" });
   await brokenItem.getByRole("button", { name: "Show" }).click();

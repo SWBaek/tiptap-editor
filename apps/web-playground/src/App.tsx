@@ -78,14 +78,17 @@ import {
   createLocalHistoryEntry,
   createReferenceDiagnostics,
   createSectionFoldRanges,
+  createVisualDiffOverlayItems,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
   isMetadataDirty,
   parseLocalHistory,
   pruneCollapsedHeadingIds,
+  renderBrokenReferenceRuntimeCss,
   renderDiffPreview,
   renderMetadataDiff,
+  renderVisualDiffRuntimeCss,
   removeLocalHistoryEntry,
   renameLocalHistoryEntry,
   serializeLocalHistory,
@@ -159,6 +162,7 @@ export function App() {
   const [highlightOverlay, setHighlightOverlay] = useState<EditorHighlightOverlay | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
   const [collapsedHeadingIds, setCollapsedHeadingIds] = useState<Set<string>>(() => new Set());
+  const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const editorPaneRef = useRef<HTMLElement>(null);
@@ -219,6 +223,15 @@ export function App() {
   const diffPreview = renderDiffPreview(documentDiffLines, metadataDiffLines);
   const changeReview = createChangeReview(documentDiffLines, metadataDiffLines);
   const referenceDiagnostics = createReferenceDiagnostics(document);
+  const visualDiffOverlayItems = useMemo(() => createVisualDiffOverlayItems(documentDiffEvents), [documentDiffEvents]);
+  const visualDiffRuntimeCss = useMemo(
+    () => (isDiffOverlayEnabled ? renderVisualDiffRuntimeCss(visualDiffOverlayItems) : ""),
+    [isDiffOverlayEnabled, visualDiffOverlayItems]
+  );
+  const brokenReferenceRuntimeCss = useMemo(
+    () => renderBrokenReferenceRuntimeCss(referenceDiagnostics.brokenReferences),
+    [referenceDiagnostics.brokenReferences]
+  );
   const hasDocumentChanges = diffDocuments(baselineDocument, document).length > 0;
   const hasMetadataChanges = isMetadataDirty(metadata, baselineMetadata);
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges;
@@ -751,9 +764,11 @@ export function App() {
               baseLabel={reviewBaseLabel}
               savedLabel={savedLabel}
               hasUnsavedChanges={hasUnsavedChanges}
+              isDiffOverlayEnabled={isDiffOverlayEnabled}
               onShowDiff={() => setActiveTab("diff")}
               onCompareSavedBaseline={compareSavedBaseline}
               onMarkSaved={markCurrentAsBaseline}
+              onToggleDiffOverlay={() => setIsDiffOverlayEnabled((current) => !current)}
               onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
@@ -940,6 +955,8 @@ export function App() {
         <div className="editor-grid">
           <section className="editor-pane" ref={editorPaneRef}>
             {foldRuntimeCss && <style data-sdoc-fold-runtime>{foldRuntimeCss}</style>}
+            {brokenReferenceRuntimeCss && <style data-sdoc-broken-reference-runtime>{brokenReferenceRuntimeCss}</style>}
+            {visualDiffRuntimeCss && <style data-sdoc-diff-overlay-runtime>{visualDiffRuntimeCss}</style>}
             <EditorContent editor={editor} />
             {highlightOverlay && (
               <div
@@ -1309,18 +1326,22 @@ function ReviewPanel({
   baseLabel,
   savedLabel,
   hasUnsavedChanges,
+  isDiffOverlayEnabled,
   onShowDiff,
   onCompareSavedBaseline,
   onMarkSaved,
+  onToggleDiffOverlay,
   onCopyDeveloperCommand
 }: {
   review: ChangeReviewModel;
   baseLabel: string;
   savedLabel: string;
   hasUnsavedChanges: boolean;
+  isDiffOverlayEnabled: boolean;
   onShowDiff: () => void;
   onCompareSavedBaseline: () => void;
   onMarkSaved: () => void;
+  onToggleDiffOverlay: () => void;
   onCopyDeveloperCommand: (command: string) => void;
 }) {
   const isHistoryBase = baseLabel !== "Saved baseline";
@@ -1359,6 +1380,10 @@ function ReviewPanel({
       <button type="button" onClick={onShowDiff}>
         Show diff
       </button>
+      <label className="review-toggle">
+        <input type="checkbox" checked={isDiffOverlayEnabled} onChange={onToggleDiffOverlay} />
+        <span>Inline overlay</span>
+      </label>
       {isHistoryBase && (
         <button type="button" onClick={onCompareSavedBaseline}>
           Use saved baseline

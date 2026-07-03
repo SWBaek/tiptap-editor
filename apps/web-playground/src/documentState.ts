@@ -1,5 +1,6 @@
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
 import { getNodeAnchor, getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocNode, type ValidationResult } from "@sdoc/schema";
+import type { SDocDiffEvent } from "@sdoc/diff";
 
 export interface ChangeReviewSection {
   title: string;
@@ -56,6 +57,12 @@ export interface SectionFoldRange {
   headingLevel: number;
   title: string;
   hiddenBlockIds: string[];
+}
+
+export interface VisualDiffOverlayItem {
+  id: string;
+  kind: "added" | "deleted" | "modified" | "moved" | "reference-broken";
+  label: string;
 }
 
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
@@ -137,6 +144,72 @@ export function createChangeReview(documentLines: string[], metadataLines: strin
     label: total === 0 ? "No changes" : `${total} change${total === 1 ? "" : "s"}`,
     sections
   };
+}
+
+export function createVisualDiffOverlayItems(events: SDocDiffEvent[]): VisualDiffOverlayItem[] {
+  return events.map((event) => ({
+    id: event.id,
+    kind: event.kind,
+    label: getVisualDiffLabel(event.kind)
+  }));
+}
+
+export function renderVisualDiffRuntimeCss(items: VisualDiffOverlayItem[]): string {
+  const anchorableItems = items.filter((item) => item.kind !== "deleted");
+  if (anchorableItems.length === 0) {
+    return "";
+  }
+
+  return anchorableItems
+    .map((item) => {
+      const selector = `.editor-surface [data-id="${escapeCssAttribute(item.id)}"]`;
+      return `${selector} {
+  position: relative;
+  outline: 2px solid ${getVisualDiffColor(item.kind)};
+  outline-offset: 3px;
+}
+${selector}::before {
+  position: absolute;
+  top: -18px;
+  right: 0;
+  z-index: 2;
+  padding: 2px 6px;
+  color: #17212b;
+  background: ${getVisualDiffBackground(item.kind)};
+  border: 1px solid ${getVisualDiffColor(item.kind)};
+  border-radius: 4px;
+  content: "${escapeCssContent(item.label)}";
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: none;
+}`;
+    })
+    .join("\n");
+}
+
+export function renderBrokenReferenceRuntimeCss(references: BrokenReference[]): string {
+  if (references.length === 0) {
+    return "";
+  }
+
+  return references
+    .map((reference) => {
+      const selector = `.editor-surface .sdoc-cross-reference[data-id="${escapeCssAttribute(reference.id)}"]`;
+      return `${selector} {
+  color: #8a2f24;
+  background: #fff1ed;
+  box-shadow: inset 0 -2px 0 #c4493d;
+}
+${selector}::after {
+  margin-left: 4px;
+  color: #8a2f24;
+  content: "missing ${escapeCssContent(reference.targetId)}";
+  font-size: 10px;
+  font-weight: 700;
+}`;
+    })
+    .join("\n");
 }
 
 export function createReferenceDiagnostics(document: SDocDocument): ReferenceDiagnosticsModel {
@@ -336,6 +409,59 @@ function formatReferenceDiagnosticsLabel(brokenCount: number, staleCount: number
   ]
     .filter(Boolean)
     .join(", ");
+}
+
+function getVisualDiffLabel(kind: SDocDiffEvent["kind"]): string {
+  switch (kind) {
+    case "added":
+      return "Added";
+    case "deleted":
+      return "Deleted";
+    case "modified":
+      return "Modified";
+    case "moved":
+      return "Moved";
+    case "reference-broken":
+      return "Broken ref";
+  }
+}
+
+function getVisualDiffColor(kind: VisualDiffOverlayItem["kind"]): string {
+  switch (kind) {
+    case "added":
+      return "#4f8f5f";
+    case "deleted":
+      return "#a3473f";
+    case "modified":
+      return "#b07a2a";
+    case "moved":
+      return "#4c78a8";
+    case "reference-broken":
+      return "#c4493d";
+  }
+}
+
+function getVisualDiffBackground(kind: VisualDiffOverlayItem["kind"]): string {
+  switch (kind) {
+    case "added":
+      return "#eaf6ee";
+    case "deleted":
+      return "#f8e8e5";
+    case "modified":
+      return "#fff4dc";
+    case "moved":
+      return "#e9f0f8";
+    case "reference-broken":
+      return "#fff1ed";
+  }
+}
+
+function escapeCssAttribute(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
+
+function escapeCssContent(value: string): string {
+  return escapeCssAttribute(value).replaceAll("\n", "\\a ");
 }
 
 function updateCrossReferenceLabelInNode(node: SDocNode, referenceId: string, label: string): SDocNode {

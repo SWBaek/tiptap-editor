@@ -23,6 +23,27 @@ describe("validateDocument", () => {
     expect(result.issues.some((issue) => issue.message.includes("duplicate block id"))).toBe(true);
   });
 
+  it("accepts optional human-facing requirement ids and rejects empty values", () => {
+    expect(
+      validateDocument({
+        schemaVersion: 1,
+        type: "doc",
+        attrs: { id: "doc_human_id" },
+        content: [{ type: "paragraph", attrs: { id: "blk_req", humanId: "REQ-OBC-012" }, content: [{ type: "text", text: "Requirement" }] }]
+      }).ok
+    ).toBe(true);
+
+    const result = validateDocument({
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_bad_human_id" },
+      content: [{ type: "paragraph", attrs: { id: "blk_req", humanId: "   " }, content: [{ type: "text", text: "Requirement" }] }]
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("humanId must be a non-empty string"))).toBe(true);
+  });
+
   it("accepts a figure with an asset reference and caption", () => {
     const document = {
       schemaVersion: 1,

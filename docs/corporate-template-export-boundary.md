@@ -66,6 +66,7 @@ npm run sdoc -- export document.sdoc --format pdf --template controlled -o docum
 - CLI `sdoc export --format docx --template controlled -o output.docx` exposes the derived Word handoff path.
 - `validateWordTemplatePackage` and CLI `sdoc template validate <template.docx|template.dotx>` reject unsafe external Word template packages before future injection work.
 - `validateWordTemplateMapping` and CLI `sdoc template validate-mapping` verify required Word style IDs and content-control placeholders before future template rendering work.
+- CLI `sdoc export --format docx --template-file company.dotx -o output.docx` validates an external template before producing the current derived Word handoff skeleton.
 - Template selection is an explicit export option and is not stored in `document.json`.
 - Strict enterprise pagination remains deferred.
 

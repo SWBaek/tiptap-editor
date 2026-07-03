@@ -31,6 +31,8 @@ The adapter should support:
 
 The first mapping implementation validates the contract only. It checks that a safe `.docx/.dotx` package exposes required style IDs and content-control placeholders before any future renderer writes SDoc content into that template.
 
+The first render skeleton accepts `--template-file` for DOCX export, validates the package and mapping contract, then emits the current editable fallback DOCX while recording the validated template file in derived metadata. It does not yet splice SDoc blocks into the template package.
+
 ## Safety Boundary
 
 Template files are untrusted binary Office packages until validated. The implementation must reject or strip macros, embedded scripts, external relationships, remote images, and unexpected package parts before using a template.
@@ -50,11 +52,11 @@ Template injection is one-way: SDoc to derived Word. Editing the generated `.doc
 - `sdoc template validate <template.docx|template.dotx>` exposes the package safety check for developer/reviewer workflows.
 - `validateWordTemplateMapping` reports missing required Word styles and content-control placeholders without mutating canonical document data or rendering a derived file.
 - `sdoc template validate-mapping <template.docx|template.dotx> --style nodeType=StyleId --placeholder tag` exposes mapping diagnostics for developer/reviewer workflows.
+- `exportDocx(..., { externalTemplate })` and `sdoc export --format docx --template-file company.dotx` validate an external template before producing a derived Word handoff.
 - Future implementation includes tests for template package validation, missing placeholders/styles, canonical document immutability, and deterministic output for the same template/input pair.
 
 ## Deferred Work
 
-- `--template-file` CLI option that reuses trusted template validation;
 - `.dotx` style/content-control rendering from SDoc blocks;
 - company policy registry and template management UI;
 - Word review import/redline workflows;

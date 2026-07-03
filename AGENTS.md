@@ -73,6 +73,7 @@ Use npm workspaces from the repository root.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format docx --template controlled -o controlled.docx`: export an editable derived Word handoff without changing `document.json`.
 - `npm run sdoc -- template validate controlled.docx`: validate a `.docx/.dotx` template package before future external template injection uses it.
 - `npm run sdoc -- template validate-mapping controlled.docx --style paragraph=Normal --placeholder sdoc-body`: check external Word template mapping requirements before future injection uses it.
+- `npm run sdoc -- export examples/sdoc-json/basic.document.json --format docx --template-file company.dotx -o handoff.docx`: validate an external Word template before generating the current derived DOCX handoff skeleton.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format pptx -o deck.pptx`: generate a derived native PowerPoint deck.
 - `npm run sdoc -- data-grid diff old.csv new.csv --format csv --key id`: review row-level dataGrid asset changes without storing rows in `document.json`.
 - `npm run sdoc -- data-grid apply baseline.csv proposed.csv current.csv --format csv --key id --event 0 -o merged.csv`: apply one guarded row-level asset change with stale-source protection.

@@ -274,6 +274,58 @@ describe("sdoc CLI", () => {
     }
   });
 
+  it("exports DOCX through a validated external Word template skeleton", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const templatePath = path.join(tempDir, "company.dotx");
+    const docxPath = path.join(tempDir, "external-template.docx");
+
+    try {
+      await writeFile(templatePath, await createWordTemplateBuffer({ styles: ["Normal", "Heading1"], placeholders: ["sdoc-body"] }));
+
+      const result = await runSdoc([
+        "export",
+        validDocumentPath,
+        "--format",
+        "docx",
+        "--template-file",
+        templatePath,
+        "--template-style",
+        "heading=Heading1",
+        "-o",
+        docxPath
+      ]);
+      const docx = await readFile(docxPath);
+      const zip = await JSZip.loadAsync(docx);
+      const documentXml = await zip.file("word/document.xml")?.async("string");
+      const coreXml = await zip.file("docProps/core.xml")?.async("string");
+
+      expect(result.stdout).toBe("");
+      expect(docx.subarray(0, 2).toString("utf8")).toBe("PK");
+      expect(documentXml).toContain("System Overview");
+      expect(coreXml).toContain("External Word template validated: company.dotx");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects DOCX export when the external Word template lacks the body placeholder", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const templatePath = path.join(tempDir, "company.dotx");
+    const docxPath = path.join(tempDir, "external-template.docx");
+
+    try {
+      await writeFile(templatePath, await createWordTemplateBuffer({ styles: ["Normal"], placeholders: [] }));
+
+      await expect(
+        runSdoc(["export", validDocumentPath, "--format", "docx", "--template-file", templatePath, "-o", docxPath])
+      ).rejects.toMatchObject({
+        stderr: expect.stringContaining('Template is missing required content-control placeholder "sdoc-body"')
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("validates a safe Word template package in the CLI", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const docxPath = path.join(tempDir, "controlled.docx");

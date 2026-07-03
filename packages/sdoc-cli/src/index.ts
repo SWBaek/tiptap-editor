@@ -218,13 +218,14 @@ async function runReview(args: string[]): Promise<void> {
 async function runExport(args: string[]): Promise<void> {
   const [inputPath, ...rest] = args;
   if (!inputPath) {
-      throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|pdf|pptx|chunks|outline|references> [--template controlled] [-o output]");
+      throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|pdf|pptx|chunks|outline|references> [--template controlled] [--template-file file.dotx] [-o output]");
   }
 
-  const positionals = getPositionals(rest, new Set(["--format", "-o", "--template"]));
+  const positionals = getPositionals(rest, new Set(["--format", "-o", "--template", "--template-file", "--template-style", "--template-placeholder"]));
   const format = getOption(rest, "--format") ?? positionals[0] ?? "markdown";
   const output = getOption(rest, "-o") ?? positionals[1];
   const template = parseCorporateTemplate(getOption(rest, "--template"));
+  const templateFile = getOption(rest, "--template-file");
   if (format.toLowerCase() === "pdf") {
     if (!output) {
       throw new Error("usage: sdoc export <input.sdoc|document.json> --format pdf -o output.pdf");
@@ -248,7 +249,12 @@ async function runExport(args: string[]): Promise<void> {
       throw new Error("usage: sdoc export <input.sdoc|document.json> --format docx [-o output.docx]");
     }
 
-    await writeDocxExport(await loadExportInput(inputPath), output, template);
+    await writeDocxExport(await loadExportInput(inputPath), output, {
+      template,
+      templateFile,
+      requiredStyles: parseTemplateStyleRequirements(getOptions(rest, "--template-style")),
+      requiredPlaceholders: parseTemplatePlaceholders(getOptions(rest, "--template-placeholder"), templateFile)
+    });
     return;
   }
 
@@ -269,11 +275,26 @@ async function writePptxExport(input: ExportInput, outputPath: string): Promise<
   await writeFile(outputPath, bytes);
 }
 
-async function writeDocxExport(input: ExportInput, outputPath: string, template?: CorporateTemplateName): Promise<void> {
+interface DocxCliExportOptions {
+  template?: CorporateTemplateName;
+  templateFile?: string;
+  requiredStyles?: WordTemplateMappingRequirement[];
+  requiredPlaceholders?: string[];
+}
+
+async function writeDocxExport(input: ExportInput, outputPath: string, options: DocxCliExportOptions = {}): Promise<void> {
   const bytes = await exportDocx(input.document, {
     title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
     metadata: input.metadata,
-    template
+    template: options.template,
+    externalTemplate: options.templateFile
+      ? {
+          bytes: await readFile(options.templateFile),
+          fileName: path.basename(options.templateFile),
+          requiredStyles: options.requiredStyles,
+          requiredPlaceholders: options.requiredPlaceholders
+        }
+      : undefined
   });
   await writeFile(outputPath, bytes);
 }
@@ -562,6 +583,7 @@ Commands:
   sdoc diff <old.sdoc|old.document.json> <new.sdoc|new.document.json>
   sdoc export <input.sdoc|document.json> <markdown|html|pdf|chunks|outline|references> [output]
   sdoc export <input.sdoc> --format html|pdf|docx --template controlled [-o output]
+  sdoc export <input.sdoc> --format docx --template-file company.dotx [--template-style nodeType=StyleId] [--template-placeholder tag] [-o output.docx]
   sdoc pack <folder> <output.sdoc>
   sdoc review <accept|reject> <baseline.sdoc|document.json> <current.sdoc|document.json> --event <id> [--kind added|deleted|modified|moved] [-o output.document.json]
   sdoc template validate <template.docx|template.dotx>
@@ -665,6 +687,14 @@ function parseTemplateStyleRequirements(values: string[]): WordTemplateMappingRe
       styleId: value.slice(separator + 1).trim()
     };
   });
+}
+
+function parseTemplatePlaceholders(values: string[], templateFile: string | undefined): string[] | undefined {
+  if (values.length > 0) {
+    return values;
+  }
+
+  return templateFile ? ["sdoc-body"] : undefined;
 }
 
 function stripBom(value: string): string {

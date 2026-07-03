@@ -487,6 +487,67 @@ describe("exportDocx", () => {
     expect(JSON.stringify(document)).toBe(before);
     expect(JSON.stringify(document)).not.toContain("DOC-OBC-001");
   });
+
+  it("accepts a validated external Word template skeleton without mutating canonical JSON", async () => {
+    const before = JSON.stringify(document);
+    const templateBytes = await createTemplatePackage({
+      stylesXml: createStylesXml(["Normal", "Heading1"]),
+      documentXml: createDocumentXml(["sdoc-body"])
+    });
+
+    const bytes = await exportDocx(document, {
+      title: "External Template Spec",
+      externalTemplate: {
+        bytes: templateBytes,
+        fileName: "company.dotx",
+        requiredStyles: [{ nodeType: "heading", styleId: "Heading1" }],
+        requiredPlaceholders: ["sdoc-body"]
+      }
+    });
+    const zip = await JSZip.loadAsync(bytes);
+    const coreXml = await zip.file("docProps/core.xml")?.async("string");
+    const documentXml = await zip.file("word/document.xml")?.async("string");
+
+    expect(coreXml).toContain("External Word template validated: company.dotx");
+    expect(documentXml).toContain("Overview");
+    expect(JSON.stringify(document)).toBe(before);
+    expect(JSON.stringify(document)).not.toContain("company.dotx");
+  });
+
+  it("rejects external Word templates with missing mapping requirements", async () => {
+    const templateBytes = await createTemplatePackage({
+      stylesXml: createStylesXml(["Normal"]),
+      documentXml: createDocumentXml([])
+    });
+
+    await expect(
+      exportDocx(document, {
+        externalTemplate: {
+          bytes: templateBytes,
+          fileName: "company.dotx",
+          requiredPlaceholders: ["sdoc-body"]
+        }
+      })
+    ).rejects.toThrow('Template is missing required content-control placeholder "sdoc-body"');
+  });
+
+  it("rejects unsafe external Word templates before rendering", async () => {
+    const zip = new JSZip();
+    zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES_FOR_TEST);
+    zip.folder("_rels")?.file(".rels", ROOT_RELS_FOR_TEST);
+    zip.folder("word")?.file("document.xml", "<w:document/>");
+    zip.folder("word")?.file("vbaProject.bin", "macro");
+
+    await expect(
+      exportDocx(document, {
+        externalTemplate: {
+          bytes: await zip.generateAsync({ type: "uint8array" }),
+          fileName: "unsafe.dotx",
+          requiredPlaceholders: ["sdoc-body"]
+        }
+      })
+    ).rejects.toThrow("Macro-enabled Office package parts are not allowed");
+  });
 });
 
 describe("validateWordTemplatePackage", () => {

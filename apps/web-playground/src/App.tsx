@@ -42,7 +42,7 @@ import {
   Underline as UnderlineIcon,
   Workflow
 } from "lucide-react";
-import { diffDocuments, renderReadableDiffEvents } from "@sdoc/diff";
+import { applyDiffEventAcceptanceToBaseline, applyDiffEventAction, diffDocuments, renderReadableDiffEvents, type SDocDiffEvent } from "@sdoc/diff";
 import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
 import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, type ValidationResult, validateDocument } from "@sdoc/schema";
@@ -79,6 +79,7 @@ import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocume
 import {
   addLocalHistoryEntry,
   createChangeReview,
+  createReviewActionPlan,
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
@@ -108,6 +109,8 @@ import {
   type ReferenceTargetSummary,
   type RequirementTraceabilityModel,
   type SectionFoldRange,
+  type ReviewActionKind,
+  type ReviewActionPlanItem,
   type VisualDiffFilterCounts,
   type VisualDiffFilterKind,
   type VisualDiffOverlayItem
@@ -247,6 +250,7 @@ export function App() {
     () => filterVisualDiffOverlayItems(visualDiffOverlayItems, visualDiffFilter),
     [visualDiffFilter, visualDiffOverlayItems]
   );
+  const visibleReviewActionItems = useMemo(() => createReviewActionPlan(visibleVisualDiffItems).items, [visibleVisualDiffItems]);
   const visualDiffRuntimeCss = useMemo(
     () => (isDiffOverlayEnabled ? renderVisualDiffRuntimeCss(visibleVisualDiffItems, selectedVisualDiffId) : ""),
     [isDiffOverlayEnabled, selectedVisualDiffId, visibleVisualDiffItems]
@@ -761,6 +765,52 @@ export function App() {
     revealEditorNode(item.id, item.summary);
   }
 
+  function applyReviewAction(item: ReviewActionPlanItem, action: ReviewActionKind) {
+    if (selectedHistoryEntry) {
+      setStatusMessage("Use saved baseline before applying review actions");
+      return;
+    }
+
+    const event = findDiffEventForReviewItem(documentDiffEvents, item);
+    if (!event) {
+      setStatusMessage(`Review event is stale: ${item.id}`);
+      return;
+    }
+
+    const actionLabel = action === "accept" ? "accept" : "reject";
+    if (!window.confirm(`${actionLabel === "accept" ? "Accept" : "Reject"} ${item.summary}?`)) {
+      setStatusMessage(`Canceled ${actionLabel}: ${item.summary}`);
+      return;
+    }
+
+    if (action === "accept") {
+      const result = applyDiffEventAcceptanceToBaseline(baselineDocument, document, event);
+      if (!result.ok) {
+        setStatusMessage(result.message);
+        return;
+      }
+
+      setBaselineDocument(result.document);
+      setSelectedVisualDiffId(null);
+      setActiveTab("diff");
+      setStatusMessage(`Accepted ${item.kind} ${item.id}`);
+      return;
+    }
+
+    const result = applyDiffEventAction(baselineDocument, document, event, "reject");
+    if (!result.ok) {
+      setStatusMessage(result.message);
+      return;
+    }
+
+    editor.commands.setContent(fromSdocDocument(result.document, createAssetSourceMap(assets)), { emitUpdate: true });
+    repairEditorBlockIds(editor);
+    setDocumentId(result.document.attrs.id);
+    setSelectedVisualDiffId(null);
+    setActiveTab("diff");
+    setStatusMessage(`Rejected ${item.kind} ${item.id}`);
+  }
+
   function insertInlineEquationFromPrompt() {
     const latex = window.prompt("Inline equation", "E=mc^2")?.trim();
     if (!latex) {
@@ -898,12 +948,13 @@ export function App() {
               savedLabel={savedLabel}
               hasUnsavedChanges={hasUnsavedChanges}
               isDiffOverlayEnabled={isDiffOverlayEnabled}
-              visualDiffItems={visibleVisualDiffItems}
+              visualDiffItems={visibleReviewActionItems}
               visualDiffCounts={visualDiffFilterCounts}
               visualDiffFilter={visualDiffFilter}
               selectedVisualDiffId={selectedVisualDiffId}
               onShowDiff={() => setActiveTab("diff")}
               onCompareSavedBaseline={compareSavedBaseline}
+              onApplyReviewAction={applyReviewAction}
               onMarkSaved={markCurrentAsBaseline}
               onSelectVisualDiff={selectVisualDiffItem}
               onSetVisualDiffFilter={setVisualDiffFilter}
@@ -1503,6 +1554,7 @@ function ReviewPanel({
   selectedVisualDiffId,
   onShowDiff,
   onCompareSavedBaseline,
+  onApplyReviewAction,
   onMarkSaved,
   onSelectVisualDiff,
   onSetVisualDiffFilter,
@@ -1514,12 +1566,13 @@ function ReviewPanel({
   savedLabel: string;
   hasUnsavedChanges: boolean;
   isDiffOverlayEnabled: boolean;
-  visualDiffItems: VisualDiffOverlayItem[];
+  visualDiffItems: ReviewActionPlanItem[];
   visualDiffCounts: VisualDiffFilterCounts;
   visualDiffFilter: VisualDiffFilterKind;
   selectedVisualDiffId: string | null;
   onShowDiff: () => void;
   onCompareSavedBaseline: () => void;
+  onApplyReviewAction: (item: ReviewActionPlanItem, action: ReviewActionKind) => void;
   onMarkSaved: () => void;
   onSelectVisualDiff: (item: VisualDiffOverlayItem) => void;
   onSetVisualDiffFilter: (filter: VisualDiffFilterKind) => void;
@@ -1596,12 +1649,25 @@ function ReviewPanel({
           <ul className="review-event-list">
             {visualDiffItems.map((item) => (
               <li className={selectedVisualDiffId === item.id ? "selected" : undefined} key={`${item.kind}-${item.id}`}>
-                <button type="button" onClick={() => onSelectVisualDiff(item)}>
+                <button className="review-event-select" type="button" onClick={() => onSelectVisualDiff(item)}>
                   <span className={`review-event-kind ${item.kind}`}>{item.label}</span>
                   <strong>{item.summary}</strong>
                   <small>{item.detail}</small>
                   <code>{item.anchorable ? item.id : "review-only"}</code>
                 </button>
+                <div className="review-event-actions" aria-label={`${item.summary} review actions`}>
+                  {item.actions.map((action) => (
+                    <button
+                      type="button"
+                      key={action.kind}
+                      disabled={action.availability === "manual-repair" || action.availability === "unsupported"}
+                      title={action.description}
+                      onClick={() => onApplyReviewAction(item, action.kind)}
+                    >
+                      {action.kind === "accept" ? "Accept" : "Reject"}
+                    </button>
+                  ))}
+                </div>
               </li>
             ))}
           </ul>
@@ -2111,6 +2177,10 @@ function getActivityPanelLabel(panel: ActivityPanel): string {
     settings: "Settings"
   };
   return labels[panel];
+}
+
+function findDiffEventForReviewItem(events: SDocDiffEvent[], item: ReviewActionPlanItem): SDocDiffEvent | undefined {
+  return events.find((event) => event.id === item.id && event.kind === item.kind);
 }
 
 function getSelectedSectionFoldRange(editor: Editor, ranges: SectionFoldRange[]): SectionFoldRange | null {

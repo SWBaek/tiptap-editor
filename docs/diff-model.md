@@ -89,6 +89,7 @@ Overlay state, reviewer cursor state, expanded/collapsed diff panels, and accept
 The headless review apply path uses the same semantic diff events. Before applying an action, it recomputes the diff between the baseline and current document and refuses stale events.
 
 - `accept` keeps the current normalized document.
+- single-event `accept` may update the review baseline for that event so the accepted event disappears from the active review without writing review state to `document.json`.
 - `reject added` removes the current block.
 - `reject deleted` restores the baseline block at the baseline parent/order.
 - `reject modified` restores baseline attrs/content for the same stable block ID.

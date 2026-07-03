@@ -41,14 +41,16 @@ Implemented on 2026-07-04:
 - `@sdoc/diff` exposes a headless single-event apply function for review accept/reject.
 - `accept` validates that the reviewed event is still current and then keeps the current normalized document unchanged.
 - `reject` supports `added`, `deleted`, `modified`, and `moved` events by producing a normal edited SDoc document.
+- single-event accept can update the review baseline for the accepted event so the event disappears without writing review state to `document.json`.
 - stale events are refused by recomputing the semantic diff before applying any mutation.
 - broken references remain unsupported for direct accept/reject and must use the References repair flow.
 - `sdoc review <accept|reject>` provides a developer/reviewer CLI path that writes the resulting `document.json`.
+- the web Review panel exposes per-event Accept/Reject controls with confirmation, saved-baseline-only application, and diff recomputation after each action.
 
 Deferred:
 
 - Batch accept/reject.
-- Web/Tauri Review panel buttons and confirmation UX.
+- Tauri-native review persistence and file save integration beyond the browser playground.
 - Side-by-side document diff.
 - metadata field-level accept/reject.
 - Comment threads, reviewer assignments, and Git-backed PR review.

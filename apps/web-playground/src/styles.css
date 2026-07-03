@@ -322,10 +322,12 @@ button {
 }
 
 .review-event-list li {
+  display: grid;
+  gap: 6px;
   min-width: 0;
 }
 
-.review-event-list button {
+.review-event-select {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 5px 8px;
@@ -340,7 +342,7 @@ button {
   cursor: pointer;
 }
 
-.review-event-list li.selected button {
+.review-event-list li.selected .review-event-select {
   background: rgba(111, 179, 193, 0.2);
   border-color: rgba(111, 179, 193, 0.72);
 }
@@ -399,6 +401,33 @@ button {
 
 .review-event-kind.reference-broken {
   background: #fff1ed;
+}
+
+.review-event-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.review-event-actions button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 8px;
+  color: #e7edf2;
+  background: rgba(23, 33, 43, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.review-event-actions button:hover:not(:disabled) {
+  border-color: rgba(111, 179, 193, 0.72);
+}
+
+.review-event-actions button:disabled {
+  color: #7d8994;
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 
 .git-workflow {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyDiffEventAction, diffDocuments, renderDiffEvents, renderReadableDiffEvents } from "./index";
+import { applyDiffEventAcceptanceToBaseline, applyDiffEventAction, diffDocuments, renderDiffEvents, renderReadableDiffEvents } from "./index";
 import { getPlainText, validateDocument, type SDocDocument } from "@sdoc/schema";
 
 const oldDocument: SDocDocument = {
@@ -384,6 +384,39 @@ describe("applyDiffEventAction", () => {
 
     expect(result).toMatchObject({ ok: true, status: "accepted-current", changed: false });
     expect(result.ok ? result.document : null).toEqual(newDocument);
+  });
+
+  it("accepts a modified event into the review baseline so only unrelated changes remain", () => {
+    const event = diffDocuments(oldDocument, newDocument).find((candidate) => candidate.kind === "modified" && candidate.id === "blk_body");
+    expect(event).toBeDefined();
+
+    const result = applyDiffEventAcceptanceToBaseline(oldDocument, newDocument, event!);
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.status : undefined).toBe("accepted-modified");
+    const remainingEvents = result.ok ? diffDocuments(result.document, newDocument) : [];
+    expect(remainingEvents.some((candidate) => candidate.kind === "modified" && candidate.id === "blk_body")).toBe(false);
+    expect(remainingEvents.some((candidate) => candidate.kind === "added" && candidate.id === "blk_added")).toBe(true);
+  });
+
+  it("accepts added, deleted, and moved events into the review baseline", () => {
+    let reviewBaseline = oldDocument;
+    for (const event of diffDocuments(reviewBaseline, newDocument).filter((candidate) =>
+      (candidate.kind === "added" && candidate.id === "blk_added") ||
+      (candidate.kind === "deleted" && candidate.id === "blk_removed") ||
+      (candidate.kind === "moved" && candidate.id === "blk_intro")
+    )) {
+      const result = applyDiffEventAcceptanceToBaseline(reviewBaseline, newDocument, event);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        reviewBaseline = result.document;
+      }
+    }
+
+    const remainingEvents = diffDocuments(reviewBaseline, newDocument);
+    expect(remainingEvents.some((candidate) => candidate.kind === "added" && candidate.id === "blk_added")).toBe(false);
+    expect(remainingEvents.some((candidate) => candidate.kind === "deleted" && candidate.id === "blk_removed")).toBe(false);
+    expect(remainingEvents.some((candidate) => candidate.kind === "moved" && candidate.id === "blk_intro")).toBe(false);
   });
 
   it("routes broken references to explicit repair workflows instead of direct accept/reject", () => {

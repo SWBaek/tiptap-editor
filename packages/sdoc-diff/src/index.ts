@@ -45,6 +45,10 @@ export type SDocReviewAction = "accept" | "reject";
 
 export type SDocReviewActionStatus =
   | "accepted-current"
+  | "accepted-added"
+  | "accepted-deleted"
+  | "accepted-modified"
+  | "accepted-moved"
   | "rejected-added"
   | "rejected-deleted"
   | "rejected-modified"
@@ -259,6 +263,121 @@ export function applyDiffEventAction(
     changed: stableStringify(normalized) !== stableStringify(current),
     document: normalized
   };
+}
+
+export function applyDiffEventAcceptanceToBaseline(
+  baselineDocument: SDocDocument,
+  currentDocument: SDocDocument,
+  event: SDocDiffEvent
+): SDocReviewActionResult {
+  const baseline = normalizeDocument(baselineDocument);
+  const current = normalizeDocument(currentDocument);
+
+  if (!hasCurrentEvent(baseline, current, event)) {
+    return {
+      ok: false,
+      reason: "stale-event",
+      message: `Cannot accept ${event.kind} ${event.id}: review event is stale. Recompute the diff before applying.`
+    };
+  }
+
+  if (event.kind === "reference-broken") {
+    return {
+      ok: false,
+      reason: "unsupported-event",
+      message: "Broken references require explicit retarget or remove actions from the References repair workflow."
+    };
+  }
+
+  const accepted = acceptDiffEventIntoBaseline(baseline, current, event);
+  if (!accepted.ok) {
+    return accepted;
+  }
+
+  const normalized = normalizeDocument(accepted.document);
+  const validation = validateDocument(normalized);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      reason: "validation-failed",
+      message: `Accepting ${event.kind} ${event.id} produced an invalid SDoc baseline.`,
+      issues: validation.issues
+    };
+  }
+
+  return {
+    ok: true,
+    status: accepted.status,
+    changed: stableStringify(normalized) !== stableStringify(baseline),
+    document: normalized
+  };
+}
+
+function acceptDiffEventIntoBaseline(
+  baseline: SDocDocument,
+  current: SDocDocument,
+  event: Exclude<SDocDiffEvent, { kind: "reference-broken" }>
+): Extract<SDocReviewActionResult, { ok: true }> | Extract<SDocReviewActionResult, { ok: false }> {
+  switch (event.kind) {
+    case "added": {
+      const currentLocation = findBlockLocation(current, event.id);
+      if (!currentLocation) {
+        return staleMutationFailure(event, "added block is no longer present in the current document");
+      }
+
+      const document = cloneDocument(baseline);
+      const targetParent = findMatchingParent(document, current, currentLocation.parent);
+      if (!targetParent) {
+        return staleMutationFailure(event, "current parent is not available in the baseline document");
+      }
+
+      insertBlock(targetParent, currentLocation.index, cloneNode(currentLocation.node));
+      return { ok: true, status: "accepted-added", changed: true, document };
+    }
+    case "deleted": {
+      const document = cloneDocument(baseline);
+      if (!removeBlockById(document, event.id)) {
+        return staleMutationFailure(event, "deleted block is no longer present in the baseline document");
+      }
+
+      return { ok: true, status: "accepted-deleted", changed: true, document };
+    }
+    case "modified": {
+      const currentLocation = findBlockLocation(current, event.id);
+      if (!currentLocation) {
+        return staleMutationFailure(event, "current block is no longer available");
+      }
+
+      const document = cloneDocument(baseline);
+      const baselineLocation = findBlockLocation(document, event.id);
+      if (!baselineLocation) {
+        return staleMutationFailure(event, "baseline block is no longer available");
+      }
+
+      baselineLocation.parent.content![baselineLocation.index] = cloneNode(currentLocation.node);
+      return { ok: true, status: "accepted-modified", changed: true, document };
+    }
+    case "moved": {
+      const currentLocation = findBlockLocation(current, event.id);
+      if (!currentLocation) {
+        return staleMutationFailure(event, "moved block is no longer present in the current document");
+      }
+
+      const document = cloneDocument(baseline);
+      const movedNode = removeBlockById(document, event.id);
+      if (!movedNode) {
+        return staleMutationFailure(event, "moved block is no longer present in the baseline document");
+      }
+
+      const targetParent = findMatchingParent(document, current, currentLocation.parent);
+      if (!targetParent) {
+        return staleMutationFailure(event, "current parent is not available in the baseline document");
+      }
+
+      insertBlock(targetParent, currentLocation.index, movedNode);
+      return { ok: true, status: "accepted-moved", changed: true, document };
+    }
+  }
 }
 
 function rejectDiffEvent(

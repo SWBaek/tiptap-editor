@@ -63,6 +63,34 @@ export interface SDocContainer {
   derived?: Record<string, string>;
 }
 
+export type DataGridDiagnosticSeverity = "error" | "warning";
+
+export interface DataGridDiagnosticIssue {
+  severity: DataGridDiagnosticSeverity;
+  gridId: string;
+  sourceAssetId: string;
+  row?: number;
+  column?: number;
+  message: string;
+}
+
+export interface DataGridDiagnosticSummary {
+  gridId: string;
+  title: string;
+  sourceAssetId: string;
+  format: "csv" | "json";
+  rowCount: number;
+  columnCount: number;
+  issues: DataGridDiagnosticIssue[];
+}
+
+export interface DataGridDiagnostics {
+  gridCount: number;
+  errorCount: number;
+  warningCount: number;
+  summaries: DataGridDiagnosticSummary[];
+}
+
 export interface DiagramSourceStore {
   collectReferencedAssetIds(node: SDocNode): string[];
 }
@@ -273,6 +301,27 @@ export function collectReferencedAssetIds(
   return [...assetIds].sort((a, b) => a.localeCompare(b));
 }
 
+export function createDataGridDiagnostics(document: SDocDocument, assets: Record<string, Uint8Array> = {}): DataGridDiagnostics {
+  const summaries: DataGridDiagnosticSummary[] = [];
+
+  function visit(node: SDocNode): void {
+    if (node.type === "dataGrid") {
+      summaries.push(createDataGridDiagnosticSummary(node, assets));
+    }
+
+    node.content?.forEach(visit);
+  }
+
+  document.content.forEach(visit);
+  const issues = summaries.flatMap((summary) => summary.issues);
+  return {
+    gridCount: summaries.length,
+    errorCount: issues.filter((issue) => issue.severity === "error").length,
+    warningCount: issues.filter((issue) => issue.severity === "warning").length,
+    summaries
+  };
+}
+
 async function readJsonFile<T>(zip: JSZip, path: string): Promise<T> {
   const file = zip.file(path);
   if (!file) {
@@ -429,4 +478,261 @@ function compareKeys(a: string, b: string): number {
   }
 
   return a.localeCompare(b);
+}
+
+function createDataGridDiagnosticSummary(node: SDocNode, assets: Record<string, Uint8Array>): DataGridDiagnosticSummary {
+  const gridId = typeof node.attrs?.id === "string" ? node.attrs.id : "unknown-grid";
+  const sourceAssetId = typeof node.attrs?.sourceAssetId === "string" ? node.attrs.sourceAssetId : "";
+  const format = node.attrs?.format === "json" ? "json" : "csv";
+  const title = typeof node.attrs?.title === "string" && node.attrs.title.trim().length > 0 ? node.attrs.title.trim() : sourceAssetId || gridId;
+  const issueBase = { gridId, sourceAssetId };
+  const asset = assets[sourceAssetId];
+
+  if (!asset) {
+    return {
+      gridId,
+      title,
+      sourceAssetId,
+      format,
+      rowCount: 0,
+      columnCount: 0,
+      issues: [{ ...issueBase, severity: "error", message: `Missing dataGrid source asset ${sourceAssetId || "(empty)"}` }]
+    };
+  }
+
+  const source = decodeUtf8Asset(asset);
+  if (format === "json") {
+    return createJsonDataGridDiagnosticSummary(gridId, title, sourceAssetId, source);
+  }
+
+  return createCsvDataGridDiagnosticSummary(gridId, title, sourceAssetId, source);
+}
+
+function createCsvDataGridDiagnosticSummary(
+  gridId: string,
+  title: string,
+  sourceAssetId: string,
+  source: string
+): DataGridDiagnosticSummary {
+  const issues: DataGridDiagnosticIssue[] = [];
+  const parsed = parseCsvRecordsWithDiagnostics(source);
+  issues.push(...parsed.issues.map((issue) => ({ ...issue, gridId, sourceAssetId })));
+  const records = parsed.records.filter((row) => row.some((cell) => cell.trim().length > 0));
+
+  if (records.length === 0) {
+    issues.push({ severity: "error", gridId, sourceAssetId, message: "CSV data grid is empty" });
+    return { gridId, title, sourceAssetId, format: "csv", rowCount: 0, columnCount: 0, issues };
+  }
+
+  const [header, ...body] = records;
+  const columnCount = Math.max(header.length, ...body.map((row) => row.length));
+  const seenHeaders = new Map<string, number>();
+  header.forEach((cell, index) => {
+    const normalized = cell.trim().toLowerCase();
+    if (normalized.length === 0) {
+      issues.push({ severity: "warning", gridId, sourceAssetId, row: 1, column: index + 1, message: "CSV header cell is empty" });
+      return;
+    }
+
+    const previous = seenHeaders.get(normalized);
+    if (previous !== undefined) {
+      issues.push({
+        severity: "warning",
+        gridId,
+        sourceAssetId,
+        row: 1,
+        column: index + 1,
+        message: `CSV header duplicates column ${previous}`
+      });
+    } else {
+      seenHeaders.set(normalized, index + 1);
+    }
+  });
+
+  records.forEach((row, index) => {
+    if (row.length !== columnCount) {
+      issues.push({
+        severity: "warning",
+        gridId,
+        sourceAssetId,
+        row: index + 1,
+        message: `CSV row has ${row.length} cells; expected ${columnCount}`
+      });
+    }
+  });
+
+  return { gridId, title, sourceAssetId, format: "csv", rowCount: body.length, columnCount, issues };
+}
+
+function createJsonDataGridDiagnosticSummary(
+  gridId: string,
+  title: string,
+  sourceAssetId: string,
+  source: string
+): DataGridDiagnosticSummary {
+  const issues: DataGridDiagnosticIssue[] = [];
+  let value: unknown;
+  try {
+    value = JSON.parse(source);
+  } catch (error) {
+    return {
+      gridId,
+      title,
+      sourceAssetId,
+      format: "json",
+      rowCount: 0,
+      columnCount: 0,
+      issues: [
+        {
+          severity: "error",
+          gridId,
+          sourceAssetId,
+          message: `Invalid JSON data grid: ${error instanceof Error ? error.message : String(error)}`
+        }
+      ]
+    };
+  }
+
+  if (!Array.isArray(value)) {
+    return {
+      gridId,
+      title,
+      sourceAssetId,
+      format: "json",
+      rowCount: 0,
+      columnCount: 0,
+      issues: [{ severity: "error", gridId, sourceAssetId, message: "JSON data grid root must be an array" }]
+    };
+  }
+
+  if (value.length === 0) {
+    return {
+      gridId,
+      title,
+      sourceAssetId,
+      format: "json",
+      rowCount: 0,
+      columnCount: 0,
+      issues: [{ severity: "error", gridId, sourceAssetId, message: "JSON data grid array is empty" }]
+    };
+  }
+
+  if (value.every((row) => Array.isArray(row))) {
+    const rows = value as unknown[][];
+    const columnCount = Math.max(0, ...rows.map((row) => row.length));
+    rows.forEach((row, index) => {
+      if (row.length !== columnCount) {
+        issues.push({
+          severity: "warning",
+          gridId,
+          sourceAssetId,
+          row: index + 1,
+          message: `JSON array row has ${row.length} cells; expected ${columnCount}`
+        });
+      }
+    });
+    return { gridId, title, sourceAssetId, format: "json", rowCount: rows.length, columnCount, issues };
+  }
+
+  if (value.every((row) => isPlainObject(row))) {
+    const rows = value as Array<Record<string, unknown>>;
+    const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+    if (columns.length === 0) {
+      issues.push({ severity: "error", gridId, sourceAssetId, message: "JSON object rows do not define any columns" });
+    }
+
+    rows.forEach((row, index) => {
+      const missingColumns = columns.filter((column) => !(column in row));
+      if (missingColumns.length > 0) {
+        issues.push({
+          severity: "warning",
+          gridId,
+          sourceAssetId,
+          row: index + 1,
+          message: `JSON object row is missing columns: ${missingColumns.join(", ")}`
+        });
+      }
+    });
+    return { gridId, title, sourceAssetId, format: "json", rowCount: rows.length, columnCount: columns.length, issues };
+  }
+
+  return {
+    gridId,
+    title,
+    sourceAssetId,
+    format: "json",
+    rowCount: value.length,
+    columnCount: 0,
+    issues: [{ severity: "error", gridId, sourceAssetId, message: "JSON data grid rows must be all arrays or all objects" }]
+  };
+}
+
+function parseCsvRecordsWithDiagnostics(source: string): {
+  records: string[][];
+  issues: Array<Omit<DataGridDiagnosticIssue, "gridId" | "sourceAssetId">>;
+} {
+  const records: string[][] = [];
+  const issues: Array<Omit<DataGridDiagnosticIssue, "gridId" | "sourceAssetId">> = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+  let currentRow = 1;
+  let quoteStartRow = 0;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+        if (inQuotes) {
+          quoteStartRow = currentRow;
+        }
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      row.push(cell);
+      cell = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") {
+        index += 1;
+      }
+      row.push(cell);
+      records.push(row);
+      row = [];
+      cell = "";
+      currentRow += 1;
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && inQuotes) {
+      currentRow += 1;
+    }
+    cell += char;
+  }
+
+  row.push(cell);
+  records.push(row);
+
+  if (inQuotes) {
+    issues.push({ severity: "error", row: quoteStartRow || currentRow, message: "CSV quoted field is not closed" });
+  }
+
+  return { records, issues };
+}
+
+function decodeUtf8Asset(data: Uint8Array): string {
+  return new TextDecoder().decode(data).replace(/^\uFEFF/, "");
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

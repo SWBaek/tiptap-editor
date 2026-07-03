@@ -692,6 +692,138 @@ button {
   text-transform: uppercase;
 }
 
+.data-grid-diagnostic-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.data-grid-diagnostic-summary div {
+  min-width: 0;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+}
+
+.data-grid-diagnostic-summary span {
+  display: block;
+  color: #8fa1ad;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.data-grid-diagnostic-summary strong {
+  display: block;
+  margin-top: 3px;
+  color: #f7f9fb;
+  font-size: 17px;
+}
+
+.data-grid-diagnostic-summary .ok,
+.data-grid-diagnostic-list .ok {
+  color: #8fd0a0;
+}
+
+.data-grid-diagnostic-summary .warning {
+  color: #ffd28a;
+}
+
+.data-grid-diagnostic-summary .error {
+  color: #ff9b8f;
+}
+
+.data-grid-diagnostic-empty {
+  margin: 0;
+  color: #9cabba;
+  font-size: 12px;
+}
+
+.data-grid-diagnostic-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.data-grid-diagnostic-list > li {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+}
+
+.data-grid-diagnostic-list > li > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.data-grid-diagnostic-list strong,
+.data-grid-diagnostic-list span,
+.data-grid-diagnostic-list code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-grid-diagnostic-list strong {
+  color: #f7f9fb;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.data-grid-diagnostic-list span,
+.data-grid-diagnostic-list small {
+  color: #aeb8c2;
+  font-size: 12px;
+}
+
+.data-grid-diagnostic-list code {
+  color: #c8d7df;
+  font-size: 11px;
+}
+
+.data-grid-diagnostic-list ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.data-grid-diagnostic-list ul li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+}
+
+.data-grid-diagnostic-list ul span {
+  padding: 2px 5px;
+  color: #17212b;
+  background: #ffd28a;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.data-grid-diagnostic-list ul li.error span {
+  background: #ffb4aa;
+}
+
+.data-grid-diagnostic-list ul p {
+  margin: 0;
+  color: #d5dee5;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .export-action {
   display: grid;
   gap: 8px;

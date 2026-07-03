@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createDataGridDiagnostics,
   createEmptySdocContainer,
   isLikelyZipContainer,
   normalizeDocument,
@@ -234,6 +235,65 @@ describe("packSdoc", () => {
   });
 });
 
+describe("createDataGridDiagnostics", () => {
+  it("reports CSV row-level diagnostics from referenced source assets", () => {
+    const document = createDataGridDocument("asset_pinout.csv", "csv");
+    const diagnostics = createDataGridDiagnostics(document, {
+      "asset_pinout.csv": new TextEncoder().encode("pin,signal,signal\n1,VCC\n2,GND,return,extra\n3,")
+    });
+
+    expect(diagnostics).toMatchObject({
+      gridCount: 1,
+      errorCount: 0,
+      warningCount: 4,
+      summaries: [
+        {
+          gridId: "blk_grid",
+          title: "MCU Pinout",
+          sourceAssetId: "asset_pinout.csv",
+          format: "csv",
+          rowCount: 3,
+          columnCount: 4
+        }
+      ]
+    });
+    expect(diagnostics.summaries[0].issues).toEqual([
+      expect.objectContaining({ severity: "warning", row: 1, column: 3, message: "CSV header duplicates column 2" }),
+      expect.objectContaining({ severity: "warning", row: 1, message: "CSV row has 3 cells; expected 4" }),
+      expect.objectContaining({ severity: "warning", row: 2, message: "CSV row has 2 cells; expected 4" }),
+      expect.objectContaining({ severity: "warning", row: 4, message: "CSV row has 2 cells; expected 4" })
+    ]);
+  });
+
+  it("reports invalid JSON data grid assets without mutating canonical document", () => {
+    const document = createDataGridDocument("asset_grid.json", "json");
+    const diagnostics = createDataGridDiagnostics(document, {
+      "asset_grid.json": new TextEncoder().encode('[{"pin":1}, {"signal":"GND"}]')
+    });
+
+    expect(diagnostics.errorCount).toBe(0);
+    expect(diagnostics.warningCount).toBe(2);
+    expect(diagnostics.summaries[0]).toMatchObject({ rowCount: 2, columnCount: 2 });
+    expect(diagnostics.summaries[0].issues).toEqual([
+      expect.objectContaining({ severity: "warning", row: 1, message: "JSON object row is missing columns: signal" }),
+      expect.objectContaining({ severity: "warning", row: 2, message: "JSON object row is missing columns: pin" })
+    ]);
+    expect(JSON.stringify(document)).not.toContain("signal");
+  });
+
+  it("reports missing and malformed data grid source assets", () => {
+    const missing = createDataGridDiagnostics(createDataGridDocument("asset_missing.csv", "csv"), {});
+    expect(missing.errorCount).toBe(1);
+    expect(missing.summaries[0].issues[0].message).toBe("Missing dataGrid source asset asset_missing.csv");
+
+    const malformed = createDataGridDiagnostics(createDataGridDocument("asset_bad.json", "json"), {
+      "asset_bad.json": new TextEncoder().encode("{not json")
+    });
+    expect(malformed.errorCount).toBe(1);
+    expect(malformed.summaries[0].issues[0].message).toContain("Invalid JSON data grid");
+  });
+});
+
 describe("tryUnpackSdoc", () => {
   it("classifies empty files", async () => {
     const result = await tryUnpackSdoc(new Uint8Array());
@@ -247,3 +307,22 @@ describe("tryUnpackSdoc", () => {
     expect(result.ok ? undefined : result.error.code).toBe("not-zip");
   });
 });
+
+function createDataGridDocument(sourceAssetId: string, format: "csv" | "json"): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_grid" },
+    content: [
+      {
+        type: "dataGrid",
+        attrs: {
+          id: "blk_grid",
+          sourceAssetId,
+          format,
+          title: "MCU Pinout"
+        }
+      }
+    ]
+  };
+}

@@ -62,11 +62,13 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - Markdown, HTML, PDF, slide, AI/RAG, and semantic diff treat the grid as an asset-backed dataset block.
 - Browser playground import stores CSV/JSON bytes in `.sdoc/assets/` and keeps raw rows out of `document.json`.
 - HTML/PDF export can render a bounded CSV/JSON preview table from `.sdoc/assets/` without storing preview rows in canonical JSON.
+- Headless data grid diagnostics inspect referenced CSV/JSON asset bytes and report row-level parse, shape, empty-header, duplicate-header, and missing-column issues without mutating canonical JSON.
+- The web playground Export panel surfaces data grid diagnostic counts and per-grid row/column readiness as runtime-only publishing feedback.
 
 ## Deferred Work
 
-- full CSV/JSON validation rules and diagnostics;
 - row-level semantic diff and merge;
+- richer CSV/JSON validation rule configuration and authored column typing;
 - full spreadsheet editing;
 - formulas and computed columns;
 - external PLM/requirements database connectors.

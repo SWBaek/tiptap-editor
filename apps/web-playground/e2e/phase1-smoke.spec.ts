@@ -599,6 +599,14 @@ test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testIn
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
+  await page.getByRole("button", { name: "Export panel" }).click();
+  const exportPanel = page.getByRole("complementary", { name: "Export side panel" });
+  const gridDiagnostics = exportPanel.getByLabel("Data grid diagnostics");
+  await expect(gridDiagnostics).toContainText("Grids");
+  await expect(gridDiagnostics).toContainText("Rows valid");
+  await expect(gridDiagnostics).toContainText("2 rows");
+  await expect(gridDiagnostics).toContainText("2 columns");
+
   await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
   await expect(page.locator(".preview-output")).toContainText("> Data grid: pinout");
   await expect(page.locator(".preview-output")).toContainText("> Source: assets/");

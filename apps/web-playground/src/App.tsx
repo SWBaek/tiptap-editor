@@ -52,7 +52,7 @@ import {
   type SDocReviewBatchItem
 } from "@sdoc/diff";
 import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
-import { stableStringify, type SDocMetadata } from "@sdoc/format";
+import { createDataGridDiagnostics, stableStringify, type DataGridDiagnostics, type SDocMetadata } from "@sdoc/format";
 import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, type ValidationResult, validateDocument } from "@sdoc/schema";
 import {
   BlockIdExtension,
@@ -261,6 +261,7 @@ export function App() {
   );
   const referenceDiagnostics = createReferenceDiagnostics(document);
   const requirementTraceability = useMemo(() => createRequirementTraceability(document), [document]);
+  const dataGridDiagnostics = useMemo(() => createDataGridDiagnostics(document, assets), [assets, document]);
   const visualDiffOverlayItems = useMemo(() => createVisualDiffOverlayItems(documentDiffEvents), [documentDiffEvents]);
   const visualDiffFilterCounts = useMemo(() => createVisualDiffFilterCounts(visualDiffOverlayItems), [visualDiffOverlayItems]);
   const visibleVisualDiffItems = useMemo(
@@ -1056,6 +1057,7 @@ export function App() {
             <ExportPanel
               filenames={exportFilenames}
               derivedOutputs={derivedOutputs}
+              dataGridDiagnostics={dataGridDiagnostics}
               onExportSdoc={downloadSdoc}
               onExportJson={downloadJson}
               onExportMarkdown={downloadMarkdown}
@@ -1486,6 +1488,7 @@ function FilesPanel({
 function ExportPanel({
   filenames,
   derivedOutputs,
+  dataGridDiagnostics,
   onExportSdoc,
   onExportJson,
   onExportMarkdown,
@@ -1502,6 +1505,7 @@ function ExportPanel({
     pptx: string;
   };
   derivedOutputs: Record<DerivedOutputName, string>;
+  dataGridDiagnostics: DataGridDiagnostics;
   onExportSdoc: () => void;
   onExportJson: () => void;
   onExportMarkdown: () => void;
@@ -1529,6 +1533,56 @@ function ExportPanel({
         <h3>Readable</h3>
         <ExportAction label="Export Markdown" filename={filenames.markdown} description="Human-readable Markdown with stable block anchors." onClick={onExportMarkdown} />
         <ExportAction label="Export HTML" filename={filenames.html} description="Single-file themed HTML for browser reading and lightweight publishing." onClick={onExportHtml} />
+      </section>
+
+      <section className="export-section" aria-label="Data grid diagnostics">
+        <h3>Data grids</h3>
+        <div className="data-grid-diagnostic-summary">
+          <div>
+            <span>Grids</span>
+            <strong>{dataGridDiagnostics.gridCount}</strong>
+          </div>
+          <div>
+            <span>Errors</span>
+            <strong className={dataGridDiagnostics.errorCount > 0 ? "error" : "ok"}>{dataGridDiagnostics.errorCount}</strong>
+          </div>
+          <div>
+            <span>Warnings</span>
+            <strong className={dataGridDiagnostics.warningCount > 0 ? "warning" : "ok"}>{dataGridDiagnostics.warningCount}</strong>
+          </div>
+        </div>
+        {dataGridDiagnostics.summaries.length === 0 ? (
+          <p className="data-grid-diagnostic-empty">No asset-backed data grids</p>
+        ) : (
+          <ul className="data-grid-diagnostic-list">
+            {dataGridDiagnostics.summaries.map((summary) => (
+              <li key={summary.gridId}>
+                <div>
+                  <strong>{summary.title}</strong>
+                  <span>
+                    {summary.format.toUpperCase()} · {summary.rowCount} rows · {summary.columnCount} columns
+                  </span>
+                  <code>{summary.sourceAssetId}</code>
+                </div>
+                {summary.issues.length === 0 ? (
+                  <small className="ok">Rows valid</small>
+                ) : (
+                  <ul>
+                    {summary.issues.slice(0, 4).map((issue, index) => (
+                      <li className={issue.severity} key={`${summary.gridId}-${index}`}>
+                        <span>{issue.severity}</span>
+                        <p>
+                          {issue.row ? `Row ${issue.row}: ` : ""}
+                          {issue.message}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="export-section" aria-label="PDF publishing boundary">

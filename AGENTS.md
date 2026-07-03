@@ -27,6 +27,7 @@ Key design documents:
 - `docs/serialization.md`: canonical JSON and deterministic ZIP rules.
 - `docs/diff-model.md`: semantic diff event model.
 - `docs/ai-export.md`: Markdown, chunk, outline, and reference exports.
+- `docs/word-template-injection-boundary.md`: external `.dotx/.docx` template injection policy.
 - `docs/ui-shell-plan.md`: VS Code-like Activity Bar and toggle sidebar direction.
 - `docs/mvp-roadmap.md`: phased scope and exclusions.
 

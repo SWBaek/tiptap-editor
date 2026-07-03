@@ -69,7 +69,7 @@ npm run sdoc -- export document.sdoc --format pdf --template controlled -o docum
 
 ## Deferred Work
 
-- external `.dotx`/`.docx` template injection and company-specific style mapping;
+- external `.dotx`/`.docx` template injection and company-specific style mapping following `docs/word-template-injection-boundary.md`;
 - strict page header/footer support;
 - approval table and revision history rendering;
 - watermark and classification markings;

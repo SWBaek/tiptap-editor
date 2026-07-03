@@ -157,7 +157,7 @@ Acceptance evidence:
 Open work:
 
 - UI wiring and asset revision policy for row-level CSV/JSON merge apply.
-- external `.dotx` template injection, strict pagination, approval table workflows, and template management UI.
+- external `.dotx` template injection following `docs/word-template-injection-boundary.md`, strict pagination, approval table workflows, and template management UI.
 
 ## Validation Gates
 

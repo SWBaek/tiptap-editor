@@ -138,15 +138,17 @@ npm install
 ### Development
 
 ```bash
-# 브라우저 플레이그라운드 실행 (http://127.0.0.1:6280)
-npm run dev:web
-
-# 패키지만 빌드
+# 1. 패키지 빌드 (최초 실행 또는 패키지 소스 변경 시 필수)
 npm run build:packages
 
-# 전체 빌드 (패키지 + 플레이그라운드)
+# 2. 브라우저 플레이그라운드 실행 (http://127.0.0.1:6280)
+npm run dev:web
+
+# 전체 빌드 (패키지 + 플레이그라운드 프로덕션 번들)
 npm run build
 ```
+
+> **Note:** 플레이그라운드는 `@sdoc/*` 워크스페이스 패키지의 빌드된 `dist/` 산출물을 참조합니다. `npm run dev:web` 전에 반드시 `npm run build:packages`를 한 번 실행해야 하며, 패키지 소스(`packages/` 내부)를 수정한 경우에도 다시 빌드해야 변경이 반영됩니다.
 
 ### Testing
 

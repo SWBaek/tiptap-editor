@@ -43,6 +43,8 @@ The preferred editing direction is a future Tauri bridge, not a deep browser ifr
 
 The bridge must keep temporary paths, external process state, file watcher state, editor viewport, and conflict markers out of `document.json`. If the external editor fails, saves invalid XML, or conflicts with a newer asset revision, the app should preserve the previous source asset and report a recoverable error.
 
+`docs/drawio-external-editor-bridge.md` defines the adapter contract, temp checkout lifecycle, save-back policy, conflict recovery, preview policy, and browser boundary for that future Tauri work.
+
 Embedded iframe editing remains a deferred experiment for small diagrams after the external asset lifecycle is proven.
 
 ## Diff And Export

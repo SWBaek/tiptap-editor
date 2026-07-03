@@ -31,6 +31,8 @@ document.sdoc
 
 Draw.io diagrams are asset-backed in v1. The editable `.drawio` or `.drawio.xml` source is stored under `assets/`, and `document.json` stores `diagram.attrs.sourceAssetId`. Optional preview SVG/PNG files may also live in `assets/` through `diagram.attrs.previewAssetId` for portable exports, but preview bytes remain non-canonical and may be regenerated.
 
+Future large engineering data grids should follow the same asset-backed principle: CSV or JSON source lives under `assets/`, while `document.json` stores semantic references and display intent rather than huge spreadsheet state.
+
 ## 빈 파일 처리
 
 사용자가 `name.sdoc`라는 0-byte 파일을 먼저 만들 수 있다. 이 파일은 아직 유효한 `.sdoc`가 아니므로 앱은 “새 SDoc 문서로 초기화” 동작을 제공해야 한다. 임의 텍스트 파일을 `.sdoc`로 rename한 경우에는 invalid container로 처리한다.

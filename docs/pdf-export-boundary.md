@@ -44,6 +44,8 @@ The current HTML-to-PDF path remains the MVP publishing pipeline. Enterprise del
 
 That exporter may target `.docx`, LaTeX, or a dedicated PDF renderer, but it must remain a derived projection from `document.json`. Template choices and export preferences belong in app settings, project policy, or explicit export options; they should not become required canonical document fields.
 
+`docs/corporate-template-export-boundary.md` records this future enterprise publishing path in more detail. The current HTML-to-PDF renderer remains the MVP path.
+
 ## Deferred
 
 - Browser one-click PDF download

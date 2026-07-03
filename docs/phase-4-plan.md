@@ -111,13 +111,62 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Add focused tests for CLI output, section mapping, assets, and deterministic projection behavior.
 - Expose a browser Export panel command that copies the CLI/Tauri PPTX workflow without claiming direct browser generation.
 
-## Current Slice: Draw.io External Editor / Tauri Bridge Boundary
+## Completed Slice: Draw.io External Editor / Tauri Bridge Boundary
 
 - Define the future native bridge for launching an installed Draw.io editor from the Tauri app.
 - Keep the browser playground limited to import, static preview, and source-preserving placeholders.
 - Treat deep iframe embedding as an optional experiment, not the default integration path.
 - Keep Draw.io XML source asset-backed; external editor state, temporary paths, preview state, and conflict markers must not enter `document.json`.
 - Define temp checkout, file watching, asset update, preview regeneration, and failure recovery behavior before implementation.
+- Use `docs/drawio-external-editor-bridge.md` as the bridge boundary document.
+
+## Completed Slice: Visual Semantic Diff Overlay Boundary
+
+- Project the existing semantic diff event model into non-developer review UI.
+- Define inserted, deleted, modified, moved, and broken-reference visual states without creating a second diff format.
+- Keep overlay filters, reviewer cursor, expanded panels, and accept/reject preview state out of `document.json`.
+- Prefer a boundary document before implementing editor decorations or review controls.
+- Use `docs/visual-semantic-diff-overlay-boundary.md` as the overlay boundary document.
+
+## Completed Slice: Requirement Tagging Boundary
+
+- Define optional human-readable requirement IDs or traceability tags without replacing stable `attrs.id`.
+- Decide which nodes may carry `humanId` or trace metadata and how duplicates should be reported.
+- Analyze schema, export, diff, AI/RAG, and editor UI impact before implementation.
+- Keep generated labels, tag picker state, and traceability panel state out of `document.json`.
+- Use `docs/requirement-tagging-boundary.md` as the traceability boundary document.
+
+## Completed Slice: Broken Reference Inline Highlight Boundary
+
+- Define how existing broken-reference diagnostics should surface near inline `crossReference` nodes.
+- Keep diagnostic visibility, selected reference, and panel state out of `document.json`.
+- Reuse the existing reference detection and semantic diff event model instead of creating a second validation system.
+- Prefer a boundary document before implementing editor decorations.
+- Use `docs/broken-reference-inline-highlight-boundary.md` as the inline diagnostic boundary document.
+
+## Completed Slice: Large Data Grid Asset Boundary
+
+- Keep canonical `table` nodes focused on small authored tables.
+- Define future asset-backed CSV/JSON data grids for large BOM, pinout, signal, calibration, or parameter tables.
+- Store large data source files in `.sdoc/assets/` and keep `document.json` limited to semantic references and display hints.
+- Keep grid viewport, selection, sort, filter, and column resize state out of `document.json`.
+- Use `docs/large-data-grid-boundary.md` as the large data boundary document.
+
+## Completed Slice: Corporate Template Export Boundary
+
+- Keep the current HTML-to-PDF path as the MVP publishing pipeline.
+- Define future controlled Word/PDF template export for headers, footers, watermarks, document control blocks, approval tables, and corporate typography.
+- Keep template selection and export preferences in app/project policy or CLI options, not required canonical fields.
+- Prefer a boundary document before implementing `.docx` or template-driven PDF output.
+- Use `docs/corporate-template-export-boundary.md` as the enterprise publishing boundary document.
+
+## Completed Slice: Phase 4 Closure
+
+- Write `docs/phase-4-closure.md` with completed slices, acceptance evidence, deferred work, and Phase 5 handoff.
+- Confirm the Phase 4 plan no longer has unresolved current planning slices.
+- Run the required validation commands.
+- Commit and push the final Phase 4 planning closure.
+- Use `docs/phase-4-closure.md` as the accepted Phase 4 handoff document.
 
 ## UX Simulation Review Adjustments
 
@@ -159,6 +208,13 @@ Rejected or deferred adjustments:
 - CLI tests cover `sdoc export <document> --format pptx -o output.pptx`.
 - Playwright verifies the Export side panel marks PPTX as CLI/Tauri-only and exposes a PPTX CLI command.
 - Gemini UX simulation review outcomes are recorded in the plan without changing canonical `document.json` ownership.
+- `docs/drawio-external-editor-bridge.md` records the future Tauri bridge contract, temp checkout/save-back lifecycle, conflict behavior, preview policy, and web boundary.
+- `docs/visual-semantic-diff-overlay-boundary.md` records how existing semantic diff events should project into editor review overlays without creating a second diff format or storing overlay state in `document.json`.
+- `docs/requirement-tagging-boundary.md` records the optional `attrs.humanId` policy, duplicate handling, export/RAG impact, and the rule that stable `attrs.id` remains the only internal identity key.
+- `docs/broken-reference-inline-highlight-boundary.md` records how broken reference diagnostics should be projected into inline editor UI while keeping diagnostics runtime-only.
+- `docs/large-data-grid-boundary.md` records that large CSV/JSON engineering tables should be asset-backed future nodes instead of expanding canonical `table` into spreadsheet behavior.
+- `docs/corporate-template-export-boundary.md` records future enterprise `.docx` or template-driven PDF export as a derived renderer with export preferences outside required canonical fields.
+- `docs/phase-4-closure.md` records Phase 4 as accepted for the MVP slice and lists Phase 5 handoff work.
 
 ## Boundaries
 
@@ -169,12 +225,6 @@ Rejected or deferred adjustments:
 ## Later Slices
 
 - Native PPTX browser download
-- Draw.io external editor / Tauri bridge boundary
-- Visual semantic diff overlay boundary
-- Requirement tagging boundary
-- Broken reference inline highlight
-- Large data grid asset boundary
-- Corporate template export boundary
 - Embedded Draw.io iframe experiment
 - Draw.io structural diff
 - Merged table cells

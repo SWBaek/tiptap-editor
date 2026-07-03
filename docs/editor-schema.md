@@ -181,6 +181,7 @@ Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tab
 - `anchor`: Markdown/HTML export에서 사람이 읽는 참조에 사용한다.
 - `anchor`는 optional이며 변경 가능하다.
 - 내부 cross-reference는 `targetId`를 저장한다. export 시 가능한 경우 `anchor`로 변환한다.
+- `humanId`: optional human-facing requirement or traceability tag such as `REQ-OBC-012`. It is mutable metadata and must never replace `id` for diff, references, or serialization.
 
 ## Tiptap 매핑 원칙
 

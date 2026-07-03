@@ -79,7 +79,7 @@
 
 ## Phase 4: Publishing & Advanced Features
 
-상태: started on 2026-07-03. HTML export, print stylesheet, CLI PDF export, browser PDF UX boundary, slide export boundary, Draw.io integration boundary, Draw.io minimal asset model, advanced table editing boundary, advanced table editing minimal controls, section folding boundary, section folding runtime controls, native PPTX slide export boundary, native PPTX CLI export가 완료되었고, 현재는 `docs/phase-4-plan.md`의 Draw.io External Editor / Tauri Bridge Boundary이다.
+상태: MVP slice accepted on 2026-07-03. 세부 증거와 Phase 5 인계 항목은 `docs/phase-4-closure.md`를 기준으로 한다.
 
 목표는 배포 가능한 기술 문서 제작 도구로 확장하는 것이다.
 

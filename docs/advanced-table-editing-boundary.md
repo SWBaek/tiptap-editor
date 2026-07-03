@@ -47,6 +47,8 @@ That future model should store CSV or JSON data in `.sdoc/assets/` and keep `doc
 
 A `dataGrid` or similar node requires a separate schema, diff, export, and UI boundary before implementation.
 
+`docs/large-data-grid-boundary.md` defines that future asset-backed model at the planning level. The current canonical `table` implementation should remain optimized for small authored tables.
+
 ## Deferred Work
 
 - merged cells, `rowspan`, and `colspan`

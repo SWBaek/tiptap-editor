@@ -55,6 +55,7 @@ Markdown은 canonical이 아니다. Markdown export는 리뷰, 외부 협업, LL
 - `type`: node type
 - `heading`: 가장 가까운 preceding heading text
 - `text`: block plain text
+- `humanId`: optional requirement or traceability tag when present on the source block
 
 Phase 2 이후에는 heading hierarchy, reference graph, token budget, table/figure caption을 반영해 chunk strategy를 확장한다.
 
@@ -67,6 +68,7 @@ Phase 2 이후에는 heading hierarchy, reference graph, token budget, table/fig
 - `id`: immutable block ID
 - `type`: node type
 - `anchor`: optional human-readable anchor
+- `humanId`: optional requirement or traceability tag
 - `label`: plain text label
 
 내부 참조 안정성은 `id`가 담당하고, Markdown/HTML 표현은 가능한 경우 `anchor`를 사용한다.

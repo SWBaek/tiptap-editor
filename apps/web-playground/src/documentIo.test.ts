@@ -213,6 +213,33 @@ describe("createHtmlPayload", () => {
     expect(payload.text).toContain('src="data:image/svg+xml;base64,PHN2Zz4="');
     expect(payload.text).toContain('data-source-asset-id="asset_architecture.drawio"');
   });
+
+  it("renders dataGrid source assets as bounded HTML previews", () => {
+    const dataGridDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_grid" },
+      content: [
+        {
+          type: "dataGrid",
+          attrs: {
+            id: "blk_grid",
+            sourceAssetId: "asset_pinout.csv",
+            format: "csv",
+            title: "Pinout"
+          }
+        }
+      ]
+    };
+
+    const payload = createHtmlPayload(dataGridDocument, metadata, {
+      "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC\n2,GND")
+    });
+
+    expect(payload.text).toContain("<th>pin</th>");
+    expect(payload.text).toContain("<td>VCC</td>");
+    expect(payload.text).not.toContain("pin,signal");
+  });
 });
 
 describe("openDocumentInput", () => {

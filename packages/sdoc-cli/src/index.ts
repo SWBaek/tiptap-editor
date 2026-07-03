@@ -99,7 +99,8 @@ async function writePdfExport(input: ExportInput, outputPath: string, template?:
       exportHtml(input.document, {
         title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
         metadata: input.metadata,
-        template
+        template,
+        dataGridSourceResolver: (assetId) => decodeTextAsset(input.assets[assetId])
       }),
       { waitUntil: "load" }
     );
@@ -293,6 +294,10 @@ function parseCorporateTemplate(value: string | undefined): CorporateTemplateNam
   throw new Error(`unsupported export template: ${value}`);
 }
 
+function decodeTextAsset(asset: Uint8Array | undefined): string | undefined {
+  return asset ? new TextDecoder().decode(asset).replace(/^\uFEFF/, "") : undefined;
+}
+
 function printHelp(): void {
   process.stdout.write(`sdoc phase0 cli
 
@@ -317,7 +322,8 @@ function renderExport(input: ExportInput, format: string, template?: CorporateTe
     return exportHtml(document, {
       title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
       metadata: input.metadata,
-      template
+      template,
+      dataGridSourceResolver: (assetId) => decodeTextAsset(input.assets[assetId])
     });
   }
 

@@ -3,8 +3,23 @@ import { getNodeAnchor, getNodeHumanId, getNodeId, getPlainText, isBlockNode, ty
 export interface HtmlExportOptions {
   title?: string;
   assetResolver?: (assetId: string) => string | undefined;
+  dataGridSourceResolver?: (assetId: string) => string | undefined;
+  dataGridPreviewRows?: number;
   template?: CorporateTemplateName;
   metadata?: CorporateTemplateMetadata;
+}
+
+export interface DataGridPreviewOptions {
+  maxRows?: number;
+  maxColumns?: number;
+}
+
+export interface DataGridPreview {
+  columns: string[];
+  rows: string[][];
+  totalRows: number;
+  truncatedRows: boolean;
+  truncatedColumns: boolean;
 }
 
 export type CorporateTemplateName = "controlled";
@@ -845,7 +860,7 @@ ${indentHtml(renderHtmlChildrenAsBlocks(node, references, options, depth), 2)}
       return renderHtmlTable(node, references, options);
 
     case "dataGrid":
-      return renderHtmlDataGrid(node);
+      return renderHtmlDataGrid(node, options);
 
     case "bulletList":
       return `<ul>${renderHtmlListItems(node, references, options, depth)}</ul>`;
@@ -990,17 +1005,38 @@ function renderMarkdownDataGrid(node: SDocNode): string {
   return lines.join("\n");
 }
 
-function renderHtmlDataGrid(node: SDocNode): string {
+function renderHtmlDataGrid(node: SDocNode, options: HtmlExportOptions): string {
   const id = getNodeId(node) ?? "";
   const title = getDataGridTitle(node);
   const caption = getDataGridCaption(node);
   const sourceAssetId = getDataGridSourceAssetId(node);
   const format = getDataGridFormat(node);
+  const source = sourceAssetId ? options.dataGridSourceResolver?.(sourceAssetId) : undefined;
+  const preview = source ? createDataGridPreview(source, format, { maxRows: options.dataGridPreviewRows }) : undefined;
+  const previewHtml = preview ? `\n${indentHtml(renderHtmlDataGridPreview(preview), 2)}` : "";
   const captionHtml = caption ? `\n  <figcaption>${escapeHtml(caption)}</figcaption>` : "";
   return `<figure id="${escapeHtmlAttribute(id)}" class="sdoc-data-grid" data-source-asset-id="${escapeHtmlAttribute(sourceAssetId)}" data-format="${escapeHtmlAttribute(format)}">
   <div class="sdoc-data-grid-title">${escapeHtml(title)}</div>
-  <div class="sdoc-data-grid-source">Source: assets/${escapeHtml(sourceAssetId)}</div>${captionHtml}
+  <div class="sdoc-data-grid-source">Source: assets/${escapeHtml(sourceAssetId)}</div>${previewHtml}${captionHtml}
 </figure>`;
+}
+
+function renderHtmlDataGridPreview(preview: DataGridPreview): string {
+  const header = preview.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
+  const body = preview.rows
+    .map((row) => `    <tr>${preview.columns.map((_column, index) => `<td>${escapeHtml(row[index] ?? "")}</td>`).join("")}</tr>`)
+    .join("\n");
+  const truncation = preview.truncatedRows || preview.truncatedColumns
+    ? `\n  <div class="sdoc-data-grid-note">Preview limited to ${preview.rows.length} of ${preview.totalRows} rows${preview.truncatedColumns ? " and visible columns" : ""}.</div>`
+    : "";
+  return `<div class="sdoc-data-grid-preview">
+  <table>
+    <thead><tr>${header}</tr></thead>
+    <tbody>
+${body}
+    </tbody>
+  </table>${truncation}
+</div>`;
 }
 
 function formatDataGridLabel(node: SDocNode): string {
@@ -1026,6 +1062,136 @@ function getDataGridSourceAssetId(node: SDocNode): string {
 
 function getDataGridFormat(node: SDocNode): string {
   return node.attrs?.format === "json" ? "json" : "csv";
+}
+
+export function createDataGridPreview(source: string, format: string, options: DataGridPreviewOptions = {}): DataGridPreview | undefined {
+  const maxRows = clampPositiveInteger(options.maxRows, 5);
+  const maxColumns = clampPositiveInteger(options.maxColumns, 8);
+  const normalizedFormat = format === "json" ? "json" : "csv";
+  const parsed = normalizedFormat === "json" ? parseJsonGridRows(source) : parseCsvGridRows(source);
+  if (!parsed || parsed.columns.length === 0) {
+    return undefined;
+  }
+
+  const columns = parsed.columns.slice(0, maxColumns);
+  const rows = parsed.rows.slice(0, maxRows).map((row) => columns.map((_column, index) => row[index] ?? ""));
+  return {
+    columns,
+    rows,
+    totalRows: parsed.rows.length,
+    truncatedRows: parsed.rows.length > rows.length,
+    truncatedColumns: parsed.columns.length > columns.length
+  };
+}
+
+function parseCsvGridRows(source: string): { columns: string[]; rows: string[][] } | undefined {
+  const records = parseCsvRecords(source).filter((row) => row.some((cell) => cell.trim().length > 0));
+  if (records.length === 0) {
+    return undefined;
+  }
+
+  const [header, ...body] = records;
+  const columnCount = Math.max(header.length, ...body.map((row) => row.length));
+  const columns = Array.from({ length: columnCount }, (_value, index) => header[index]?.trim() || `Column ${index + 1}`);
+  const rows = body.map((row) => Array.from({ length: columnCount }, (_value, index) => row[index] ?? ""));
+  return { columns, rows };
+}
+
+function parseCsvRecords(source: string): string[][] {
+  const records: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      row.push(cell);
+      cell = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") {
+        index += 1;
+      }
+      row.push(cell);
+      records.push(row);
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    cell += char;
+  }
+
+  row.push(cell);
+  records.push(row);
+  return records;
+}
+
+function parseJsonGridRows(source: string): { columns: string[]; rows: string[][] } | undefined {
+  let value: unknown;
+  try {
+    value = JSON.parse(source);
+  } catch {
+    return undefined;
+  }
+
+  if (!Array.isArray(value) || value.length === 0) {
+    return undefined;
+  }
+
+  if (value.every((row) => Array.isArray(row))) {
+    const rows = value as unknown[][];
+    const columnCount = Math.max(0, ...rows.map((row) => row.length));
+    return {
+      columns: Array.from({ length: columnCount }, (_value, index) => `Column ${index + 1}`),
+      rows: rows.map((row) => Array.from({ length: columnCount }, (_value, index) => formatGridCell(row[index])))
+    };
+  }
+
+  if (value.every((row) => isPlainObject(row))) {
+    const objectRows = value as Array<Record<string, unknown>>;
+    const columns = [...new Set(objectRows.flatMap((row) => Object.keys(row)))];
+    return {
+      columns,
+      rows: objectRows.map((row) => columns.map((column) => formatGridCell(row[column])))
+    };
+  }
+
+  return undefined;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function formatGridCell(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
+}
+
+function clampPositiveInteger(value: number | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : fallback;
 }
 
 function escapeMarkdownTableCell(value: string): string {
@@ -1318,6 +1484,21 @@ const PUBLISH_HTML_CSS = `    :root {
     .sdoc-data-grid-source {
       color: #586875;
       font-size: 0.9rem;
+    }
+
+    .sdoc-data-grid-preview {
+      overflow-x: auto;
+    }
+
+    .sdoc-data-grid-preview table {
+      margin: 8px 0 0;
+      font-size: 0.88rem;
+    }
+
+    .sdoc-data-grid-note {
+      margin-top: 6px;
+      color: #687887;
+      font-size: 0.82rem;
     }
 
     .sdoc-callout {

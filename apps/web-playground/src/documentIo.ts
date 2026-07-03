@@ -80,6 +80,10 @@ export function createHtmlPayload(document: SDocDocument, metadata: SDocMetadata
       assetResolver: (assetId) => {
         const asset = assets[assetId];
         return asset ? bytesToDataUrl(assetId, asset) : undefined;
+      },
+      dataGridSourceResolver: (assetId) => {
+        const asset = assets[assetId];
+        return asset ? decodeUtf8(asset) : undefined;
       }
     }),
     filename: `${safeFilename(metadata.title || "document")}.html`

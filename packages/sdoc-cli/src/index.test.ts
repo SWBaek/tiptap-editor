@@ -100,6 +100,43 @@ describe("sdoc CLI", () => {
     }
   });
 
+  it("exports dataGrid HTML previews from referenced source assets", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const unpackedPath = path.join(tempDir, "grid.sdoc.d");
+
+    try {
+      const document = {
+        schemaVersion: 1,
+        type: "doc",
+        attrs: { id: "doc_grid" },
+        content: [
+          {
+            type: "dataGrid",
+            attrs: {
+              id: "blk_grid",
+              sourceAssetId: "asset_pinout.csv",
+              format: "csv",
+              title: "Pinout"
+            }
+          }
+        ]
+      };
+      const documentPath = path.join(tempDir, "grid.document.json");
+      await writeFile(documentPath, JSON.stringify(document, null, 2), "utf8");
+      await createUnpackedFixture(unpackedPath, documentPath, "Grid Spec");
+      await mkdir(path.join(unpackedPath, "assets"), { recursive: true });
+      await writeFile(path.join(unpackedPath, "assets", "asset_pinout.csv"), "pin,signal\n1,VCC\n2,GND", "utf8");
+
+      const html = await runSdoc(["export", unpackedPath, "--format", "html"]);
+
+      expect(html.stdout).toContain("<th>pin</th>");
+      expect(html.stdout).toContain("<td>VCC</td>");
+      expect(html.stdout).not.toContain("pin,signal");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("exports PDF through the HTML print pipeline", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const pdfPath = path.join(tempDir, "basic.pdf");

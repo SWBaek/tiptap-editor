@@ -47,7 +47,7 @@ The following must not be stored in `document.json`:
 
 Semantic diff reports data grids at block level: source asset changed, title changed, caption changed, format changed, or display metadata changed. Row-level CSV/JSON structural diff is deferred until the source format and merge policy are proven.
 
-Markdown, HTML, PDF, and slide export render a source asset label and semantic title/caption. Bounded preview rows are deferred. AI/RAG export includes title, caption, and source asset reference via plain text, but does not dump raw source rows by default.
+Markdown and slide export render a source asset label and semantic title/caption. HTML and PDF export may render bounded preview rows from the referenced CSV/JSON asset when the exporter has asset bytes. AI/RAG export includes title, caption, and source asset reference via plain text, but does not dump raw source rows by default.
 
 ## UI Scope
 
@@ -61,12 +61,12 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - `.sdoc` pack/unpack validates referenced source assets.
 - Markdown, HTML, PDF, slide, AI/RAG, and semantic diff treat the grid as an asset-backed dataset block.
 - Browser playground import stores CSV/JSON bytes in `.sdoc/assets/` and keeps raw rows out of `document.json`.
+- HTML/PDF export can render a bounded CSV/JSON preview table from `.sdoc/assets/` without storing preview rows in canonical JSON.
 
 ## Deferred Work
 
-- CSV/JSON parser and validation rules;
+- full CSV/JSON validation rules and diagnostics;
 - row-level semantic diff and merge;
-- bounded preview row rendering;
 - full spreadsheet editing;
 - formulas and computed columns;
 - external PLM/requirements database connectors.

@@ -130,7 +130,8 @@ Acceptance evidence:
 
 - `dataGrid` is supported as an asset-backed block node with required `sourceAssetId` and `format`.
 - `.sdoc` validation and pack/unpack include referenced CSV/JSON assets and reject missing source assets.
-- Markdown, HTML, PDF, slide, AI/RAG, and semantic diff expose semantic metadata and source labels without embedding raw grid rows.
+- Markdown, HTML, PDF, slide, AI/RAG, and semantic diff expose semantic metadata and source labels without embedding raw grid rows in `document.json`.
+- HTML/PDF export renders bounded CSV/JSON preview rows from referenced assets when asset bytes are available.
 - Web playground imports CSV/JSON as `.sdoc/assets/` and inserts a compact `dataGrid` preview.
 - Unit and Playwright coverage verify canonical JSON excludes raw CSV content and round-trips asset references.
 - `exportHtml(..., { template: "controlled" })` renders controlled corporate header/footer/watermark chrome from explicit export metadata.
@@ -138,7 +139,7 @@ Acceptance evidence:
 
 Open work:
 
-- Row-level CSV/JSON validation, preview, semantic diff, and merge.
+- Row-level CSV/JSON validation diagnostics, semantic diff, and merge.
 - `.docx` corporate template export, strict pagination, approval table workflows, and template management UI.
 
 ## Validation Gates

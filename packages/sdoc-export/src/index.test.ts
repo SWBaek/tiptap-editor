@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
-import { createPptxSlideModel, exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx } from "./index";
+import { createDataGridPreview, createPptxSlideModel, exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx } from "./index";
 import type { SDocDocument } from "@sdoc/schema";
 
 const document: SDocDocument = {
@@ -211,6 +211,19 @@ describe("exportHtml", () => {
     expect(html).not.toContain("pin,signal");
   });
 
+  it("renders bounded dataGrid previews from source assets", () => {
+    const html = exportHtml(createDataGridDocument(), {
+      dataGridSourceResolver: (assetId) => (assetId === "asset_pinout.csv" ? "pin,signal\n1,VCC\n2,GND\n3,GPIO" : undefined),
+      dataGridPreviewRows: 2
+    });
+
+    expect(html).toContain("<th>pin</th>");
+    expect(html).toContain("<td>1</td>");
+    expect(html).toContain("<td>VCC</td>");
+    expect(html).toContain("Preview limited to 2 of 3 rows");
+    expect(html).not.toContain("<td>3</td>");
+  });
+
   it("escapes HTML text and blocks unsafe link hrefs", () => {
     const unsafeDocument: SDocDocument = {
       schemaVersion: 1,
@@ -266,6 +279,39 @@ describe("exportHtml", () => {
     expect(html).toContain('data-source-asset-id="asset_architecture.drawio"');
     expect(html).toContain('src="data:image/svg+xml;base64,asset_architecture.svg"');
     expect(html).not.toContain("<mxfile");
+  });
+});
+
+describe("createDataGridPreview", () => {
+  it("parses quoted CSV cells with row and column limits", () => {
+    const preview = createDataGridPreview('pin,signal,note\n1,VCC,"main, rail"\n2,GND,return', "csv", {
+      maxRows: 1,
+      maxColumns: 2
+    });
+
+    expect(preview).toEqual({
+      columns: ["pin", "signal"],
+      rows: [["1", "VCC"]],
+      totalRows: 2,
+      truncatedRows: true,
+      truncatedColumns: true
+    });
+  });
+
+  it("parses JSON object arrays as tabular previews", () => {
+    const preview = createDataGridPreview(
+      JSON.stringify([
+        { pin: 1, signal: "VCC" },
+        { pin: 2, signal: "GND", type: "power" }
+      ]),
+      "json"
+    );
+
+    expect(preview?.columns).toEqual(["pin", "signal", "type"]);
+    expect(preview?.rows).toEqual([
+      ["1", "VCC", ""],
+      ["2", "GND", "power"]
+    ]);
   });
 });
 

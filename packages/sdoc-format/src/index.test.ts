@@ -183,6 +183,55 @@ describe("packSdoc", () => {
       })
     ).rejects.toThrow("missing assets: asset_missing.drawio");
   });
+
+  it("round-trips dataGrid source asset references", async () => {
+    const container = createEmptySdocContainer({ title: "Data Grid Asset" });
+    const document: SDocDocument = {
+      schemaVersion: 1 as const,
+      type: "doc" as const,
+      attrs: { id: "doc_grid" },
+      content: [
+        {
+          type: "dataGrid",
+          attrs: {
+            id: "blk_grid",
+            sourceAssetId: "asset_pinout.csv",
+            format: "csv",
+            title: "MCU Pinout"
+          }
+        }
+      ]
+    };
+
+    const packed = await packSdoc({
+      ...container,
+      manifest: { ...container.manifest, documentId: document.attrs.id },
+      document,
+      assets: { "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC") }
+    });
+    const unpacked = await unpackSdoc(packed);
+
+    expect(unpacked.document.content[0]?.attrs?.sourceAssetId).toBe("asset_pinout.csv");
+    expect(new TextDecoder().decode(unpacked.assets?.["asset_pinout.csv"])).toContain("pin,signal");
+  });
+
+  it("rejects dataGrid references to missing source assets", async () => {
+    const container = createEmptySdocContainer({ title: "Missing Data Grid Asset" });
+    const document: SDocDocument = {
+      schemaVersion: 1 as const,
+      type: "doc" as const,
+      attrs: { id: "doc_grid" },
+      content: [{ type: "dataGrid", attrs: { id: "blk_grid", sourceAssetId: "asset_missing.csv", format: "csv" } }]
+    };
+
+    await expect(
+      packSdoc({
+        ...container,
+        manifest: { ...container.manifest, documentId: document.attrs.id },
+        document
+      })
+    ).rejects.toThrow("missing assets: asset_missing.csv");
+  });
 });
 
 describe("tryUnpackSdoc", () => {

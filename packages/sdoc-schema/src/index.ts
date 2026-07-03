@@ -49,6 +49,7 @@ export const BLOCK_NODE_TYPES = new Set([
   "figure",
   "equationBlock",
   "diagram",
+  "dataGrid",
   "table",
   "tableRow",
   "tableCell",
@@ -108,6 +109,15 @@ export function getPlainText(node: SDocNode): string {
     }
 
     return typeof node.attrs?.source === "string" ? node.attrs.source : "";
+  }
+
+  if (node.type === "dataGrid") {
+    const parts = [
+      typeof node.attrs?.title === "string" ? node.attrs.title : "",
+      typeof node.attrs?.caption === "string" ? node.attrs.caption : "",
+      typeof node.attrs?.sourceAssetId === "string" ? node.attrs.sourceAssetId : ""
+    ].filter((part) => part.trim().length > 0);
+    return parts.join("\n");
   }
 
   return (node.content ?? []).map(getPlainText).join("");
@@ -251,6 +261,32 @@ function validateNode(
       }
     } else {
       issues.push({ path: `${path}.attrs.kind`, message: "diagram kind must be mermaid or drawio" });
+    }
+  }
+
+  if (typedNode.type === "dataGrid") {
+    const sourceAssetId = typedNode.attrs?.sourceAssetId;
+    if (typeof sourceAssetId !== "string" || sourceAssetId.length === 0) {
+      issues.push({ path: `${path}.attrs.sourceAssetId`, message: "dataGrid sourceAssetId is required" });
+    }
+
+    const format = typedNode.attrs?.format;
+    if (format !== "csv" && format !== "json") {
+      issues.push({ path: `${path}.attrs.format`, message: "dataGrid format must be csv or json" });
+    }
+
+    const title = typedNode.attrs?.title;
+    if (title !== undefined && (typeof title !== "string" || title.trim().length === 0)) {
+      issues.push({ path: `${path}.attrs.title`, message: "dataGrid title must be a non-empty string when present" });
+    }
+
+    const caption = typedNode.attrs?.caption;
+    if (caption !== undefined && (typeof caption !== "string" || caption.trim().length === 0)) {
+      issues.push({ path: `${path}.attrs.caption`, message: "dataGrid caption must be a non-empty string when present" });
+    }
+
+    if (Array.isArray(typedNode.content) && typedNode.content.length > 0) {
+      issues.push({ path: `${path}.content`, message: "dataGrid content must not store grid rows" });
     }
   }
 

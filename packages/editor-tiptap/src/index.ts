@@ -16,6 +16,7 @@ export const BLOCK_TYPES_WITH_IDS = [
   "figure",
   "equationBlock",
   "diagram",
+  "dataGrid",
   "table",
   "tableRow",
   "tableCell",
@@ -355,6 +356,66 @@ export const DiagramNode = Node.create({
   }
 });
 
+export const DataGridNode = Node.create({
+  name: "dataGrid",
+  group: "block",
+  atom: true,
+  defining: true,
+  selectable: true,
+
+  addAttributes() {
+    return {
+      sourceAssetId: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-source-asset-id") ?? "",
+        renderHTML: (attributes) => ({ "data-source-asset-id": attributes.sourceAssetId })
+      },
+      format: {
+        default: "csv",
+        parseHTML: (element) => element.getAttribute("data-format") ?? "csv",
+        renderHTML: (attributes) => ({ "data-format": attributes.format })
+      },
+      title: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-title"),
+        renderHTML: (attributes) => (attributes.title ? { "data-title": attributes.title } : {})
+      },
+      caption: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-caption"),
+        renderHTML: (attributes) => (attributes.caption ? { "data-caption": attributes.caption } : {})
+      }
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "div[data-type='dataGrid']" }];
+  },
+
+  renderHTML({ HTMLAttributes, node }) {
+    const sourceAssetId = String(node.attrs.sourceAssetId ?? "");
+    const format = String(node.attrs.format ?? "csv");
+    const title = typeof node.attrs.title === "string" && node.attrs.title.length > 0 ? node.attrs.title : "Data grid";
+    const caption = typeof node.attrs.caption === "string" && node.attrs.caption.length > 0 ? node.attrs.caption : "";
+    return [
+      "div",
+      mergeAttributes(HTMLAttributes, {
+        "data-type": "dataGrid",
+        "data-source-asset-id": sourceAssetId,
+        "data-format": format,
+        class: "sdoc-data-grid"
+      }),
+      ["strong", title],
+      ["span", `Source: ${sourceAssetId} (${format})`],
+      ...(caption ? [["em", caption]] : [])
+    ];
+  },
+
+  addNodeView() {
+    return createDataGridNodeView();
+  }
+});
+
 export const TableNode = Table.configure({
   resizable: false,
   HTMLAttributes: {
@@ -536,6 +597,35 @@ export function insertDrawioDiagram(
   return result || fingerprintEditorJson(editor) !== before;
 }
 
+export function insertDataGrid(
+  editor: DiagramInsertTarget,
+  sourceAssetId: string,
+  format: "csv" | "json",
+  title?: string,
+  caption?: string,
+  id = createBlockId()
+): boolean {
+  const cleanSourceAssetId = sourceAssetId.trim();
+  if (cleanSourceAssetId.length === 0) {
+    return false;
+  }
+
+  const attrs: Record<string, string> = { id, sourceAssetId: cleanSourceAssetId, format };
+  const cleanTitle = title?.trim();
+  if (cleanTitle) {
+    attrs.title = cleanTitle;
+  }
+  const cleanCaption = caption?.trim();
+  if (cleanCaption) {
+    attrs.caption = cleanCaption;
+  }
+
+  const before = fingerprintEditorJson(editor);
+  const chain = editor.chain() as InsertContentChain;
+  const result = chain.focus().insertContent({ type: "dataGrid", attrs }).run();
+  return result || fingerprintEditorJson(editor) !== before;
+}
+
 function fingerprintEditorJson(editor: EquationInsertTarget): string {
   return editor.getJSON ? JSON.stringify(editor.getJSON()) : "";
 }
@@ -647,6 +737,44 @@ function createDiagramNodeView() {
       dom,
       update(updatedNode: typeof node) {
         if (updatedNode.type.name !== "diagram") {
+          return false;
+        }
+
+        render(updatedNode);
+        return true;
+      }
+    };
+  };
+}
+
+function createDataGridNodeView() {
+  return ({ node }: { node: { type: { name: string }; attrs: Record<string, unknown> } }) => {
+    const dom = document.createElement("div");
+
+    function render(currentNode: typeof node): void {
+      const sourceAssetId = typeof currentNode.attrs.sourceAssetId === "string" ? currentNode.attrs.sourceAssetId : "";
+      const format = currentNode.attrs.format === "json" ? "json" : "csv";
+      const title =
+        typeof currentNode.attrs.title === "string" && currentNode.attrs.title.trim().length > 0
+          ? currentNode.attrs.title.trim()
+          : "Data grid";
+      const caption = typeof currentNode.attrs.caption === "string" ? currentNode.attrs.caption.trim() : "";
+
+      dom.className = "sdoc-data-grid";
+      dom.setAttribute("data-type", "dataGrid");
+      dom.setAttribute("data-source-asset-id", sourceAssetId);
+      dom.setAttribute("data-format", format);
+      dom.innerHTML = `<div class="sdoc-data-grid-title">${escapeHtml(title)}</div><div class="sdoc-data-grid-meta">${escapeHtml(
+        format.toUpperCase()
+      )} source: ${escapeHtml(sourceAssetId)}</div>${caption ? `<div class="sdoc-data-grid-caption">${escapeHtml(caption)}</div>` : ""}`;
+    }
+
+    render(node);
+
+    return {
+      dom,
+      update(updatedNode: typeof node) {
+        if (updatedNode.type.name !== "dataGrid") {
           return false;
         }
 

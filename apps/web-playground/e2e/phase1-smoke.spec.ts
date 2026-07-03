@@ -520,6 +520,55 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 
+test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testInfo) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  const csvPath = testInfo.outputPath("pinout.csv");
+  await writeFile(csvPath, "pin,signal\n1,VCC\n2,GND\n");
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+  await page.getByRole("button", { name: "Insert data grid" }).click();
+  await page.getByLabel("Insert data grid file").setInputFiles(csvPath);
+
+  await expect(page.locator(".status-note")).toContainText("Inserted data grid pinout.csv");
+  await expect(page.locator('.editor-surface div[data-type="dataGrid"]')).toBeVisible();
+  await expect(page.locator(".editor-surface")).toContainText("pinout");
+
+  const insertedDocument = await readPreviewDocument(page);
+  const insertedGrid = findFirstNodeByType(insertedDocument, "dataGrid");
+  expect(insertedGrid.attrs?.sourceAssetId).toEqual(expect.stringMatching(/^asset_[a-z0-9]+\.csv$/));
+  expect(insertedGrid.attrs?.format).toBe("csv");
+  expect(insertedGrid.attrs?.title).toBe("pinout");
+  expect(JSON.stringify(insertedDocument)).not.toContain("pin,signal");
+  expectUniqueIds(collectBlockIds(insertedDocument));
+  await expect(page.getByText("Valid")).toBeVisible();
+
+  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await expect(page.locator(".preview-output")).toContainText("> Data grid: pinout");
+  await expect(page.locator(".preview-output")).toContainText("> Source: assets/");
+  await expect(page.locator(".preview-output")).not.toContainText("pin,signal");
+
+  const sdocDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  const sdocDownload = await sdocDownloadPromise;
+  const sdocPath = testInfo.outputPath("Data Grid Round Trip.sdoc");
+  await sdocDownload.saveAs(sdocPath);
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.getByLabel("Open document file").setInputFiles(sdocPath);
+  await expect(page.locator(".status-note")).toContainText("Opened Data Grid Round Trip.sdoc");
+  await expect(page.locator('.editor-surface div[data-type="dataGrid"]')).toBeVisible();
+
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const reopenedDocument = await readPreviewDocument(page);
+  const reopenedGrid = findFirstNodeByType(reopenedDocument, "dataGrid");
+  expect(reopenedGrid.attrs?.sourceAssetId).toBe(insertedGrid.attrs?.sourceAssetId);
+  expect(JSON.stringify(reopenedDocument)).not.toContain("pin,signal");
+  expectUniqueIds(collectBlockIds(reopenedDocument));
+});
+
 test("inserts a simple table and round-trips through .sdoc", async ({ page }, testInfo) => {
   await page.goto("/");
   await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();

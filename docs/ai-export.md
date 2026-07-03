@@ -43,6 +43,7 @@ Markdown은 canonical이 아니다. Markdown export는 리뷰, 외부 협업, LL
 - heading target에 `anchor`가 없으면 block ID를 fallback anchor로 사용한다.
 - target block이 없으면 missing reference marker를 남긴다.
 - callout은 Markdown admonition 호환 문법으로 export한다.
+- dataGrid는 title/caption/source asset label을 export하고 raw CSV/JSON rows를 기본 Markdown에 dump하지 않는다.
 - 지원하지 않는 node는 가능한 범위에서 text fallback으로 export한다.
 
 ## Chunk Export
@@ -57,7 +58,7 @@ Markdown은 canonical이 아니다. Markdown export는 리뷰, 외부 협업, LL
 - `text`: block plain text
 - `humanId`: optional requirement or traceability tag when present on the source block
 
-Phase 2 이후에는 heading hierarchy, reference graph, token budget, table/figure caption을 반영해 chunk strategy를 확장한다.
+Phase 2 이후에는 heading hierarchy, reference graph, token budget, table/figure caption을 반영해 chunk strategy를 확장한다. `dataGrid` chunk text는 title, caption, and source asset reference를 포함하며 row sampling/summarization은 별도 정책이 생기기 전까지 deferred 상태다.
 
 ## Reference Export
 

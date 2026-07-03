@@ -350,6 +350,11 @@ function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
     return changes.length > 0 ? changes : ["diagram changed"];
   }
 
+  if (oldNode.type === "dataGrid" && newNode.type === "dataGrid") {
+    changes.push(...summarizeDataGridChanges(oldNode, newNode));
+    return changes.length > 0 ? changes : ["data grid changed"];
+  }
+
   const oldText = getPlainText(oldNode);
   const newText = getPlainText(newNode);
   if (oldText !== newText) {
@@ -457,6 +462,46 @@ function summarizeTableChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
   }
 
   return changes.length > 0 ? changes : ["table changed"];
+}
+
+function summarizeDataGridChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
+  const changes: string[] = [];
+  const oldSourceAssetId = getStringAttr(oldNode, "sourceAssetId");
+  const newSourceAssetId = getStringAttr(newNode, "sourceAssetId");
+  if (oldSourceAssetId !== newSourceAssetId) {
+    changes.push(`source asset changed ${quote(oldSourceAssetId)} -> ${quote(newSourceAssetId)}`);
+  }
+
+  const oldFormat = getStringAttr(oldNode, "format");
+  const newFormat = getStringAttr(newNode, "format");
+  if (oldFormat !== newFormat) {
+    changes.push(`format changed ${quote(oldFormat)} -> ${quote(newFormat)}`);
+  }
+
+  const oldTitle = getStringAttr(oldNode, "title");
+  const newTitle = getStringAttr(newNode, "title");
+  if (oldTitle !== newTitle) {
+    changes.push(`title changed ${quote(oldTitle)} -> ${quote(newTitle)}`);
+  }
+
+  const oldCaption = getStringAttr(oldNode, "caption");
+  const newCaption = getStringAttr(newNode, "caption");
+  if (oldCaption !== newCaption) {
+    changes.push(`caption changed ${quote(oldCaption)} -> ${quote(newCaption)}`);
+  }
+
+  const oldAttrs = stableStringify(omitDataGridDiffAttrs(oldNode));
+  const newAttrs = stableStringify(omitDataGridDiffAttrs(newNode));
+  if (oldAttrs !== newAttrs) {
+    changes.push("attrs changed");
+  }
+
+  return changes;
+}
+
+function getStringAttr(node: SDocNode, name: string): string {
+  const value = node.attrs?.[name];
+  return typeof value === "string" ? value : "";
 }
 
 function getTableRows(node: SDocNode): string[][] {
@@ -608,6 +653,12 @@ function getBlockLabel(node: SDocNode): string {
     return quote(`table ${rows.length}x${getMaxColumnCount(rows)}`);
   }
 
+  if (node.type === "dataGrid") {
+    const title = getStringAttr(node, "title");
+    const sourceAssetId = getStringAttr(node, "sourceAssetId");
+    return quote(title || `data grid ${sourceAssetId}`);
+  }
+
   const text = getPlainText(node).trim();
   if (text.length > 0) {
     return quote(text.length > 80 ? `${text.slice(0, 77)}...` : text);
@@ -647,6 +698,19 @@ function omitDiffAttrs(node: SDocNode): Record<string, unknown> {
 function omitDrawioDiffAttrs(node: SDocNode): Record<string, unknown> {
   const attrs = omitId(node.attrs ?? {});
   const { humanId: _humanId, sourceAssetId: _sourceAssetId, previewAssetId: _previewAssetId, ...rest } = attrs;
+  return rest;
+}
+
+function omitDataGridDiffAttrs(node: SDocNode): Record<string, unknown> {
+  const attrs = omitId(node.attrs ?? {});
+  const {
+    humanId: _humanId,
+    sourceAssetId: _sourceAssetId,
+    format: _format,
+    title: _title,
+    caption: _caption,
+    ...rest
+  } = attrs;
   return rest;
 }
 

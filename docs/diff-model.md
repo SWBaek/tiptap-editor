@@ -45,6 +45,8 @@ reference-broken
 
 각 event는 `id`, `nodeType`, human-readable label, old/new path를 포함한다. `modified` event는 heading text, paragraph text, callout kind, code language 같은 type별 변경 요약을 포함한다.
 
+Asset-backed blocks are compared by semantic references, not by binary payload. Draw.io changes report source/preview asset reference changes. `dataGrid` changes report source asset, format, title, caption, and display metadata changes at block level. Row-level CSV/JSON diff is deferred and must not be approximated with raw line diff inside `document.json`.
+
 ## Text Diff
 
 현재 구현은 inline text 변경을 whitespace token 기준으로 `[-removed-]`, `[+added+]` marker에 표시한다. 예: `text changed "This is [-old-] [+new+]"`. 이는 Phase 0의 CLI/editor preview 요약 형식이며 canonical 저장 형식은 아니다.

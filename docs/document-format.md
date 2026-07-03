@@ -31,7 +31,7 @@ document.sdoc
 
 Draw.io diagrams are asset-backed in v1. The editable `.drawio` or `.drawio.xml` source is stored under `assets/`, and `document.json` stores `diagram.attrs.sourceAssetId`. Optional preview SVG/PNG files may also live in `assets/` through `diagram.attrs.previewAssetId` for portable exports, but preview bytes remain non-canonical and may be regenerated.
 
-Future large engineering data grids should follow the same asset-backed principle: CSV or JSON source lives under `assets/`, while `document.json` stores semantic references and display intent rather than huge spreadsheet state.
+Large engineering data grids follow the same asset-backed principle: CSV or JSON source lives under `assets/`, while `document.json` stores `dataGrid.attrs.sourceAssetId`, `format`, and optional title/caption rather than huge spreadsheet state.
 
 ## 빈 파일 처리
 

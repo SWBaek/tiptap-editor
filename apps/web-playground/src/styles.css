@@ -949,6 +949,31 @@ button {
   font-size: 12px;
 }
 
+.editor-surface .sdoc-data-grid {
+  margin: 18px 0;
+  padding: 14px 16px;
+  background: #f7faf8;
+  border: 1px solid #cfded7;
+  border-radius: 6px;
+}
+
+.editor-surface .sdoc-data-grid-title {
+  color: #17212b;
+  font-weight: 700;
+}
+
+.editor-surface .sdoc-data-grid-meta {
+  margin-top: 6px;
+  color: #586875;
+  font-size: 12px;
+}
+
+.editor-surface .sdoc-data-grid-caption {
+  margin-top: 8px;
+  color: #34424f;
+  font-size: 13px;
+}
+
 .editor-surface .is-editor-empty:first-child::before {
   float: left;
   height: 0;

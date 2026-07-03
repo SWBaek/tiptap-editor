@@ -122,7 +122,22 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
+Status: large data grid minimal asset model implemented on 2026-07-03. Corporate template export remains open.
+
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
+
+Acceptance evidence:
+
+- `dataGrid` is supported as an asset-backed block node with required `sourceAssetId` and `format`.
+- `.sdoc` validation and pack/unpack include referenced CSV/JSON assets and reject missing source assets.
+- Markdown, HTML, PDF, slide, AI/RAG, and semantic diff expose semantic metadata and source labels without embedding raw grid rows.
+- Web playground imports CSV/JSON as `.sdoc/assets/` and inserts a compact `dataGrid` preview.
+- Unit and Playwright coverage verify canonical JSON excludes raw CSV content and round-trips asset references.
+
+Open work:
+
+- Row-level CSV/JSON validation, preview, semantic diff, and merge.
+- Corporate template export implementation.
 
 ## Validation Gates
 

@@ -7,12 +7,14 @@ import {
   CalloutNode,
   collectJsonBlockIds,
   CrossReferenceNode,
+  DataGridNode,
   DiagramNode,
   EquationBlockNode,
   FigureNode,
   fromSdocDocument,
   getSelectedBlockHumanIdTarget,
   insertCrossReference,
+  insertDataGrid,
   InlineEquationNode,
   insertEquationBlock,
   insertDrawioDiagram,
@@ -743,6 +745,41 @@ describe("BlockIdExtension", () => {
       previewAssetId: "asset_architecture.svg"
     });
     expect(JSON.stringify(document)).not.toContain("previewSrc");
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
+  it("inserts dataGrid nodes with asset-backed source references", () => {
+    const editor = new Editor({
+      extensions: [
+        StarterKit,
+        InlineEquationNode,
+        EquationBlockNode,
+        DiagramNode,
+        DataGridNode,
+        ...TableExtensions,
+        FigureNode,
+        CalloutNode,
+        BlockIdExtension
+      ],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_initial" }, content: [{ type: "text", text: "Initial" }] }]
+      }
+    });
+
+    const inserted = insertDataGrid(editor, "asset_pinout.csv", "csv", "MCU Pinout", "Connector J1", "blk_grid");
+    const document = toSdocDocument(editor.getJSON(), "doc_grid");
+    editor.destroy();
+
+    expect(inserted).toBe(true);
+    expect(document.content.find((node) => node.type === "dataGrid")?.attrs).toEqual({
+      id: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      title: "MCU Pinout",
+      caption: "Connector J1"
+    });
+    expect(JSON.stringify(document)).not.toContain("pin,signal");
     expect(validateDocument(document).ok).toBe(true);
   });
 });

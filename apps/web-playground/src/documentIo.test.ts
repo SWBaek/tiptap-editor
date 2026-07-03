@@ -110,6 +110,36 @@ describe("createSdocPayload", () => {
     expect(container.derived?.["plain.md"]).toContain("asset_architecture.drawio");
   });
 
+  it("creates a .sdoc with referenced dataGrid source assets", async () => {
+    const dataGridDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_grid" },
+      content: [
+        {
+          type: "dataGrid",
+          attrs: {
+            id: "blk_grid",
+            sourceAssetId: "asset_pinout.csv",
+            format: "csv",
+            title: "MCU Pinout"
+          }
+        }
+      ]
+    };
+
+    const payload = await createSdocPayload(dataGridDocument, metadata, new Date("2026-07-01T00:00:00.000Z"), {
+      "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC"),
+      "asset_unused.csv": new TextEncoder().encode("unused")
+    });
+    const container = await unpackSdoc(payload.bytes);
+
+    expect(Object.keys(container.assets ?? {})).toEqual(["asset_pinout.csv"]);
+    expect(container.document).toEqual(dataGridDocument);
+    expect(container.derived?.["plain.md"]).toContain("asset_pinout.csv");
+    expect(container.derived?.["plain.md"]).not.toContain("pin,signal");
+  });
+
   it("sanitizes filenames", () => {
     expect(safeFilename('  A:B/C*D?  ')).toBe("A-B-C-D-");
     expect(safeFilename("   ")).toBe("document");

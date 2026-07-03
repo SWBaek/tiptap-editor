@@ -370,6 +370,9 @@ function renderPptxBlock(slide: PptxSlide, node: SDocNode, options: PptxExportOp
     case "table":
       return renderPptxTable(slide, node, y);
 
+    case "dataGrid":
+      return renderPptxPlaceholder(slide, formatDataGridLabel(node), y);
+
     case "figure": {
       const assetId = typeof node.attrs?.assetId === "string" ? node.attrs.assetId : "";
       const caption = getPlainText(node).trim();
@@ -617,6 +620,9 @@ function renderBlock(node: SDocNode, references: Map<string, ReferenceTarget>, d
     case "table":
       return renderMarkdownTable(node, references);
 
+    case "dataGrid":
+      return renderMarkdownDataGrid(node);
+
     case "bulletList":
       return (node.content ?? []).map((child) => renderListItem(child, references, "-", depth)).join("\n");
 
@@ -769,6 +775,9 @@ ${indentHtml(renderHtmlChildrenAsBlocks(node, references, options, depth), 2)}
     case "table":
       return renderHtmlTable(node, references, options);
 
+    case "dataGrid":
+      return renderHtmlDataGrid(node);
+
     case "bulletList":
       return `<ul>${renderHtmlListItems(node, references, options, depth)}</ul>`;
 
@@ -898,6 +907,56 @@ function renderMarkdownTable(node: SDocNode, references: Map<string, ReferenceTa
     markdownAlignmentSeparator(getColumnAlign(tableCells, columnIndex))
   );
   return [header, separator, ...body].map((row) => `| ${row.join(" | ")} |`).join("\n");
+}
+
+function renderMarkdownDataGrid(node: SDocNode): string {
+  const title = getDataGridTitle(node);
+  const caption = getDataGridCaption(node);
+  const sourceAssetId = getDataGridSourceAssetId(node);
+  const format = getDataGridFormat(node);
+  const lines = [`> Data grid: ${title}`, `> Source: assets/${sourceAssetId}`, `> Format: ${format}`];
+  if (caption) {
+    lines.push(`> Caption: ${caption}`);
+  }
+  return lines.join("\n");
+}
+
+function renderHtmlDataGrid(node: SDocNode): string {
+  const id = getNodeId(node) ?? "";
+  const title = getDataGridTitle(node);
+  const caption = getDataGridCaption(node);
+  const sourceAssetId = getDataGridSourceAssetId(node);
+  const format = getDataGridFormat(node);
+  const captionHtml = caption ? `\n  <figcaption>${escapeHtml(caption)}</figcaption>` : "";
+  return `<figure id="${escapeHtmlAttribute(id)}" class="sdoc-data-grid" data-source-asset-id="${escapeHtmlAttribute(sourceAssetId)}" data-format="${escapeHtmlAttribute(format)}">
+  <div class="sdoc-data-grid-title">${escapeHtml(title)}</div>
+  <div class="sdoc-data-grid-source">Source: assets/${escapeHtml(sourceAssetId)}</div>${captionHtml}
+</figure>`;
+}
+
+function formatDataGridLabel(node: SDocNode): string {
+  const lines = [`Data grid: ${getDataGridTitle(node)}`, `Source: ${getDataGridSourceAssetId(node)}`, `Format: ${getDataGridFormat(node)}`];
+  const caption = getDataGridCaption(node);
+  if (caption) {
+    lines.push(caption);
+  }
+  return lines.join("\n");
+}
+
+function getDataGridTitle(node: SDocNode): string {
+  return typeof node.attrs?.title === "string" && node.attrs.title.trim().length > 0 ? node.attrs.title.trim() : "Untitled data grid";
+}
+
+function getDataGridCaption(node: SDocNode): string {
+  return typeof node.attrs?.caption === "string" ? node.attrs.caption.trim() : "";
+}
+
+function getDataGridSourceAssetId(node: SDocNode): string {
+  return typeof node.attrs?.sourceAssetId === "string" ? node.attrs.sourceAssetId : "";
+}
+
+function getDataGridFormat(node: SDocNode): string {
+  return node.attrs?.format === "json" ? "json" : "csv";
 }
 
 function escapeMarkdownTableCell(value: string): string {
@@ -1104,6 +1163,15 @@ const PUBLISH_HTML_CSS = `    :root {
       text-align: center;
     }
 
+    .sdoc-data-grid-title {
+      font-weight: 700;
+    }
+
+    .sdoc-data-grid-source {
+      color: #586875;
+      font-size: 0.9rem;
+    }
+
     .sdoc-callout {
       margin: 18px 0;
       padding: 12px 14px;
@@ -1190,7 +1258,8 @@ const PUBLISH_HTML_CSS = `    :root {
       .sdoc-callout,
       .sdoc-equation-block,
       .sdoc-diagram,
-      .sdoc-diagram-figure {
+      .sdoc-diagram-figure,
+      .sdoc-data-grid {
         break-inside: avoid;
         page-break-inside: avoid;
       }

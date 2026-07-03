@@ -358,6 +358,50 @@ describe("validateDocument", () => {
     expect(result.issues.some((issue) => issue.message.includes("unsupported node type: drawioDiagram"))).toBe(true);
   });
 
+  it("accepts asset-backed dataGrid nodes without embedded grid rows", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_test" },
+      content: [
+        {
+          type: "dataGrid",
+          attrs: {
+            id: "blk_grid",
+            sourceAssetId: "asset_pinout.csv",
+            format: "csv",
+            title: "MCU Pinout",
+            caption: "Connector J1 signal assignment"
+          }
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(true);
+    expect(getPlainText(document.content[0])).toContain("MCU Pinout");
+    expect(getPlainText(document.content[0])).toContain("asset_pinout.csv");
+  });
+
+  it("rejects dataGrid nodes that embed raw rows in document.json", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_test" },
+      content: [
+        {
+          type: "dataGrid",
+          attrs: { id: "blk_grid", sourceAssetId: "asset_pinout.csv", format: "csv" },
+          content: [{ type: "text", text: "pin,signal\n1,VCC" }]
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("dataGrid content must not store grid rows"))).toBe(true);
+  });
+
   it("rejects marks outside the v1 scope", () => {
     const document = {
       schemaVersion: 1,

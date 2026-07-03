@@ -24,6 +24,7 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 | `figure` | yes | Phase 2 asset-backed image with caption; `assetId` required |
 | `equationBlock` | yes | Phase 2 block math; `latex` source required |
 | `diagram` | yes | Mermaid source diagram or Draw.io asset-backed diagram |
+| `dataGrid` | yes | Asset-backed CSV/JSON dataset block; `sourceAssetId` and `format` required |
 | `table` | yes | Phase 2 simple table container |
 | `tableRow` | yes | Table row; children are `tableCell` or `tableHeader` |
 | `tableCell` | yes | Table body cell; contains block content |
@@ -110,6 +111,25 @@ Draw.io diagrams use the same `diagram` node, but the editable Draw.io source is
   }
 }
 ```
+
+## Phase 5 Data Grid Shape
+
+Large engineering datasets use `dataGrid` instead of expanding into canonical spreadsheet rows. The CSV/JSON source is stored in `.sdoc/assets/`; `document.json` stores only the asset reference and semantic metadata.
+
+```json
+{
+  "type": "dataGrid",
+  "attrs": {
+    "id": "blk_grid",
+    "sourceAssetId": "asset_pinout.csv",
+    "format": "csv",
+    "title": "MCU Pinout",
+    "caption": "Connector J1 signal assignment"
+  }
+}
+```
+
+`format` must be `csv` or `json`. `title` and `caption` are optional but must be non-empty when present. Grid rows, active cell, scroll position, sort/filter UI state, computed caches, and column layout state must not be stored in `document.json`.
 
 ## Phase 2 Table Shape
 

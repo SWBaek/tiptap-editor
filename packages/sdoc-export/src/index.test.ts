@@ -147,6 +147,14 @@ describe("exportMarkdown", () => {
     expect(markdown).toContain("_Draw.io source: assets/asset_architecture.drawio_");
     expect(markdown).not.toContain("<mxfile");
   });
+
+  it("exports dataGrid nodes as asset-backed references", () => {
+    const markdown = exportMarkdown(createDataGridDocument());
+
+    expect(markdown).toContain("> Data grid: MCU Pinout");
+    expect(markdown).toContain("> Source: assets/asset_pinout.csv");
+    expect(markdown).not.toContain("pin,signal");
+  });
 });
 
 describe("exportHtml", () => {
@@ -168,6 +176,15 @@ describe("exportHtml", () => {
     expect(html).toContain("@page");
     expect(html).toContain("break-inside: avoid;");
     expect(html).toContain('a[href^="http"]::after');
+  });
+
+  it("exports dataGrid nodes without embedding raw source data", () => {
+    const html = exportHtml(createDataGridDocument());
+
+    expect(html).toContain('class="sdoc-data-grid"');
+    expect(html).toContain('data-source-asset-id="asset_pinout.csv"');
+    expect(html).toContain("MCU Pinout");
+    expect(html).not.toContain("pin,signal");
   });
 
   it("escapes HTML text and blocks unsafe link hrefs", () => {
@@ -398,6 +415,26 @@ function createDrawioDocument(): SDocDocument {
           kind: "drawio",
           sourceAssetId: "asset_architecture.drawio",
           previewAssetId: "asset_architecture.svg"
+        }
+      }
+    ]
+  };
+}
+
+function createDataGridDocument(): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_grid" },
+    content: [
+      {
+        type: "dataGrid",
+        attrs: {
+          id: "blk_grid",
+          sourceAssetId: "asset_pinout.csv",
+          format: "csv",
+          title: "MCU Pinout",
+          caption: "Connector J1 signal assignment"
         }
       }
     ]

@@ -50,6 +50,7 @@ import {
   BlockIdExtension,
   CalloutNode,
   CrossReferenceNode,
+  DataGridNode,
   DiagramNode,
   EquationBlockNode,
   FigureNode,
@@ -58,6 +59,7 @@ import {
   InlineEquationNode,
   initialContent,
   insertEquationBlock,
+  insertDataGrid,
   getSelectedBlockHumanIdTarget,
   insertInlineEquation,
   insertMermaidDiagram,
@@ -148,6 +150,7 @@ const sdocExtensions = [
   InlineEquationNode,
   EquationBlockNode,
   DiagramNode,
+  DataGridNode,
   ...TableExtensions,
   FigureNode,
   CalloutNode,
@@ -178,6 +181,7 @@ export function App() {
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const dataGridInputRef = useRef<HTMLInputElement>(null);
   const editorPaneRef = useRef<HTMLElement>(null);
   const highlightTimeoutRef = useRef<number | null>(null);
 
@@ -543,6 +547,35 @@ export function App() {
     const inserted = insertSimpleTable(editor);
     setActiveTab("json");
     setStatusMessage(inserted ? "Inserted table" : "Cannot insert table");
+  }
+
+  async function insertDataGridFile(file: File) {
+    try {
+      const format = getDataGridFormatFromFile(file);
+      if (!format) {
+        setStatusMessage(`Unsupported data grid type: ${file.type || file.name}`);
+        return;
+      }
+
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const assetId = createDataGridAssetId(file.name, file.type);
+      const title = titleFromFilename(file.name);
+      const inserted = insertDataGrid(editor, assetId, format, title, `${file.name} source asset`);
+      if (!inserted) {
+        setStatusMessage(`Cannot insert data grid: ${file.name}`);
+        return;
+      }
+
+      setAssets((current) => ({ ...current, [assetId]: bytes }));
+      setActiveTab("json");
+      setStatusMessage(`Inserted data grid ${file.name}`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (dataGridInputRef.current) {
+        dataGridInputRef.current.value = "";
+      }
+    }
   }
 
   function runTableCommand(command: AdvancedTableCommand, successMessage: string) {
@@ -975,6 +1008,9 @@ export function App() {
           <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={insertTable}>
             <TableIcon size={18} />
           </ToolbarButton>
+          <ToolbarButton title="Insert data grid" active={editor.isActive("dataGrid")} onClick={() => dataGridInputRef.current?.click()}>
+            <FileJson size={18} />
+          </ToolbarButton>
           <ToolbarButton title="Add row after" active={editor.isActive("table")} onClick={() => runTableCommand("addRowAfter", "Added table row")}>
             <Rows3 size={18} />
           </ToolbarButton>
@@ -1047,6 +1083,19 @@ export function App() {
               const file = event.target.files?.[0];
               if (file) {
                 void insertImageFile(file);
+              }
+            }}
+          />
+          <input
+            ref={dataGridInputRef}
+            className="file-input"
+            type="file"
+            aria-label="Insert data grid file"
+            accept=".csv,.json,text/csv,application/json"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                void insertDataGridFile(file);
               }
             }}
           />
@@ -2313,6 +2362,32 @@ function createImageAssetId(filename: string, mimeType: string): string {
   return `${createAssetId()}${getImageExtension(filename, mimeType)}`;
 }
 
+function createDataGridAssetId(filename: string, mimeType: string): string {
+  return `${createAssetId()}${getDataGridExtension(filename, mimeType)}`;
+}
+
+function getDataGridExtension(filename: string, mimeType: string): ".csv" | ".json" {
+  const extension = filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+  if (extension === "json") {
+    return ".json";
+  }
+  if (extension === "csv") {
+    return ".csv";
+  }
+  return mimeType === "application/json" ? ".json" : ".csv";
+}
+
+function getDataGridFormatFromFile(file: File): "csv" | "json" | null {
+  const extension = file.name.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+  if (extension === "csv" || file.type === "text/csv") {
+    return "csv";
+  }
+  if (extension === "json" || file.type === "application/json") {
+    return "json";
+  }
+  return null;
+}
+
 function getImageExtension(filename: string, mimeType: string): string {
   const extension = filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
   if (extension && ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) {
@@ -2339,6 +2414,12 @@ function captionFromFilename(filename: string): string {
   const withoutExtension = filename.replace(/\.[^.]+$/, "");
   const caption = withoutExtension.replace(/[_-]+/g, " ").trim();
   return caption.length > 0 ? caption : "Image caption";
+}
+
+function titleFromFilename(filename: string): string {
+  const withoutExtension = filename.replace(/\.[^.]+$/, "");
+  const title = withoutExtension.replace(/[_-]+/g, " ").trim();
+  return title.length > 0 ? title : "Data grid";
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -2382,6 +2463,10 @@ function mimeTypeFromAssetId(assetId: string): string {
       return "image/webp";
     case "svg":
       return "image/svg+xml";
+    case "csv":
+      return "text/csv";
+    case "json":
+      return "application/json";
     default:
       return "application/octet-stream";
   }

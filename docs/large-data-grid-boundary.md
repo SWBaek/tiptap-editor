@@ -4,9 +4,9 @@ Created: 2026-07-03
 
 ## Decision
 
-Small authored tables remain canonical `table` nodes. Large engineering datasets such as BOMs, pinouts, signal lists, calibration tables, parameter matrices, and spreadsheet-like review data should use a future asset-backed data grid model instead of expanding canonical tables into spreadsheet behavior.
+Small authored tables remain canonical `table` nodes. Large engineering datasets such as BOMs, pinouts, signal lists, calibration tables, parameter matrices, and spreadsheet-like review data use an asset-backed `dataGrid` node instead of expanding canonical tables into spreadsheet behavior.
 
-The future node should store source data in `.sdoc/assets/` and keep `document.json` limited to semantic references and display intent.
+The node stores source data in `.sdoc/assets/` and keeps `document.json` limited to semantic references and display intent.
 
 ## Proposed Shape
 
@@ -23,7 +23,7 @@ The future node should store source data in `.sdoc/assets/` and keep `document.j
 }
 ```
 
-`sourceAssetId` points to CSV or JSON data in `assets/`. The asset is part of the `.sdoc` container and must survive pack/unpack round trips.
+`sourceAssetId` points to CSV or JSON data in `assets/`. The asset is part of the `.sdoc` container and survives pack/unpack round trips. The schema requires `format` to be `csv` or `json`.
 
 ## Canonical Scope
 
@@ -32,7 +32,7 @@ Allowed canonical attributes should be semantic:
 - source asset reference;
 - source format such as `csv` or `json`;
 - title, caption, and optional column intent;
-- optional display hints that affect publishing, such as visible columns or max preview rows.
+- future optional display hints that affect publishing, such as visible columns or max preview rows.
 
 The following must not be stored in `document.json`:
 
@@ -45,19 +45,28 @@ The following must not be stored in `document.json`:
 
 ## Diff And Export
 
-Semantic diff should initially report data grids at block level: source asset changed, title/caption changed, or display metadata changed. Row-level CSV/JSON structural diff is deferred until the source format and merge policy are proven.
+Semantic diff reports data grids at block level: source asset changed, title changed, caption changed, format changed, or display metadata changed. Row-level CSV/JSON structural diff is deferred until the source format and merge policy are proven.
 
-Markdown, HTML, PDF, and slide export may render a bounded preview table plus a source asset label. AI/RAG export should include the title, caption, column intent, and optionally sampled rows or summarized chunks, but should avoid dumping huge raw data into every chunk by default.
+Markdown, HTML, PDF, and slide export render a source asset label and semantic title/caption. Bounded preview rows are deferred. AI/RAG export includes title, caption, and source asset reference via plain text, but does not dump raw source rows by default.
 
 ## UI Scope
 
-The editor should show a preview optimized for scanning, not a full spreadsheet. Editing source data can start as import/replace/export. Rich grid editing, validation rules, and column typing require a separate implementation slice.
+The editor shows a compact asset-backed preview optimized for scanning, not a full spreadsheet. The web playground can import CSV/JSON assets and insert a `dataGrid` node. Rich grid editing, validation rules, and column typing require a separate implementation slice.
+
+## Implemented V1 Slice
+
+- `dataGrid` is a block-level node with stable `attrs.id`.
+- Required attrs: `sourceAssetId`, `format`.
+- Optional attrs: `title`, `caption`.
+- `.sdoc` pack/unpack validates referenced source assets.
+- Markdown, HTML, PDF, slide, AI/RAG, and semantic diff treat the grid as an asset-backed dataset block.
+- Browser playground import stores CSV/JSON bytes in `.sdoc/assets/` and keeps raw rows out of `document.json`.
 
 ## Deferred Work
 
-- `dataGrid` schema implementation;
 - CSV/JSON parser and validation rules;
 - row-level semantic diff and merge;
+- bounded preview row rendering;
 - full spreadsheet editing;
 - formulas and computed columns;
 - external PLM/requirements database connectors.

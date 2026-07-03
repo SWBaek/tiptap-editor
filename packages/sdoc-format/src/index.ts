@@ -262,6 +262,10 @@ export function collectReferencedAssetIds(
       assetIds.add(assetId);
     }
 
+    if (node.type === "dataGrid" && typeof node.attrs?.sourceAssetId === "string" && node.attrs.sourceAssetId.length > 0) {
+      assetIds.add(node.attrs.sourceAssetId);
+    }
+
     node.content?.forEach(visit);
   }
 

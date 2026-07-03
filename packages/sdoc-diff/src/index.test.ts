@@ -253,6 +253,20 @@ describe("diffDocuments", () => {
     ]);
   });
 
+  it("summarizes dataGrid asset reference changes without row-level diffing", () => {
+    const oldGridDocument = createDataGridDocument("asset_pinout.csv", "MCU Pinout");
+    const newGridDocument = createDataGridDocument("asset_pinout_v2.csv", "MCU Pinout v2");
+    const modified = diffDocuments(oldGridDocument, newGridDocument).find(
+      (event) => event.kind === "modified" && event.id === "blk_grid"
+    );
+
+    expect(modified?.kind).toBe("modified");
+    expect(modified?.kind === "modified" ? modified.changes : []).toEqual([
+      'source asset changed "asset_pinout.csv" -> "asset_pinout_v2.csv"',
+      'title changed "MCU Pinout" -> "MCU Pinout v2"'
+    ]);
+  });
+
   it("summarizes human-facing id changes while matching by stable block id", () => {
     const oldReqDocument: SDocDocument = {
       schemaVersion: 1,
@@ -390,6 +404,25 @@ function createDrawioDocument(sourceAssetId: string, previewAssetId?: string): S
           kind: "drawio",
           sourceAssetId,
           ...(previewAssetId ? { previewAssetId } : {})
+        }
+      }
+    ]
+  };
+}
+
+function createDataGridDocument(sourceAssetId: string, title: string): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_grid" },
+    content: [
+      {
+        type: "dataGrid",
+        attrs: {
+          id: "blk_grid",
+          sourceAssetId,
+          format: "csv",
+          title
         }
       }
     ]

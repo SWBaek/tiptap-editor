@@ -24,6 +24,16 @@ export interface ChangeReviewModel {
   sections: ChangeReviewSection[];
 }
 
+export interface SideBySideDiffRow {
+  id: string;
+  kind: VisualDiffOverlayItem["kind"];
+  label: string;
+  nodeType: string;
+  baselineText: string;
+  currentText: string;
+  detail: string;
+}
+
 export interface LocalHistoryEntry {
   id: string;
   createdAt: string;
@@ -234,6 +244,25 @@ export function createChangeReview(documentLines: string[], metadataLines: strin
     label: total === 0 ? "No changes" : `${total} change${total === 1 ? "" : "s"}`,
     sections
   };
+}
+
+export function createSideBySideDiffRows(events: SDocDiffEvent[], baseline: SDocDocument, current: SDocDocument): SideBySideDiffRow[] {
+  const baselineBlocks = createBlockPreviewMap(baseline);
+  const currentBlocks = createBlockPreviewMap(current);
+
+  return events.map((event) => {
+    const baselineBlock = baselineBlocks.get(event.id);
+    const currentBlock = currentBlocks.get(event.id);
+    return {
+      id: event.id,
+      kind: event.kind,
+      label: getVisualDiffLabel(event.kind),
+      nodeType: event.nodeType,
+      baselineText: getBaselineDiffText(event, baselineBlock),
+      currentText: getCurrentDiffText(event, currentBlock),
+      detail: getVisualDiffDetail(event)
+    };
+  });
 }
 
 export function createVisualDiffOverlayItems(events: SDocDiffEvent[]): VisualDiffOverlayItem[] {
@@ -739,6 +768,57 @@ function getVisualDiffDetail(event: SDocDiffEvent): string {
     case "reference-broken":
       return `Missing target ${event.targetId} at ${event.path}`;
   }
+}
+
+interface BlockPreview {
+  text: string;
+}
+
+function createBlockPreviewMap(document: SDocDocument): Map<string, BlockPreview> {
+  const blocks = new Map<string, BlockPreview>();
+
+  function visit(node: SDocNode): void {
+    if (isBlockNode(node)) {
+      const id = getNodeId(node);
+      if (id) {
+        blocks.set(id, { text: getReadableBlockText(node) });
+      }
+    }
+
+    node.content?.forEach(visit);
+  }
+
+  document.content.forEach(visit);
+  return blocks;
+}
+
+function getReadableBlockText(node: SDocNode): string {
+  const text = getPlainText(node).replace(/\s+/g, " ").trim();
+  if (text.length > 0) {
+    return text;
+  }
+
+  return `${node.type} ${getNodeId(node) ?? ""}`.trim();
+}
+
+function getBaselineDiffText(event: SDocDiffEvent, block: BlockPreview | undefined): string {
+  if (event.kind === "added" || event.kind === "reference-broken") {
+    return "Not present";
+  }
+
+  return block?.text ?? "Not available";
+}
+
+function getCurrentDiffText(event: SDocDiffEvent, block: BlockPreview | undefined): string {
+  if (event.kind === "deleted") {
+    return "Not present";
+  }
+
+  if (event.kind === "reference-broken") {
+    return `Missing target ${event.targetId}`;
+  }
+
+  return block?.text ?? "Not available";
 }
 
 function getReviewActionOptions(item: VisualDiffOverlayItem): ReviewActionOption[] {

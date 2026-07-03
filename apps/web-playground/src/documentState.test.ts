@@ -3,6 +3,7 @@ import {
   addLocalHistoryEntry,
   createChangeReview,
   createReviewActionPlan,
+  createSideBySideDiffRows,
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
@@ -95,6 +96,44 @@ describe("document state helpers", () => {
       label: "No changes",
       sections: []
     });
+  });
+
+  it("projects semantic events to side-by-side diff rows without storing UI state", () => {
+    const baseline: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_review" },
+      content: [
+        { type: "paragraph", attrs: { id: "blk_body" }, content: [{ type: "text", text: "Old body" }] },
+        { type: "paragraph", attrs: { id: "blk_removed" }, content: [{ type: "text", text: "Removed body" }] }
+      ]
+    };
+    const current: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_review" },
+      content: [
+        { type: "paragraph", attrs: { id: "blk_body" }, content: [{ type: "text", text: "New body" }] },
+        { type: "paragraph", attrs: { id: "blk_added" }, content: [{ type: "text", text: "Added body" }] }
+      ]
+    };
+    const rows = createSideBySideDiffRows(
+      [
+        { kind: "modified", id: "blk_body", nodeType: "paragraph", path: "doc[0]/blk_body", label: '"Body"', changes: ["text changed"] },
+        { kind: "deleted", id: "blk_removed", nodeType: "paragraph", path: "doc[1]/blk_removed", label: '"Removed"' },
+        { kind: "added", id: "blk_added", nodeType: "paragraph", path: "doc[1]/blk_added", label: '"Added"' },
+        { kind: "reference-broken", id: "ref_missing", nodeType: "crossReference", path: "doc[2]/ref_missing", label: '"Missing"', targetId: "blk_missing" }
+      ],
+      baseline,
+      current
+    );
+
+    expect(rows).toEqual([
+      expect.objectContaining({ id: "blk_body", kind: "modified", baselineText: "Old body", currentText: "New body" }),
+      expect.objectContaining({ id: "blk_removed", kind: "deleted", baselineText: "Removed body", currentText: "Not present" }),
+      expect.objectContaining({ id: "blk_added", kind: "added", baselineText: "Not present", currentText: "Added body" }),
+      expect.objectContaining({ id: "ref_missing", kind: "reference-broken", baselineText: "Not present", currentText: "Missing target blk_missing" })
+    ]);
   });
 
   it("projects semantic diff events to review items and runtime overlay css without canonical state", () => {

@@ -88,6 +88,7 @@ import {
   addLocalHistoryEntry,
   createChangeReview,
   createReviewActionPlan,
+  createSideBySideDiffRows,
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
@@ -119,6 +120,7 @@ import {
   type SectionFoldRange,
   type ReviewActionKind,
   type ReviewActionPlanItem,
+  type SideBySideDiffRow,
   type VisualDiffFilterCounts,
   type VisualDiffFilterKind,
   type VisualDiffOverlayItem
@@ -250,6 +252,10 @@ export function App() {
   const metadataDiffLines = renderMetadataDiff(metadata, reviewBaseMetadata);
   const diffPreview = renderDiffPreview(documentDiffLines, metadataDiffLines);
   const changeReview = createChangeReview(documentDiffLines, metadataDiffLines);
+  const sideBySideDiffRows = useMemo(
+    () => createSideBySideDiffRows(documentDiffEvents, reviewBaseDocument, document),
+    [document, documentDiffEvents, reviewBaseDocument]
+  );
   const referenceDiagnostics = createReferenceDiagnostics(document);
   const requirementTraceability = useMemo(() => createRequirementTraceability(document), [document]);
   const visualDiffOverlayItems = useMemo(() => createVisualDiffOverlayItems(documentDiffEvents), [documentDiffEvents]);
@@ -1239,7 +1245,13 @@ export function App() {
               <TabButton label="Diff" value="diff" activeTab={activeTab} onSelect={setActiveTab} />
             </div>
             {activeTab === "diff" ? (
-              <DiffReview review={changeReview} rawPreview={diffPreview} baseLabel={reviewBaseLabel} onCompareSavedBaseline={compareSavedBaseline} />
+              <DiffReview
+                review={changeReview}
+                rawPreview={diffPreview}
+                baseLabel={reviewBaseLabel}
+                sideBySideRows={sideBySideDiffRows}
+                onCompareSavedBaseline={compareSavedBaseline}
+              />
             ) : (
               <pre className="preview-output">{preview}</pre>
             )}
@@ -1753,11 +1765,13 @@ function DiffReview({
   review,
   rawPreview,
   baseLabel,
+  sideBySideRows,
   onCompareSavedBaseline
 }: {
   review: ChangeReviewModel;
   rawPreview: string;
   baseLabel: string;
+  sideBySideRows: SideBySideDiffRow[];
   onCompareSavedBaseline: () => void;
 }) {
   return (
@@ -1789,20 +1803,47 @@ function DiffReview({
       {review.sections.length === 0 ? (
         <div className="diff-empty">No changes</div>
       ) : (
-        <div className="diff-review-sections">
-          {review.sections.map((section) => (
-            <section className="diff-review-section" key={section.title}>
-              <h3>{section.title}</h3>
-              <ul className="diff-review-list">
-                {section.lines.map((line) => (
-                  <li key={`${section.title}-${line}`}>
-                    <span />
-                    <p>{line}</p>
-                  </li>
+        <div className="diff-review-body">
+          {sideBySideRows.length > 0 && (
+            <section className="diff-side-by-side" aria-label="Side-by-side document diff">
+              <h3>Side-by-side document diff</h3>
+              <div className="diff-side-by-side-header" aria-hidden="true">
+                <span>Change</span>
+                <span>Baseline</span>
+                <span>Current</span>
+              </div>
+              <div className="diff-side-by-side-rows">
+                {sideBySideRows.map((row) => (
+                  <article className={`diff-side-by-side-row ${row.kind}`} key={`${row.kind}-${row.id}`}>
+                    <div className="diff-side-change">
+                      <span className={`review-event-kind ${row.kind}`}>{row.label}</span>
+                      <strong>{row.nodeType}</strong>
+                      <code>{row.id}</code>
+                      <small>{row.detail}</small>
+                    </div>
+                    <pre>{row.baselineText}</pre>
+                    <pre>{row.currentText}</pre>
+                  </article>
                 ))}
-              </ul>
+              </div>
             </section>
-          ))}
+          )}
+
+          <div className="diff-review-sections">
+            {review.sections.map((section) => (
+              <section className="diff-review-section" key={section.title}>
+                <h3>{section.title}</h3>
+                <ul className="diff-review-list">
+                  {section.lines.map((line) => (
+                    <li key={`${section.title}-${line}`}>
+                      <span />
+                      <p>{line}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
         </div>
       )}
 

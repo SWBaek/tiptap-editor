@@ -84,6 +84,8 @@ Overlay state, reviewer cursor state, expanded/collapsed diff panels, and accept
 
 나중에 visual diff UI는 같은 event model을 사용한다. UI 전용 포맷을 별도로 만들지 않는다.
 
+Side-by-side document diff is also a projection of `SDocDiffEvent` plus baseline/current block previews by stable ID. It is not a second diff source and does not change `document.json`.
+
 ## Accept/Reject Apply
 
 The headless review apply path uses the same semantic diff events. Before applying an action, it recomputes the diff between the baseline and current document and refuses stale events.

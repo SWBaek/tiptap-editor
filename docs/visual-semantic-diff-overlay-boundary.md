@@ -66,12 +66,12 @@ Extended on 2026-07-04:
 - `docs/review-accept-reject-boundary.md` defines accept/reject as controlled edit semantics over normalized SDoc documents.
 - A runtime-only review action plan classifies accept/reject availability from projected semantic review items.
 - Broken reference events are routed to the References repair workflow instead of direct accept/reject.
-- Actual apply/revert commands remain deferred until stale-baseline and validation behavior are implemented.
+- Single-event and visible-event batch accept/reject actions apply through headless semantic diff helpers with stale-event protection.
+- The Diff tab renders side-by-side baseline/current block previews from the same semantic diff events and keeps the raw textual diff for debugging.
 
 ## Deferred Work
 
-- side-by-side document diff;
 - full inline word decoration from token spans;
-- accept/reject apply and revert commands;
+- advanced conflict resolution UI for partially applied batches;
 - comment threads and reviewer assignments;
 - Git-backed PR review integration.

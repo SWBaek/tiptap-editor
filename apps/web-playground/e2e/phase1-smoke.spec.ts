@@ -106,6 +106,11 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await reviewPanel.locator(".review-event-list button").filter({ hasText: "Modified paragraph" }).click();
   await expect(page.locator(".status-note")).toContainText("Focused Modified paragraph");
   await expect(page.locator(".editor-node-highlight")).toHaveAttribute("data-highlighted-node-id", "blk_intro");
+  await reviewPanel.getByRole("button", { name: "Show diff" }).click();
+  const sideBySideDiff = page.getByLabel("Side-by-side document diff");
+  await expect(sideBySideDiff).toContainText("Modified");
+  await expect(sideBySideDiff).toContainText("This document describes the initial SDoc editor shell.");
+  await expect(sideBySideDiff).toContainText("Updated.");
   await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
   expect(await readPreviewDocument(page)).toEqual(beforeReviewSelection);
 

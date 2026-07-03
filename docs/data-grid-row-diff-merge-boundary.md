@@ -49,11 +49,22 @@ The editor should present row diff as a review tool attached to the `dataGrid` b
 - A boundary document defines row identity, diff event shape, merge semantics, and deferred work.
 - `docs/diff-model.md` states that row-level grid diff is an asset projection, not raw line diff.
 - `docs/large-data-grid-boundary.md` links this boundary from the deferred row diff section.
-- Future implementation adds unit coverage for keyed CSV and JSON rows, duplicate keys, no-key fallback, stale merge refusal, and asset-only merge writes.
+- Headless row diff projection adds unit coverage for keyed CSV and JSON rows, duplicate keys, and no-key fallback.
+- Future guarded merge apply adds unit coverage for stale merge refusal and asset-only merge writes.
+
+## Implemented V1 Slice
+
+- `createDataGridRowDiff` creates a headless `DataGridRowDiff` projection for two CSV/JSON asset sources.
+- Explicit `keyColumns` are honored when provided as runtime review options.
+- Without explicit keys, review projection may infer a shared `id`, `key`, or `name` column.
+- Missing keys and duplicate keys are reported as conflicts.
+- If no reliable key exists, the function refuses row-level diff instead of comparing raw line numbers.
+- JSON row diff currently supports object-row arrays. JSON array-row diff is deferred until explicit column/key metadata exists.
 
 ## Deferred Work
 
 - authored `keyColumns` schema extension;
+- guarded merge apply that writes accepted row changes through the asset layer;
 - visual side-by-side cell diff UI;
 - multi-user conflict resolution;
 - formula-aware spreadsheet merge;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createDataGridDiagnostics,
+  createDataGridRowDiff,
   createEmptySdocContainer,
   isLikelyZipContainer,
   normalizeDocument,
@@ -291,6 +292,90 @@ describe("createDataGridDiagnostics", () => {
     });
     expect(malformed.errorCount).toBe(1);
     expect(malformed.summaries[0].issues[0].message).toContain("Invalid JSON data grid");
+  });
+});
+
+describe("createDataGridRowDiff", () => {
+  it("creates keyed CSV row and cell diff events without raw line matching", () => {
+    const diff = createDataGridRowDiff({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      oldSource: "pin,signal,bank\n1,VCC,A\n2,GND,A\n3,GPIO,B",
+      newSource: "pin,signal,bank\n1,VCC,A\n2,GROUND,A\n4,UART,C",
+      keyColumns: ["pin"]
+    });
+
+    expect(diff).toMatchObject({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      keyColumns: ["pin"],
+      hasReliableKey: true,
+      oldRowCount: 3,
+      newRowCount: 3
+    });
+    expect(diff.events).toEqual([
+      expect.objectContaining({ kind: "cell-modified", rowKey: "2", column: "signal", oldValue: "GND", newValue: "GROUND" }),
+      expect.objectContaining({ kind: "row-deleted", rowKey: "3" }),
+      expect.objectContaining({ kind: "row-added", rowKey: "4" })
+    ]);
+  });
+
+  it("infers JSON object row keys from shared id columns for review projection", () => {
+    const diff = createDataGridRowDiff({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_requirements.json",
+      format: "json",
+      oldSource: JSON.stringify([
+        { id: "REQ-1", status: "draft" },
+        { id: "REQ-2", status: "approved" }
+      ]),
+      newSource: JSON.stringify([
+        { id: "REQ-1", status: "approved" },
+        { id: "REQ-3", status: "draft" }
+      ])
+    });
+
+    expect(diff.keyColumns).toEqual(["id"]);
+    expect(diff.events).toEqual([
+      expect.objectContaining({ kind: "cell-modified", rowKey: "REQ-1", column: "status" }),
+      expect.objectContaining({ kind: "row-deleted", rowKey: "REQ-2" }),
+      expect.objectContaining({ kind: "row-added", rowKey: "REQ-3" })
+    ]);
+  });
+
+  it("refuses row-level diff when no reliable row key exists", () => {
+    const diff = createDataGridRowDiff({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_matrix.csv",
+      format: "csv",
+      oldSource: "signal,bank\nVCC,A",
+      newSource: "signal,bank\nVCC,B"
+    });
+
+    expect(diff.hasReliableKey).toBe(false);
+    expect(diff.events).toEqual([
+      expect.objectContaining({
+        kind: "conflict",
+        severity: "error",
+        message: "No reliable row key found; row-level diff requires explicit keyColumns or a shared id/key/name column"
+      })
+    ]);
+  });
+
+  it("reports duplicate keyed rows as conflicts instead of mergeable changes", () => {
+    const diff = createDataGridRowDiff({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      oldSource: "pin,signal\n1,VCC\n1,GND",
+      newSource: "pin,signal\n1,VCC",
+      keyColumns: ["pin"]
+    });
+
+    expect(diff.hasReliableKey).toBe(true);
+    expect(diff.events).toEqual([expect.objectContaining({ kind: "conflict", severity: "error", message: "old row 2 duplicates key pin=1" })]);
   });
 });
 

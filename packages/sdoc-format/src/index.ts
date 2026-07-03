@@ -91,6 +91,41 @@ export interface DataGridDiagnostics {
   summaries: DataGridDiagnosticSummary[];
 }
 
+export type DataGridRowDiffSeverity = "info" | "warning" | "error";
+export type DataGridRowDiffEventKind = "row-added" | "row-deleted" | "cell-modified" | "conflict";
+
+export interface DataGridRowDiffEvent {
+  kind: DataGridRowDiffEventKind;
+  severity: DataGridRowDiffSeverity;
+  gridId: string;
+  sourceAssetId: string;
+  rowKey?: string;
+  column?: string;
+  oldValue?: string;
+  newValue?: string;
+  message: string;
+}
+
+export interface CreateDataGridRowDiffOptions {
+  gridId: string;
+  sourceAssetId: string;
+  format: "csv" | "json";
+  oldSource: string;
+  newSource: string;
+  keyColumns?: string[];
+}
+
+export interface DataGridRowDiff {
+  gridId: string;
+  sourceAssetId: string;
+  format: "csv" | "json";
+  keyColumns: string[];
+  hasReliableKey: boolean;
+  oldRowCount: number;
+  newRowCount: number;
+  events: DataGridRowDiffEvent[];
+}
+
 export interface DiagramSourceStore {
   collectReferencedAssetIds(node: SDocNode): string[];
 }
@@ -319,6 +354,119 @@ export function createDataGridDiagnostics(document: SDocDocument, assets: Record
     errorCount: issues.filter((issue) => issue.severity === "error").length,
     warningCount: issues.filter((issue) => issue.severity === "warning").length,
     summaries
+  };
+}
+
+export function createDataGridRowDiff(options: CreateDataGridRowDiffOptions): DataGridRowDiff {
+  const oldGrid = parseDataGridRows(options.oldSource, options.format);
+  const newGrid = parseDataGridRows(options.newSource, options.format);
+  const events: DataGridRowDiffEvent[] = [
+    ...oldGrid.issues.map((message) => createDataGridRowDiffConflict(options, message)),
+    ...newGrid.issues.map((message) => createDataGridRowDiffConflict(options, message))
+  ];
+  const keyColumns = resolveDataGridKeyColumns(oldGrid.columns, newGrid.columns, options.keyColumns);
+
+  if (keyColumns.length === 0) {
+    return {
+      gridId: options.gridId,
+      sourceAssetId: options.sourceAssetId,
+      format: options.format,
+      keyColumns: [],
+      hasReliableKey: false,
+      oldRowCount: oldGrid.rows.length,
+      newRowCount: newGrid.rows.length,
+      events: [
+        ...events,
+        createDataGridRowDiffConflict(
+          options,
+          "No reliable row key found; row-level diff requires explicit keyColumns or a shared id/key/name column"
+        )
+      ]
+    };
+  }
+
+  const oldIndexed = indexDataGridRows(options, oldGrid.rows, keyColumns, "old");
+  const newIndexed = indexDataGridRows(options, newGrid.rows, keyColumns, "new");
+  events.push(...oldIndexed.events, ...newIndexed.events);
+
+  if (events.some((event) => event.severity === "error")) {
+    return {
+      gridId: options.gridId,
+      sourceAssetId: options.sourceAssetId,
+      format: options.format,
+      keyColumns,
+      hasReliableKey: true,
+      oldRowCount: oldGrid.rows.length,
+      newRowCount: newGrid.rows.length,
+      events
+    };
+  }
+
+  const allKeys = [...new Set([...oldIndexed.rows.keys(), ...newIndexed.rows.keys()])].sort((a, b) => a.localeCompare(b));
+  for (const rowKey of allKeys) {
+    const oldRow = oldIndexed.rows.get(rowKey);
+    const newRow = newIndexed.rows.get(rowKey);
+    if (!oldRow && newRow) {
+      events.push({
+        kind: "row-added",
+        severity: "info",
+        gridId: options.gridId,
+        sourceAssetId: options.sourceAssetId,
+        rowKey,
+        message: `Row ${rowKey} was added`
+      });
+      continue;
+    }
+
+    if (oldRow && !newRow) {
+      events.push({
+        kind: "row-deleted",
+        severity: "info",
+        gridId: options.gridId,
+        sourceAssetId: options.sourceAssetId,
+        rowKey,
+        message: `Row ${rowKey} was deleted`
+      });
+      continue;
+    }
+
+    if (!oldRow || !newRow) {
+      continue;
+    }
+
+    const columns = [...new Set([...Object.keys(oldRow), ...Object.keys(newRow)])].sort((a, b) => a.localeCompare(b));
+    for (const column of columns) {
+      if (keyColumns.includes(column)) {
+        continue;
+      }
+
+      const oldValue = oldRow[column] ?? "";
+      const newValue = newRow[column] ?? "";
+      if (oldValue !== newValue) {
+        events.push({
+          kind: "cell-modified",
+          severity: "info",
+          gridId: options.gridId,
+          sourceAssetId: options.sourceAssetId,
+          rowKey,
+          column,
+          oldValue,
+          newValue,
+          message: `Row ${rowKey} column ${column} changed`
+        });
+      }
+    }
+  }
+
+  return {
+    gridId: options.gridId,
+    sourceAssetId: options.sourceAssetId,
+    format: options.format,
+    keyColumns,
+    hasReliableKey: true,
+    oldRowCount: oldGrid.rows.length,
+    newRowCount: newGrid.rows.length,
+    events
   };
 }
 
@@ -665,6 +813,145 @@ function createJsonDataGridDiagnosticSummary(
     columnCount: 0,
     issues: [{ severity: "error", gridId, sourceAssetId, message: "JSON data grid rows must be all arrays or all objects" }]
   };
+}
+
+function parseDataGridRows(
+  source: string,
+  format: "csv" | "json"
+): { columns: string[]; rows: Array<Record<string, string>>; issues: string[] } {
+  if (format === "json") {
+    return parseJsonDataGridRows(source);
+  }
+
+  return parseCsvDataGridRows(source);
+}
+
+function parseCsvDataGridRows(source: string): { columns: string[]; rows: Array<Record<string, string>>; issues: string[] } {
+  const parsed = parseCsvRecordsWithDiagnostics(source);
+  const records = parsed.records.filter((row) => row.some((cell) => cell.trim().length > 0));
+  const issues = parsed.issues.map((issue) => issue.message);
+  if (records.length === 0) {
+    return { columns: [], rows: [], issues: [...issues, "CSV data grid is empty"] };
+  }
+
+  const [header, ...body] = records;
+  const columns = header.map((cell, index) => cell.trim() || `column_${index + 1}`);
+  const rows = body.map((row) => {
+    const record: Record<string, string> = {};
+    columns.forEach((column, index) => {
+      record[column] = row[index] ?? "";
+    });
+    return record;
+  });
+
+  return { columns, rows, issues };
+}
+
+function parseJsonDataGridRows(source: string): { columns: string[]; rows: Array<Record<string, string>>; issues: string[] } {
+  let value: unknown;
+  try {
+    value = JSON.parse(source);
+  } catch (error) {
+    return { columns: [], rows: [], issues: [`Invalid JSON data grid: ${error instanceof Error ? error.message : String(error)}`] };
+  }
+
+  if (!Array.isArray(value)) {
+    return { columns: [], rows: [], issues: ["JSON data grid root must be an array"] };
+  }
+
+  if (!value.every((row) => isPlainObject(row))) {
+    return { columns: [], rows: [], issues: ["JSON row-level diff requires object rows"] };
+  }
+
+  const objectRows = value as Array<Record<string, unknown>>;
+  const columns = [...new Set(objectRows.flatMap((row) => Object.keys(row)))];
+  const rows = objectRows.map((row) => {
+    const record: Record<string, string> = {};
+    columns.forEach((column) => {
+      record[column] = stringifyDataGridCellValue(row[column]);
+    });
+    return record;
+  });
+
+  return { columns, rows, issues: columns.length === 0 && rows.length > 0 ? ["JSON object rows do not define any columns"] : [] };
+}
+
+function resolveDataGridKeyColumns(oldColumns: string[], newColumns: string[], requestedKeyColumns: string[] | undefined): string[] {
+  const sharedColumns = new Set(oldColumns.filter((column) => newColumns.includes(column)));
+  const requested = (requestedKeyColumns ?? []).filter((column) => sharedColumns.has(column));
+  if (requested.length > 0) {
+    return requested;
+  }
+
+  for (const candidate of ["id", "key", "name"]) {
+    const match = [...sharedColumns].find((column) => column.toLowerCase() === candidate);
+    if (match) {
+      return [match];
+    }
+  }
+
+  return [];
+}
+
+function indexDataGridRows(
+  options: CreateDataGridRowDiffOptions,
+  rows: Array<Record<string, string>>,
+  keyColumns: string[],
+  side: "old" | "new"
+): { rows: Map<string, Record<string, string>>; events: DataGridRowDiffEvent[] } {
+  const indexedRows = new Map<string, Record<string, string>>();
+  const events: DataGridRowDiffEvent[] = [];
+
+  rows.forEach((row, index) => {
+    const rowKey = keyColumns.map((column) => row[column]?.trim() ?? "").join("\u001f");
+    const readableRowKey = keyColumns.map((column) => `${column}=${row[column]?.trim() ?? ""}`).join(", ");
+    if (rowKey.replace(/\u001f/g, "").length === 0) {
+      events.push(
+        createDataGridRowDiffConflict(options, `${side} row ${index + 1} has an empty key`, readableRowKey || undefined)
+      );
+      return;
+    }
+
+    if (indexedRows.has(rowKey)) {
+      events.push(createDataGridRowDiffConflict(options, `${side} row ${index + 1} duplicates key ${readableRowKey}`, readableRowKey));
+      return;
+    }
+
+    indexedRows.set(rowKey, row);
+  });
+
+  return { rows: indexedRows, events };
+}
+
+function createDataGridRowDiffConflict(
+  options: Pick<CreateDataGridRowDiffOptions, "gridId" | "sourceAssetId">,
+  message: string,
+  rowKey?: string
+): DataGridRowDiffEvent {
+  return {
+    kind: "conflict",
+    severity: "error",
+    gridId: options.gridId,
+    sourceAssetId: options.sourceAssetId,
+    rowKey,
+    message
+  };
+}
+
+function stringifyDataGridCellValue(value: unknown): string {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
 }
 
 function parseCsvRecordsWithDiagnostics(source: string): {

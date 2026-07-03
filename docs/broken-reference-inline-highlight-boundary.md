@@ -43,9 +43,19 @@ Semantic diff should keep emitting `reference-broken` for the current document. 
 
 Repair actions should prefer retargeting the existing reference to another stable block ID or deleting the reference node through normal editor commands. Automatic retargeting by matching label text is too risky for v1.
 
+## Initial Repair UX
+
+Implemented on 2026-07-03:
+
+- Broken reference diagnostics now include ranked repair candidates from existing target blocks.
+- Candidate details may include `humanId`, `anchor`, and stable block `id` so reviewers can choose a target without reading raw JSON.
+- The References Activity panel supports explicit retarget and remove actions for broken references.
+- Retargeting changes only the authored `crossReference.attrs.targetId` and label text; removing deletes only the selected `crossReference` node.
+- Candidate ranking and panel selection state remain runtime diagnostics and are not written to `document.json`.
+
 ## Deferred Work
 
-- automatic retarget suggestions;
+- project-policy-aware automatic suggestion ranking;
 - stale label inline highlights;
 - batch repair workflows;
 - reference graph visualization;

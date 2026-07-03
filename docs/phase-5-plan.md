@@ -90,7 +90,7 @@ Acceptance evidence:
 
 ## Slice 4: Review UX Hardening
 
-Status: started on 2026-07-03. Visual semantic diff review UX and requirement tagging diagnostics are implemented; broken reference repair actions remain open.
+Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, and broken reference repair actions are implemented; side-by-side or accept/reject review remains open.
 
 Productize the visual semantic diff overlay, requirement tagging diagnostics, and broken reference repair actions. These features must consume existing semantic diff and reference diagnostic sources instead of creating independent review state in canonical JSON.
 
@@ -112,10 +112,12 @@ Acceptance evidence:
 - `packages/editor-tiptap/src/index.ts` exposes selected-block `humanId` helpers so the UI can set or clear authored tags without treating them as internal identity.
 - The Traceability Activity panel lets authors set/clear selected block IDs, inspect diagnostics, and jump to tagged or missing-heading blocks.
 - Unit and Playwright coverage verify traceability diagnostics, selected-block tag editing, and runtime panel state staying out of `document.json`.
+- Broken reference diagnostics include runtime repair candidates ranked from target labels, anchors, `humanId`, and stable block IDs.
+- The References Activity panel supports explicit retarget and remove actions for broken references.
+- Unit and Playwright coverage verify retarget/remove behavior and confirm repair state is not serialized as panel/runtime state.
 
 Open work:
 
-- Broken reference repair actions beyond the existing reference-label update flow.
 - Side-by-side or accept/reject review workflow.
 
 ## Slice 5: Enterprise Authoring And Publishing

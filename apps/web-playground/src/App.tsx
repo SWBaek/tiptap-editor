@@ -90,10 +90,12 @@ import {
   isMetadataDirty,
   parseLocalHistory,
   pruneCollapsedHeadingIds,
+  removeCrossReference,
   renderBrokenReferenceRuntimeCss,
   renderDiffPreview,
   renderMetadataDiff,
   renderVisualDiffRuntimeCss,
+  retargetCrossReference,
   removeLocalHistoryEntry,
   renameLocalHistoryEntry,
   serializeLocalHistory,
@@ -617,6 +619,34 @@ export function App() {
     setStatusMessage(`Updated reference label: ${reference.targetLabel}`);
   }
 
+  function retargetBrokenReference(referenceId: string, targetId: string) {
+    const target = referenceDiagnostics.targets.find((current) => current.id === targetId);
+    if (!target) {
+      setStatusMessage(`Reference target is no longer available: ${targetId}`);
+      return;
+    }
+
+    const nextDocument = retargetCrossReference(document, referenceId, target);
+    editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
+    repairEditorBlockIds(editor);
+    openActivityPanel("references");
+    setStatusMessage(`Retargeted reference to ${target.label}`);
+  }
+
+  function removeBrokenReference(referenceId: string) {
+    const reference = referenceDiagnostics.brokenReferences.find((current) => current.id === referenceId);
+    if (!reference) {
+      setStatusMessage(`Reference is already resolved: ${referenceId}`);
+      return;
+    }
+
+    const nextDocument = removeCrossReference(document, reference.id);
+    editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
+    repairEditorBlockIds(editor);
+    openActivityPanel("references");
+    setStatusMessage(`Removed broken reference: ${reference.label}`);
+  }
+
   function tagSelectedBlock() {
     const target = getSelectedBlockHumanIdTarget(editor);
     if (!target) {
@@ -855,6 +885,8 @@ export function App() {
               highlightedNodeId={highlightedNodeId}
               onInsertReference={insertCrossReferenceToTarget}
               onRevealNode={revealEditorNode}
+              onRetargetReference={retargetBrokenReference}
+              onRemoveReference={removeBrokenReference}
               onUpdateReferenceLabel={updateReferenceLabel}
             />
           )}
@@ -1869,12 +1901,16 @@ function ReferencePanel({
   highlightedNodeId,
   onInsertReference,
   onRevealNode,
+  onRetargetReference,
+  onRemoveReference,
   onUpdateReferenceLabel
 }: {
   diagnostics: ReferenceDiagnosticsModel;
   highlightedNodeId: string | null;
   onInsertReference: (targetId: string) => void;
   onRevealNode: (nodeId: string, label: string) => void;
+  onRetargetReference: (referenceId: string, targetId: string) => void;
+  onRemoveReference: (referenceId: string) => void;
   onUpdateReferenceLabel: (referenceId: string) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -1924,6 +1960,22 @@ function ReferencePanel({
                 <button type="button" onClick={() => onRevealNode(reference.id, `reference ${reference.label}`)}>
                   Show
                 </button>
+                <div className="reference-repair-actions">
+                  {reference.repairCandidates.map((candidate) => (
+                    <button
+                      type="button"
+                      key={`${reference.id}-${candidate.targetId}`}
+                      onClick={() => onRetargetReference(reference.id, candidate.targetId)}
+                    >
+                      <span>Retarget</span>
+                      <strong>{candidate.label}</strong>
+                      <small>{candidate.detail}</small>
+                    </button>
+                  ))}
+                  <button className="reference-remove" type="button" onClick={() => onRemoveReference(reference.id)}>
+                    Remove reference
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -1976,7 +2028,7 @@ function ReferencePanel({
               <li className={highlightedNodeId === target.id ? "selected" : undefined} key={target.id}>
                 <span>{target.type}</span>
                 <strong>{target.label}</strong>
-                <code>{target.anchor ? `${target.id} / #${target.anchor}` : target.id}</code>
+                <code>{[target.humanId, target.anchor ? `#${target.anchor}` : "", target.id].filter(Boolean).join(" / ")}</code>
                 <div className="reference-target-actions">
                   <button type="button" onClick={() => onRevealNode(target.id, `target ${target.label}`)}>
                     Show
@@ -1996,7 +2048,7 @@ function ReferencePanel({
 }
 
 function targetMatchesReferenceQuery(target: ReferenceTargetSummary, query: string): boolean {
-  return [target.id, target.type, target.label, target.anchor ?? ""].some((value) => value.toLowerCase().includes(query));
+  return [target.id, target.type, target.label, target.anchor ?? "", target.humanId ?? ""].some((value) => value.toLowerCase().includes(query));
 }
 
 function getActivityPanelLabel(panel: ActivityPanel): string {

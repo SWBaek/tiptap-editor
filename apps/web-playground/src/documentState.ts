@@ -37,6 +37,14 @@ export interface ReferenceTargetSummary {
   type: string;
   label: string;
   anchor?: string;
+  humanId?: string;
+}
+
+export interface ReferenceRepairCandidate {
+  targetId: string;
+  label: string;
+  detail: string;
+  score: number;
 }
 
 export interface BrokenReference {
@@ -44,6 +52,7 @@ export interface BrokenReference {
   targetId: string;
   label: string;
   path: string;
+  repairCandidates: ReferenceRepairCandidate[];
 }
 
 export interface StaleReferenceLabel extends BrokenReference {
@@ -313,7 +322,8 @@ export function createReferenceDiagnostics(document: SDocDocument): ReferenceDia
           id,
           type: node.type,
           label: getReferenceTargetLabel(node),
-          anchor: getNodeAnchor(node)
+          anchor: getNodeAnchor(node),
+          humanId: getNodeHumanId(node)
         };
         targetById.set(id, target);
         targets.push(target);
@@ -326,7 +336,8 @@ export function createReferenceDiagnostics(document: SDocDocument): ReferenceDia
         id: typeof node.attrs?.id === "string" && node.attrs.id.length > 0 ? node.attrs.id : `${path}.crossReference`,
         targetId,
         label: getPlainText(node).trim() || targetId || "Untitled reference",
-        path
+        path,
+        repairCandidates: []
       });
     }
 
@@ -335,7 +346,12 @@ export function createReferenceDiagnostics(document: SDocDocument): ReferenceDia
 
   document.content.forEach((node, index) => visit(node, `${index}`));
 
-  const brokenReferences = references.filter((reference) => !targetById.has(reference.targetId));
+  const brokenReferences = references
+    .filter((reference) => !targetById.has(reference.targetId))
+    .map((reference) => ({
+      ...reference,
+      repairCandidates: createReferenceRepairCandidates(reference, targets)
+    }));
   const staleReferences = references.flatMap((reference) => {
     const target = targetById.get(reference.targetId);
     if (!target || reference.label === target.label) {
@@ -481,6 +497,16 @@ export function updateCrossReferenceLabel(document: SDocDocument, referenceId: s
   return { ...document, content: nextContent };
 }
 
+export function retargetCrossReference(document: SDocDocument, referenceId: string, target: ReferenceTargetSummary): SDocDocument {
+  const nextContent = document.content.map((node) => retargetCrossReferenceInNode(node, referenceId, target));
+  return { ...document, content: nextContent };
+}
+
+export function removeCrossReference(document: SDocDocument, referenceId: string): SDocDocument {
+  const nextContent = document.content.map((node) => removeCrossReferenceInNode(node, referenceId));
+  return { ...document, content: nextContent };
+}
+
 export function createLocalHistoryEntry(
   document: SDocDocument,
   metadata: SDocMetadata,
@@ -563,6 +589,70 @@ function formatReferenceDiagnosticsLabel(brokenCount: number, staleCount: number
   ]
     .filter(Boolean)
     .join(", ");
+}
+
+function createReferenceRepairCandidates(reference: BrokenReference, targets: ReferenceTargetSummary[]): ReferenceRepairCandidate[] {
+  return targets
+    .map((target) => ({
+      targetId: target.id,
+      label: target.label,
+      detail: formatReferenceTargetDetail(target),
+      score: scoreReferenceRepairCandidate(reference, target)
+    }))
+    .sort((left, right) => right.score - left.score || left.label.localeCompare(right.label) || left.targetId.localeCompare(right.targetId))
+    .slice(0, 3);
+}
+
+function scoreReferenceRepairCandidate(reference: BrokenReference, target: ReferenceTargetSummary): number {
+  const referenceText = normalizeCandidateText(reference.label);
+  const targetLabel = normalizeCandidateText(target.label);
+  const targetAnchor = normalizeCandidateText(target.anchor ?? "");
+  const targetHumanId = normalizeCandidateText(target.humanId ?? "");
+  const targetId = normalizeCandidateText(target.id);
+  let score = 0;
+
+  if (referenceText.length > 0) {
+    if (referenceText === targetLabel) {
+      score += 80;
+    } else if (targetLabel.includes(referenceText) || referenceText.includes(targetLabel)) {
+      score += 45;
+    }
+    if (referenceText === targetHumanId) {
+      score += 90;
+    }
+    if (referenceText === targetAnchor) {
+      score += 70;
+    }
+  }
+
+  const missingTarget = normalizeCandidateText(reference.targetId);
+  if (missingTarget === targetId) {
+    score += 100;
+  }
+  if (targetHumanId.length > 0 && missingTarget === targetHumanId) {
+    score += 75;
+  }
+  if (targetAnchor.length > 0 && missingTarget === targetAnchor) {
+    score += 60;
+  }
+
+  const referenceTokens = new Set(referenceText.split(/\s+/).filter(Boolean));
+  for (const token of targetLabel.split(/\s+/).filter(Boolean)) {
+    if (referenceTokens.has(token)) {
+      score += 10;
+    }
+  }
+
+  return score;
+}
+
+function formatReferenceTargetDetail(target: ReferenceTargetSummary): string {
+  const parts = [target.humanId, target.anchor ? `#${target.anchor}` : "", target.id].filter((value): value is string => !!value);
+  return parts.join(" / ");
+}
+
+function normalizeCandidateText(value: string): string {
+  return value.trim().toLowerCase();
 }
 
 function isRecommendedHumanId(value: string): boolean {
@@ -661,6 +751,33 @@ function updateCrossReferenceLabelInNode(node: SDocNode, referenceId: string, la
     };
   }
 
+  return content ? { ...node, content } : node;
+}
+
+function retargetCrossReferenceInNode(node: SDocNode, referenceId: string, target: ReferenceTargetSummary): SDocNode {
+  const content = node.content?.map((child) => retargetCrossReferenceInNode(child, referenceId, target));
+  if (node.type === "crossReference" && node.attrs?.id === referenceId) {
+    return {
+      ...node,
+      attrs: {
+        ...(node.attrs ?? {}),
+        targetId: target.id
+      },
+      content: [{ type: "text", text: target.label }]
+    };
+  }
+
+  return content ? { ...node, content } : node;
+}
+
+function removeCrossReferenceInNode(node: SDocNode, referenceId: string): SDocNode {
+  const content = node.content?.flatMap((child) => {
+    if (child.type === "crossReference" && child.attrs?.id === referenceId) {
+      return [];
+    }
+
+    return [removeCrossReferenceInNode(child, referenceId)];
+  });
   return content ? { ...node, content } : node;
 }
 

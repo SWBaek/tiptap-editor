@@ -412,6 +412,27 @@ test("detects broken cross references in the playground", async ({ page }, testI
   const document = await readPreviewDocument(page);
   expect(findFirstNodeByType(document, "crossReference").attrs?.targetId).toBe("blk_missing");
   expectUniqueIds(collectBlockIds(document));
+
+  await brokenItem.getByRole("button", { name: /Retarget.*Overview/ }).click();
+  await expect(page.locator(".status-note")).toContainText("Retargeted reference to Overview");
+  await expect(page.locator(".reference-empty")).toContainText("All references resolve");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const retargetedDocument = await readPreviewDocument(page);
+  const retargetedReference = findFirstNodeByType(retargetedDocument, "crossReference");
+  expect(retargetedReference.attrs?.targetId).toBe("blk_overview");
+  expect(findTextNode(retargetedReference, "Overview").text).toBe("Overview");
+  expect(JSON.stringify(retargetedDocument)).not.toContain("reference-repair");
+
+  await page.getByLabel("Open document file").setInputFiles(brokenReferencePath);
+  const reopenedBrokenItem = page.locator(".reference-issue-list li").filter({ hasText: "ref_missing" });
+  await reopenedBrokenItem.getByRole("button", { name: "Remove reference" }).click();
+  await expect(page.locator(".status-note")).toContainText("Removed broken reference: Missing section");
+  await expect(page.locator(".reference-empty")).toContainText("All references resolve");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const removedDocument = await readPreviewDocument(page);
+  expect(JSON.stringify(removedDocument)).not.toContain("ref_missing");
+  expect(findFirstNodeByTypeOrNull(removedDocument, "crossReference")).toBeNull();
+
   await page.getByRole("button", { name: "Settings panel" }).click();
   await expect(page.getByRole("complementary", { name: "Settings side panel" }).getByLabel("Schema status")).toContainText("Valid");
 });

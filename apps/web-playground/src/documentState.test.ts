@@ -17,10 +17,12 @@ import {
   pruneCollapsedHeadingIds,
   renameLocalHistoryEntry,
   removeLocalHistoryEntry,
+  removeCrossReference,
   renderDiffPreview,
   renderBrokenReferenceRuntimeCss,
   renderMetadataDiff,
   renderVisualDiffRuntimeCss,
+  retargetCrossReference,
   serializeLocalHistory,
   updateCrossReferenceLabel
 } from "./documentState";
@@ -167,10 +169,21 @@ describe("document state helpers", () => {
       staleCount: 0,
       label: "1 broken",
       targets: [
-        { id: "blk_target", type: "heading", label: "Target", anchor: "target" },
-        { id: "blk_refs", type: "paragraph", label: "Target and Missing", anchor: undefined }
+        { id: "blk_target", type: "heading", label: "Target", anchor: "target", humanId: undefined },
+        { id: "blk_refs", type: "paragraph", label: "Target and Missing", anchor: undefined, humanId: undefined }
       ],
-      brokenReferences: [{ id: "ref_missing", targetId: "blk_missing", label: "Missing", path: "1.2" }],
+      brokenReferences: [
+        {
+          id: "ref_missing",
+          targetId: "blk_missing",
+          label: "Missing",
+          path: "1.2",
+          repairCandidates: [
+            { targetId: "blk_refs", label: "Target and Missing", detail: "blk_refs", score: 55 },
+            { targetId: "blk_target", label: "Target", detail: "#target / blk_target", score: 0 }
+          ]
+        }
+      ],
       staleReferences: []
     });
   });
@@ -193,10 +206,52 @@ describe("document state helpers", () => {
     };
 
     expect(createReferenceDiagnostics(document).staleReferences).toEqual([
-      { id: "ref_target", targetId: "blk_target", label: "Old Target", targetLabel: "Updated Target", path: "1.0" }
+      { id: "ref_target", targetId: "blk_target", label: "Old Target", targetLabel: "Updated Target", path: "1.0", repairCandidates: [] }
     ]);
 
     expect(createReferenceDiagnostics(updateCrossReferenceLabel(document, "ref_target", "Updated Target")).staleCount).toBe(0);
+  });
+
+  it("retargets and removes broken cross references as explicit authored changes", () => {
+    const document: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_repair_reference" },
+      content: [
+        {
+          type: "heading",
+          attrs: { id: "blk_target", level: 1, anchor: "target", humanId: "REQ-OBC-012" },
+          content: [{ type: "text", text: "Updated Target" }]
+        },
+        {
+          type: "paragraph",
+          attrs: { id: "blk_refs" },
+          content: [
+            { type: "text", text: "See " },
+            { type: "crossReference", attrs: { id: "ref_missing", targetId: "blk_missing" }, content: [{ type: "text", text: "REQ-OBC-012" }] },
+            { type: "text", text: " now." }
+          ]
+        }
+      ]
+    };
+
+    const diagnostics = createReferenceDiagnostics(document);
+    expect(diagnostics.brokenReferences[0].repairCandidates[0]).toEqual({
+      targetId: "blk_target",
+      label: "Updated Target",
+      detail: "REQ-OBC-012 / #target / blk_target",
+      score: 90
+    });
+
+    const repaired = retargetCrossReference(document, "ref_missing", diagnostics.targets[0]);
+    expect(createReferenceDiagnostics(repaired).brokenCount).toBe(0);
+    expect(createReferenceDiagnostics(repaired).staleCount).toBe(0);
+    expect(JSON.stringify(repaired)).toContain('"targetId":"blk_target"');
+    expect(JSON.stringify(repaired)).toContain('"text":"Updated Target"');
+
+    const removed = removeCrossReference(document, "ref_missing");
+    expect(JSON.stringify(removed)).not.toContain("ref_missing");
+    expect(createReferenceDiagnostics(removed).referenceCount).toBe(0);
   });
 
   it("summarizes requirement traceability tags without using them as identity", () => {

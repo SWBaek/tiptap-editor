@@ -1342,6 +1342,10 @@ button {
   grid-column: 2;
 }
 
+.side-panel .reference-repair-actions {
+  grid-column: 2;
+}
+
 .traceability-panel {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
@@ -1571,6 +1575,56 @@ button {
 
 .reference-summary strong.warning {
   color: #9c6a12;
+}
+
+.reference-repair-actions {
+  display: grid;
+  gap: 6px;
+  grid-column: 3;
+  min-width: 0;
+}
+
+.reference-repair-actions button {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 8px;
+  color: #17212b;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #cfd7df;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.reference-repair-actions button:hover {
+  border-color: #4c95a3;
+}
+
+.reference-repair-actions span,
+.reference-repair-actions strong,
+.reference-repair-actions small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-repair-actions span,
+.reference-repair-actions small {
+  color: #657484;
+  font-size: 11px;
+}
+
+.reference-repair-actions strong {
+  color: #17212b;
+  font-size: 12px;
+}
+
+.reference-repair-actions .reference-remove {
+  color: #8a2f24;
+  border-color: #efc9c2;
 }
 
 .reference-empty {

@@ -67,6 +67,7 @@ npm run sdoc -- export document.sdoc --format pdf --template controlled -o docum
 - `validateWordTemplatePackage` and CLI `sdoc template validate <template.docx|template.dotx>` reject unsafe external Word template packages before future injection work.
 - `validateWordTemplateMapping` and CLI `sdoc template validate-mapping` verify required Word style IDs and content-control placeholders before future template rendering work.
 - CLI `sdoc export --format docx --template-file company.dotx -o output.docx` validates an external template and injects SDoc body content into the `sdoc-body` content control.
+- CLI `--template-style nodeType=StyleId` applies validated company Word styles to matching rendered SDoc blocks.
 - Template selection is an explicit export option and is not stored in `document.json`.
 - Strict enterprise pagination remains deferred.
 

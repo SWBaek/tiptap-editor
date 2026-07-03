@@ -522,6 +522,32 @@ describe("exportDocx", () => {
     expect(JSON.stringify(document)).not.toContain("company.dotx");
   });
 
+  it("applies external Word template style mappings to rendered SDoc blocks", async () => {
+    const templateBytes = await createTemplatePackage({
+      stylesXml: createStylesXml(["CorpHeading", "CorpBody"]),
+      documentXml: createDocumentXml(["sdoc-body"])
+    });
+
+    const bytes = await exportDocx(document, {
+      externalTemplate: {
+        bytes: templateBytes,
+        fileName: "company.dotx",
+        requiredStyles: [
+          { nodeType: "heading", styleId: "CorpHeading" },
+          { nodeType: "paragraph", styleId: "CorpBody" }
+        ],
+        requiredPlaceholders: ["sdoc-body"]
+      }
+    });
+    const zip = await JSZip.loadAsync(bytes);
+    const documentXml = await zip.file("word/document.xml")?.async("string");
+
+    expect(documentXml).toContain('<w:pStyle w:val="CorpHeading"');
+    expect(documentXml).toContain('<w:pStyle w:val="CorpBody"');
+    expect(documentXml).toContain("Overview");
+    expect(documentXml).toContain("Read the overview.");
+  });
+
   it("rejects external Word templates with missing mapping requirements", async () => {
     const templateBytes = await createTemplatePackage({
       stylesXml: createStylesXml(["Normal"]),

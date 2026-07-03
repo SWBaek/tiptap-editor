@@ -51,6 +51,10 @@ export interface ExternalWordTemplateOptions extends WordTemplateMappingOptions 
   bytes: Uint8Array;
 }
 
+interface DocxRenderContext {
+  styleMap: Map<string, string>;
+}
+
 export type WordTemplatePackageIssueCode =
   | "invalid-extension"
   | "invalid-zip"
@@ -276,10 +280,11 @@ export async function exportPptx(document: SDocDocument, options: PptxExportOpti
 
 export async function exportDocx(document: SDocDocument, options: DocxExportOptions = {}): Promise<Uint8Array> {
   const externalTemplate = options.externalTemplate ? await prepareExternalWordTemplate(options.externalTemplate) : undefined;
+  const renderContext: DocxRenderContext = { styleMap: createWordTemplateStyleMap(options.externalTemplate?.requiredStyles) };
   const title = options.title?.trim() || getDocumentTitle(document) || "SDoc Document";
   const body = [
-    ...renderDocxCorporateTemplate(document, title, options),
-    ...document.content.flatMap((node) => renderDocxBlock(node))
+    ...renderDocxCorporateTemplate(document, title, options, renderContext),
+    ...document.content.flatMap((node) => renderDocxBlock(node, renderContext))
   ].join("");
 
   if (externalTemplate) {
@@ -489,7 +494,7 @@ export async function validateWordTemplateMapping(
   };
 }
 
-function renderDocxCorporateTemplate(document: SDocDocument, title: string, options: DocxExportOptions): string[] {
+function renderDocxCorporateTemplate(document: SDocDocument, title: string, options: DocxExportOptions, context: DocxRenderContext): string[] {
   if (normalizeCorporateTemplate(options.template) !== "controlled") {
     return [];
   }
@@ -502,47 +507,64 @@ function renderDocxCorporateTemplate(document: SDocDocument, title: string, opti
   ];
 
   return [
-    renderDocxParagraph(getCorporateMetadataValue(metadata, "classification", "CONTROLLED"), "Subtitle"),
-    renderDocxParagraph(title, "Title"),
+    renderDocxParagraph(getCorporateMetadataValue(metadata, "classification", "CONTROLLED"), getMappedDocxStyle(context, "subtitle", "Subtitle")),
+    renderDocxParagraph(title, getMappedDocxStyle(context, "title", "Title")),
     renderDocxTable(rows, true)
   ];
 }
 
-function renderDocxBlock(node: SDocNode): string[] {
+function renderDocxBlock(node: SDocNode, context: DocxRenderContext): string[] {
   switch (node.type) {
     case "heading": {
       const level = typeof node.attrs?.level === "number" ? Math.min(Math.max(node.attrs.level, 1), 6) : 1;
-      return [renderDocxParagraph(getPlainText(node), `Heading${level}`)];
+      return [renderDocxParagraph(getPlainText(node), getMappedDocxStyle(context, `heading${level}`, getMappedDocxStyle(context, "heading", `Heading${level}`)))];
     }
     case "paragraph":
-      return [renderDocxParagraph(getPlainText(node))];
+      return [renderDocxParagraph(getPlainText(node), getMappedDocxStyle(context, "paragraph"))];
     case "blockquote":
-      return [renderDocxParagraph(getPlainText(node), "Quote")];
+      return [renderDocxParagraph(getPlainText(node), getMappedDocxStyle(context, "blockquote", "Quote"))];
     case "callout":
-      return [renderDocxParagraph(`[${String(node.attrs?.kind ?? "note").toUpperCase()}] ${getPlainText(node)}`)];
+      return [renderDocxParagraph(`[${String(node.attrs?.kind ?? "note").toUpperCase()}] ${getPlainText(node)}`, getMappedDocxStyle(context, "callout"))];
     case "codeBlock":
-      return [renderDocxParagraph(getPlainText(node), "Code")];
+      return [renderDocxParagraph(getPlainText(node), getMappedDocxStyle(context, "codeBlock", "Code"))];
     case "bulletList":
     case "orderedList":
       return (node.content ?? []).map((child, index) => {
         const prefix = node.type === "orderedList" ? `${index + 1}. ` : "- ";
-        return renderDocxParagraph(`${prefix}${getPlainText(child)}`);
+        return renderDocxParagraph(`${prefix}${getPlainText(child)}`, getMappedDocxStyle(context, node.type));
       });
     case "table":
       return [renderDocxTable(extractTableRows(node), false)];
     case "figure":
-      return [renderDocxParagraph(`Figure: ${getPlainText(node).trim() || String(node.attrs?.assetId ?? "")}`)];
+      return [renderDocxParagraph(`Figure: ${getPlainText(node).trim() || String(node.attrs?.assetId ?? "")}`, getMappedDocxStyle(context, "figure"))];
     case "diagram":
-      return [renderDocxParagraph(formatDiagramDocxText(node))];
+      return [renderDocxParagraph(formatDiagramDocxText(node), getMappedDocxStyle(context, "diagram"))];
     case "equationBlock":
-      return [renderDocxParagraph(`Equation: ${typeof node.attrs?.latex === "string" ? node.attrs.latex : ""}`)];
+      return [renderDocxParagraph(`Equation: ${typeof node.attrs?.latex === "string" ? node.attrs.latex : ""}`, getMappedDocxStyle(context, "equationBlock"))];
     case "dataGrid":
-      return [renderDocxParagraph(formatDataGridLabel(node))];
+      return [renderDocxParagraph(formatDataGridLabel(node), getMappedDocxStyle(context, "dataGrid"))];
     default: {
       const text = getPlainText(node).trim();
-      return text ? [renderDocxParagraph(text)] : [];
+      return text ? [renderDocxParagraph(text, getMappedDocxStyle(context, node.type))] : [];
     }
   }
+}
+
+function createWordTemplateStyleMap(requirements: WordTemplateMappingRequirement[] | undefined): Map<string, string> {
+  const styleMap = new Map<string, string>();
+  for (const requirement of requirements ?? []) {
+    const nodeType = requirement.nodeType.trim();
+    const styleId = requirement.styleId.trim();
+    if (nodeType && styleId) {
+      styleMap.set(nodeType, styleId);
+    }
+  }
+
+  return styleMap;
+}
+
+function getMappedDocxStyle(context: DocxRenderContext, nodeType: string, fallback?: string): string | undefined {
+  return context.styleMap.get(nodeType) ?? fallback;
 }
 
 function extractTableRows(node: SDocNode): string[][] {

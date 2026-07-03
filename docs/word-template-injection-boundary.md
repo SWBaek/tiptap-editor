@@ -33,6 +33,8 @@ The first mapping implementation validates the contract only. It checks that a s
 
 The first render implementation accepts `--template-file` for DOCX export, validates the package and mapping contract, and replaces the `sdoc-body` content-control body with editable Word XML derived from SDoc blocks. Template chrome around that placeholder is preserved.
 
+Style mappings supplied as `--template-style nodeType=StyleId` are applied to rendered Word paragraphs for matching SDoc block types. For example, `--template-style heading=CorpHeading` maps heading blocks to the `CorpHeading` Word style after the template has been validated to contain that style.
+
 ## Safety Boundary
 
 Template files are untrusted binary Office packages until validated. The implementation must reject or strip macros, embedded scripts, external relationships, remote images, and unexpected package parts before using a template.
@@ -53,11 +55,12 @@ Template injection is one-way: SDoc to derived Word. Editing the generated `.doc
 - `validateWordTemplateMapping` reports missing required Word styles and content-control placeholders without mutating canonical document data or rendering a derived file.
 - `sdoc template validate-mapping <template.docx|template.dotx> --style nodeType=StyleId --placeholder tag` exposes mapping diagnostics for developer/reviewer workflows.
 - `exportDocx(..., { externalTemplate })` and `sdoc export --format docx --template-file company.dotx` validate an external template before injecting SDoc body content into the `sdoc-body` content control.
+- `--template-style nodeType=StyleId` applies validated Word style mappings during DOCX rendering without storing those mappings in `document.json`.
 - Future implementation includes tests for template package validation, missing placeholders/styles, canonical document immutability, and deterministic output for the same template/input pair.
 
 ## Deferred Work
 
-- broader `.dotx` style/content-control rendering beyond the `sdoc-body` placeholder;
+- richer `.dotx` content-control rendering beyond the `sdoc-body` placeholder;
 - company policy registry and template management UI;
 - Word review import/redline workflows;
 - visual/rendered DOCX regression checks.

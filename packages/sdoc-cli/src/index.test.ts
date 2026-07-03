@@ -283,7 +283,7 @@ describe("sdoc CLI", () => {
       await writeFile(
         templatePath,
         await createWordTemplateBuffer({
-          styles: ["Normal", "Heading1"],
+          styles: ["Normal", "CorpHeading"],
           placeholders: ["sdoc-body"],
           before: "Company cover",
           placeholderText: "Template placeholder",
@@ -299,7 +299,7 @@ describe("sdoc CLI", () => {
         "--template-file",
         templatePath,
         "--template-style",
-        "heading=Heading1",
+        "heading=CorpHeading",
         "-o",
         docxPath
       ]);
@@ -312,6 +312,7 @@ describe("sdoc CLI", () => {
       expect(docx.subarray(0, 2).toString("utf8")).toBe("PK");
       expect(documentXml).toContain("Company cover");
       expect(documentXml).toContain("System Overview");
+      expect(documentXml).toContain('<w:pStyle w:val="CorpHeading"');
       expect(documentXml).toContain("Company appendix");
       expect(documentXml).not.toContain("Template placeholder");
       expect(coreXml).toContain("External Word template validated: company.dotx");

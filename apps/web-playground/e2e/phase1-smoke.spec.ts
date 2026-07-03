@@ -87,6 +87,8 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await page.locator(".editor-surface p").first().click();
   await page.keyboard.press("End");
   await page.keyboard.type(" Updated.");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const beforeReviewSelection = await readPreviewDocument(page);
 
   await page.getByRole("button", { name: "Review panel" }).click();
   const reviewPanel = page.getByRole("complementary", { name: "Review side panel" });
@@ -96,8 +98,16 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("Total");
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("Metadata");
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("2");
+  await expect(reviewPanel.getByLabel("Review event filters")).toContainText("Modified");
+  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("Modified paragraph");
   await reviewPanel.getByText("Inline overlay").click();
   await expect.poll(() => page.locator("style[data-sdoc-diff-overlay-runtime]").evaluate((node) => node.textContent ?? "")).toContain('[data-id="blk_intro"]');
+  await reviewPanel.getByLabel("Review event filters").getByRole("button", { name: /Modified/ }).click();
+  await reviewPanel.locator(".review-event-list button").filter({ hasText: "Modified paragraph" }).click();
+  await expect(page.locator(".status-note")).toContainText("Focused Modified paragraph");
+  await expect(page.locator(".editor-node-highlight")).toHaveAttribute("data-highlighted-node-id", "blk_intro");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  expect(await readPreviewDocument(page)).toEqual(beforeReviewSelection);
   await expect(reviewPanel.getByLabel("Git integration boundary")).toContainText("Git is optional");
   await reviewPanel.getByRole("button", { name: "Copy semantic diff command" }).click();
   await expect(page.locator(".status-note")).toContainText('npm run sdoc -- diff "old.document.json" "new.document.json"');

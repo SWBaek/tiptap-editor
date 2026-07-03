@@ -75,10 +75,12 @@ import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocume
 import {
   addLocalHistoryEntry,
   createChangeReview,
+  createVisualDiffFilterCounts,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
   createSectionFoldRanges,
   createVisualDiffOverlayItems,
+  filterVisualDiffOverlayItems,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
@@ -97,7 +99,10 @@ import {
   type ChangeReviewModel,
   type ReferenceDiagnosticsModel,
   type ReferenceTargetSummary,
-  type SectionFoldRange
+  type SectionFoldRange,
+  type VisualDiffFilterCounts,
+  type VisualDiffFilterKind,
+  type VisualDiffOverlayItem
 } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
@@ -163,6 +168,8 @@ export function App() {
   const [editorRevision, setEditorRevision] = useState(0);
   const [collapsedHeadingIds, setCollapsedHeadingIds] = useState<Set<string>>(() => new Set());
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
+  const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
+  const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const editorPaneRef = useRef<HTMLElement>(null);
@@ -224,9 +231,14 @@ export function App() {
   const changeReview = createChangeReview(documentDiffLines, metadataDiffLines);
   const referenceDiagnostics = createReferenceDiagnostics(document);
   const visualDiffOverlayItems = useMemo(() => createVisualDiffOverlayItems(documentDiffEvents), [documentDiffEvents]);
+  const visualDiffFilterCounts = useMemo(() => createVisualDiffFilterCounts(visualDiffOverlayItems), [visualDiffOverlayItems]);
+  const visibleVisualDiffItems = useMemo(
+    () => filterVisualDiffOverlayItems(visualDiffOverlayItems, visualDiffFilter),
+    [visualDiffFilter, visualDiffOverlayItems]
+  );
   const visualDiffRuntimeCss = useMemo(
-    () => (isDiffOverlayEnabled ? renderVisualDiffRuntimeCss(visualDiffOverlayItems) : ""),
-    [isDiffOverlayEnabled, visualDiffOverlayItems]
+    () => (isDiffOverlayEnabled ? renderVisualDiffRuntimeCss(visibleVisualDiffItems, selectedVisualDiffId) : ""),
+    [isDiffOverlayEnabled, selectedVisualDiffId, visibleVisualDiffItems]
   );
   const brokenReferenceRuntimeCss = useMemo(
     () => renderBrokenReferenceRuntimeCss(referenceDiagnostics.brokenReferences),
@@ -247,6 +259,12 @@ export function App() {
     pptx: `${exportBaseName}.pptx`
   };
   const preview = activeTab === "json" ? json : markdown;
+
+  useEffect(() => {
+    if (selectedVisualDiffId && !visibleVisualDiffItems.some((item) => item.id === selectedVisualDiffId)) {
+      setSelectedVisualDiffId(null);
+    }
+  }, [selectedVisualDiffId, visibleVisualDiffItems]);
 
   async function downloadSdoc() {
     if (!requireValidDocument("save .sdoc")) {
@@ -628,6 +646,17 @@ export function App() {
     setStatusMessage(`Focused ${label}`);
   }
 
+  function selectVisualDiffItem(item: VisualDiffOverlayItem) {
+    setSelectedVisualDiffId(item.id);
+    setIsDiffOverlayEnabled(true);
+    if (!item.anchorable) {
+      setStatusMessage(`Review only: ${item.summary}`);
+      return;
+    }
+
+    revealEditorNode(item.id, item.summary);
+  }
+
   function insertInlineEquationFromPrompt() {
     const latex = window.prompt("Inline equation", "E=mc^2")?.trim();
     if (!latex) {
@@ -765,9 +794,15 @@ export function App() {
               savedLabel={savedLabel}
               hasUnsavedChanges={hasUnsavedChanges}
               isDiffOverlayEnabled={isDiffOverlayEnabled}
+              visualDiffItems={visibleVisualDiffItems}
+              visualDiffCounts={visualDiffFilterCounts}
+              visualDiffFilter={visualDiffFilter}
+              selectedVisualDiffId={selectedVisualDiffId}
               onShowDiff={() => setActiveTab("diff")}
               onCompareSavedBaseline={compareSavedBaseline}
               onMarkSaved={markCurrentAsBaseline}
+              onSelectVisualDiff={selectVisualDiffItem}
+              onSetVisualDiffFilter={setVisualDiffFilter}
               onToggleDiffOverlay={() => setIsDiffOverlayEnabled((current) => !current)}
               onCopyDeveloperCommand={showDeveloperCommand}
             />
@@ -1327,9 +1362,15 @@ function ReviewPanel({
   savedLabel,
   hasUnsavedChanges,
   isDiffOverlayEnabled,
+  visualDiffItems,
+  visualDiffCounts,
+  visualDiffFilter,
+  selectedVisualDiffId,
   onShowDiff,
   onCompareSavedBaseline,
   onMarkSaved,
+  onSelectVisualDiff,
+  onSetVisualDiffFilter,
   onToggleDiffOverlay,
   onCopyDeveloperCommand
 }: {
@@ -1338,14 +1379,28 @@ function ReviewPanel({
   savedLabel: string;
   hasUnsavedChanges: boolean;
   isDiffOverlayEnabled: boolean;
+  visualDiffItems: VisualDiffOverlayItem[];
+  visualDiffCounts: VisualDiffFilterCounts;
+  visualDiffFilter: VisualDiffFilterKind;
+  selectedVisualDiffId: string | null;
   onShowDiff: () => void;
   onCompareSavedBaseline: () => void;
   onMarkSaved: () => void;
+  onSelectVisualDiff: (item: VisualDiffOverlayItem) => void;
+  onSetVisualDiffFilter: (filter: VisualDiffFilterKind) => void;
   onToggleDiffOverlay: () => void;
   onCopyDeveloperCommand: (command: string) => void;
 }) {
   const isHistoryBase = baseLabel !== "Saved baseline";
   const semanticDiffCommand = 'npm run sdoc -- diff "old.document.json" "new.document.json"';
+  const filterOptions: Array<{ value: VisualDiffFilterKind; label: string; count: number }> = [
+    { value: "all", label: "All", count: visualDiffCounts.total },
+    { value: "added", label: "Added", count: visualDiffCounts.added },
+    { value: "modified", label: "Modified", count: visualDiffCounts.modified },
+    { value: "moved", label: "Moved", count: visualDiffCounts.moved },
+    { value: "reference-broken", label: "Broken", count: visualDiffCounts["reference-broken"] },
+    { value: "deleted", label: "Deleted", count: visualDiffCounts.deleted }
+  ];
 
   return (
     <div className="side-panel-section review-panel">
@@ -1384,6 +1439,39 @@ function ReviewPanel({
         <input type="checkbox" checked={isDiffOverlayEnabled} onChange={onToggleDiffOverlay} />
         <span>Inline overlay</span>
       </label>
+
+      <section className="review-events" aria-label="Semantic review events">
+        <div className="review-event-filters" aria-label="Review event filters">
+          {filterOptions.map((option) => (
+            <button
+              className={visualDiffFilter === option.value ? "active" : undefined}
+              type="button"
+              key={option.value}
+              aria-pressed={visualDiffFilter === option.value}
+              onClick={() => onSetVisualDiffFilter(option.value)}
+            >
+              <span>{option.label}</span>
+              <strong>{option.count}</strong>
+            </button>
+          ))}
+        </div>
+        {visualDiffItems.length === 0 ? (
+          <p className="review-empty">No document events</p>
+        ) : (
+          <ul className="review-event-list">
+            {visualDiffItems.map((item) => (
+              <li className={selectedVisualDiffId === item.id ? "selected" : undefined} key={`${item.kind}-${item.id}`}>
+                <button type="button" onClick={() => onSelectVisualDiff(item)}>
+                  <span className={`review-event-kind ${item.kind}`}>{item.label}</span>
+                  <strong>{item.summary}</strong>
+                  <small>{item.detail}</small>
+                  <code>{item.anchorable ? item.id : "review-only"}</code>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       {isHistoryBase && (
         <button type="button" onClick={onCompareSavedBaseline}>
           Use saved baseline

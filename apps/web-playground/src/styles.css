@@ -255,6 +255,152 @@ button {
   accent-color: #6fb3c1;
 }
 
+.review-events {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.review-event-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.review-event-filters button {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 7px;
+  color: #d9e1e8;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.review-event-filters button.active {
+  color: #ffffff;
+  background: rgba(111, 179, 193, 0.22);
+  border-color: rgba(111, 179, 193, 0.72);
+}
+
+.review-event-filters span,
+.review-event-filters strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-event-filters span {
+  font-size: 11px;
+}
+
+.review-event-filters strong {
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.review-empty {
+  margin: 0;
+  color: #aeb8c2;
+  font-size: 13px;
+}
+
+.review-event-list {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.review-event-list li {
+  min-width: 0;
+}
+
+.review-event-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 9px;
+  color: #d9e1e8;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.review-event-list li.selected button {
+  background: rgba(111, 179, 193, 0.2);
+  border-color: rgba(111, 179, 193, 0.72);
+}
+
+.review-event-list strong,
+.review-event-list small,
+.review-event-list code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.review-event-list strong {
+  grid-column: 1 / -1;
+  color: #f7f9fb;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.review-event-list small {
+  color: #aeb8c2;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.review-event-list code {
+  align-self: start;
+  color: #c8d7df;
+  font-size: 11px;
+}
+
+.review-event-kind {
+  justify-self: start;
+  padding: 2px 6px;
+  color: #17212b;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.review-event-kind.added {
+  background: #eaf6ee;
+}
+
+.review-event-kind.deleted {
+  background: #f8e8e5;
+}
+
+.review-event-kind.modified {
+  background: #fff4dc;
+}
+
+.review-event-kind.moved {
+  background: #e9f0f8;
+}
+
+.review-event-kind.reference-broken {
+  background: #fff1ed;
+}
+
 .git-workflow {
   display: grid;
   gap: 10px;

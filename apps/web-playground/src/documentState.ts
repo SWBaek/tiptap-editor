@@ -63,6 +63,21 @@ export interface VisualDiffOverlayItem {
   id: string;
   kind: "added" | "deleted" | "modified" | "moved" | "reference-broken";
   label: string;
+  nodeType: string;
+  summary: string;
+  detail: string;
+  anchorable: boolean;
+}
+
+export type VisualDiffFilterKind = "all" | VisualDiffOverlayItem["kind"];
+
+export interface VisualDiffFilterCounts {
+  total: number;
+  added: number;
+  deleted: number;
+  modified: number;
+  moved: number;
+  "reference-broken": number;
 }
 
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
@@ -147,15 +162,43 @@ export function createChangeReview(documentLines: string[], metadataLines: strin
 }
 
 export function createVisualDiffOverlayItems(events: SDocDiffEvent[]): VisualDiffOverlayItem[] {
-  return events.map((event) => ({
-    id: event.id,
-    kind: event.kind,
-    label: getVisualDiffLabel(event.kind)
-  }));
+  return events.map((event) => {
+    const label = getVisualDiffLabel(event.kind);
+    return {
+      id: event.id,
+      kind: event.kind,
+      label,
+      nodeType: event.nodeType,
+      summary: getVisualDiffSummary(event),
+      detail: getVisualDiffDetail(event),
+      anchorable: event.kind !== "deleted"
+    };
+  });
 }
 
-export function renderVisualDiffRuntimeCss(items: VisualDiffOverlayItem[]): string {
-  const anchorableItems = items.filter((item) => item.kind !== "deleted");
+export function filterVisualDiffOverlayItems(items: VisualDiffOverlayItem[], filter: VisualDiffFilterKind): VisualDiffOverlayItem[] {
+  return filter === "all" ? items : items.filter((item) => item.kind === filter);
+}
+
+export function createVisualDiffFilterCounts(items: VisualDiffOverlayItem[]): VisualDiffFilterCounts {
+  const counts: VisualDiffFilterCounts = {
+    total: items.length,
+    added: 0,
+    deleted: 0,
+    modified: 0,
+    moved: 0,
+    "reference-broken": 0
+  };
+
+  for (const item of items) {
+    counts[item.kind] += 1;
+  }
+
+  return counts;
+}
+
+export function renderVisualDiffRuntimeCss(items: VisualDiffOverlayItem[], selectedId: string | null = null): string {
+  const anchorableItems = items.filter((item) => item.anchorable);
   if (anchorableItems.length === 0) {
     return "";
   }
@@ -163,10 +206,12 @@ export function renderVisualDiffRuntimeCss(items: VisualDiffOverlayItem[]): stri
   return anchorableItems
     .map((item) => {
       const selector = `.editor-surface [data-id="${escapeCssAttribute(item.id)}"]`;
+      const isSelected = item.id === selectedId;
       return `${selector} {
   position: relative;
-  outline: 2px solid ${getVisualDiffColor(item.kind)};
-  outline-offset: 3px;
+  outline: ${isSelected ? 3 : 2}px solid ${getVisualDiffColor(item.kind)};
+  outline-offset: ${isSelected ? 4 : 3}px;
+  ${isSelected ? `box-shadow: 0 0 0 4px ${getVisualDiffBackground(item.kind)};` : ""}
 }
 ${selector}::before {
   position: absolute;
@@ -423,6 +468,36 @@ function getVisualDiffLabel(kind: SDocDiffEvent["kind"]): string {
       return "Moved";
     case "reference-broken":
       return "Broken ref";
+  }
+}
+
+function getVisualDiffSummary(event: SDocDiffEvent): string {
+  switch (event.kind) {
+    case "added":
+      return `Added ${event.nodeType} ${event.label}`;
+    case "deleted":
+      return `Deleted ${event.nodeType} ${event.label}`;
+    case "modified":
+      return `Modified ${event.nodeType} ${event.label}`;
+    case "moved":
+      return `Moved ${event.nodeType} ${event.label}`;
+    case "reference-broken":
+      return `Broken reference ${event.label}`;
+  }
+}
+
+function getVisualDiffDetail(event: SDocDiffEvent): string {
+  switch (event.kind) {
+    case "added":
+      return `Current path: ${event.path}`;
+    case "deleted":
+      return `Previous path: ${event.path}`;
+    case "modified":
+      return `${event.changes.join("; ")} at ${event.path}`;
+    case "moved":
+      return `${event.fromPath} -> ${event.toPath}`;
+    case "reference-broken":
+      return `Missing target ${event.targetId} at ${event.path}`;
   }
 }
 

@@ -90,7 +90,30 @@ Acceptance evidence:
 
 ## Slice 4: Review UX Hardening
 
+Status: started on 2026-07-03. Visual semantic diff review UX is implemented; requirement tagging diagnostics and broken reference repair actions remain open.
+
 Productize the visual semantic diff overlay, requirement tagging diagnostics, and broken reference repair actions. These features must consume existing semantic diff and reference diagnostic sources instead of creating independent review state in canonical JSON.
+
+Acceptance criteria:
+
+- Project semantic diff events into a Review panel view-model without introducing a second diff format.
+- Provide runtime-only event filters, selected event state, and inline overlay state.
+- Keep deleted blocks visible in the Review panel even when they no longer have an editor DOM anchor.
+- Preserve the textual Diff preview as the debug view for developer/reviewer workflows.
+- Verify that review selection and overlay toggles do not mutate `document.json`.
+
+Acceptance evidence:
+
+- `apps/web-playground/src/documentState.ts` creates semantic review items, filter counts, filtered item sets, and runtime overlay CSS from `SDocDiffEvent`.
+- `apps/web-playground/src/App.tsx` adds Review panel event filters, selectable review events, and stable-ID editor focusing for anchorable changes.
+- Unit tests cover event projection, filter counts, filtered results, selected overlay CSS, and deleted-event exclusion from editor CSS.
+- Playwright coverage verifies Review panel filtering/selection and confirms `document.json` remains unchanged by review-only interactions.
+
+Open work:
+
+- Requirement tagging diagnostics.
+- Broken reference repair actions beyond the existing reference-label update flow.
+- Side-by-side or accept/reject review workflow.
 
 ## Slice 5: Enterprise Authoring And Publishing
 

@@ -51,6 +51,16 @@ Overlay styling should use restrained colors and labels that work in dense techn
 
 Implementation should add focused tests for event-to-overlay view-model mapping before wiring editor decorations. UI tests should verify that toggling the overlay does not mutate `document.json` and that broken references remain visible in the review surface.
 
+## Initial Implementation
+
+Implemented on 2026-07-03:
+
+- `SDocDiffEvent` is projected into runtime review items with label, summary, detail, anchorability, and filter counts.
+- The Review Activity panel exposes event filters, a selectable semantic event list, and inline overlay toggle.
+- Selecting an anchorable event focuses the matching editor node by stable `data-id`; deleted events remain review-panel only.
+- Overlay CSS is generated at runtime from filtered review items and selected event ID.
+- No overlay enabled state, selected event, or filter state is written to `document.json`.
+
 ## Deferred Work
 
 - side-by-side document diff;

@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   addLocalHistoryEntry,
   createChangeReview,
+  createVisualDiffFilterCounts,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
   createSectionFoldRanges,
   createVisualDiffOverlayItems,
+  filterVisualDiffOverlayItems,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
@@ -91,18 +93,44 @@ describe("document state helpers", () => {
     });
   });
 
-  it("projects semantic diff events to runtime overlay css without canonical state", () => {
+  it("projects semantic diff events to review items and runtime overlay css without canonical state", () => {
     const items = createVisualDiffOverlayItems([
       { kind: "modified", id: "blk_body", nodeType: "paragraph", path: "doc[0]/blk_body", label: '"Body"', changes: ["text changed"] },
-      { kind: "deleted", id: "blk_old", nodeType: "paragraph", path: "doc[1]/blk_old", label: '"Old"' }
+      { kind: "deleted", id: "blk_old", nodeType: "paragraph", path: "doc[1]/blk_old", label: '"Old"' },
+      { kind: "reference-broken", id: "ref_missing", nodeType: "crossReference", path: "doc[2]/ref_missing", label: '"Missing"', targetId: "blk_missing" }
     ]);
 
-    expect(items).toEqual([
-      { id: "blk_body", kind: "modified", label: "Modified" },
-      { id: "blk_old", kind: "deleted", label: "Deleted" }
-    ]);
-    expect(renderVisualDiffRuntimeCss(items)).toContain('[data-id="blk_body"]');
-    expect(renderVisualDiffRuntimeCss(items)).not.toContain('[data-id="blk_old"]');
+    expect(items[0]).toMatchObject({
+      id: "blk_body",
+      kind: "modified",
+      label: "Modified",
+      summary: 'Modified paragraph "Body"',
+      detail: "text changed at doc[0]/blk_body",
+      anchorable: true
+    });
+    expect(items[1]).toMatchObject({
+      id: "blk_old",
+      kind: "deleted",
+      label: "Deleted",
+      summary: 'Deleted paragraph "Old"',
+      detail: "Previous path: doc[1]/blk_old",
+      anchorable: false
+    });
+    expect(createVisualDiffFilterCounts(items)).toEqual({
+      total: 3,
+      added: 0,
+      deleted: 1,
+      modified: 1,
+      moved: 0,
+      "reference-broken": 1
+    });
+    expect(filterVisualDiffOverlayItems(items, "reference-broken")).toEqual([items[2]]);
+
+    const css = renderVisualDiffRuntimeCss(items, "blk_body");
+    expect(css).toContain('[data-id="blk_body"]');
+    expect(css).toContain("outline: 3px solid");
+    expect(css).toContain('[data-id="ref_missing"]');
+    expect(css).not.toContain('[data-id="blk_old"]');
   });
 
   it("projects broken reference diagnostics to inline marker css", () => {

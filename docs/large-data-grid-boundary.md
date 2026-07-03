@@ -67,10 +67,11 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - Headless data grid diagnostics inspect referenced CSV/JSON asset bytes and report row-level parse, shape, empty-header, duplicate-header, and missing-column issues without mutating canonical JSON.
 - The web playground Export panel surfaces data grid diagnostic counts and per-grid row/column readiness as runtime-only publishing feedback.
 - Headless `createDataGridRowDiff` reports keyed CSV/JSON row additions, deletions, modified cells, duplicate-key conflicts, and no-key fallback without storing row data in `document.json`.
+- Headless `applyDataGridRowMerge` applies selected row diff events to CSV/JSON source text with stale-source protection and without mutating `document.json`.
 
 ## Deferred Work
 
-- guarded row-level merge implementation following `docs/data-grid-row-diff-merge-boundary.md`;
+- CLI or UI row-level merge wiring following `docs/data-grid-row-diff-merge-boundary.md`;
 - richer CSV/JSON validation rule configuration and authored column typing;
 - full spreadsheet editing;
 - formulas and computed columns;

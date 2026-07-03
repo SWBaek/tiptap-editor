@@ -131,7 +131,7 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
-Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, row diff/merge boundary, and controlled corporate HTML/PDF template export implemented.
+Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, row diff/merge boundary, and controlled corporate HTML/PDF template export implemented.
 
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
 
@@ -147,12 +147,13 @@ Acceptance evidence:
 - The Export panel shows data grid readiness counts and per-grid issues as runtime-only publishing feedback.
 - `docs/data-grid-row-diff-merge-boundary.md` defines row-level grid diff and merge as an asset-level review projection with reliable row keys, stale-event protection, and asset-only merge writes.
 - `createDataGridRowDiff` creates keyed CSV/JSON row diff events for added rows, deleted rows, modified cells, duplicate-key conflicts, and no-key fallback without mutating canonical JSON.
+- `applyDataGridRowMerge` recomputes row diffs, refuses stale current sources and conflicts, and returns updated CSV/JSON source text as an asset-layer change rather than a canonical row patch.
 - `exportHtml(..., { template: "controlled" })` renders controlled corporate header/footer/watermark chrome from explicit export metadata.
 - CLI `sdoc export --format html|pdf --template controlled` exposes the controlled template without storing export preferences in `document.json`.
 
 Open work:
 
-- Guarded row-level CSV/JSON merge apply.
+- CLI or UI wiring for row-level CSV/JSON merge apply.
 - `.docx` corporate template export, strict pagination, approval table workflows, and template management UI.
 
 ## Validation Gates

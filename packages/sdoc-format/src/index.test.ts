@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyDataGridRowMerge,
   createDataGridDiagnostics,
   createDataGridRowDiff,
   createEmptySdocContainer,
@@ -376,6 +377,120 @@ describe("createDataGridRowDiff", () => {
 
     expect(diff.hasReliableKey).toBe(true);
     expect(diff.events).toEqual([expect.objectContaining({ kind: "conflict", severity: "error", message: "old row 2 duplicates key pin=1" })]);
+  });
+});
+
+describe("applyDataGridRowMerge", () => {
+  it("applies a guarded CSV cell merge by writing updated asset source text", () => {
+    const event = createDataGridRowDiff({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      oldSource: "pin,signal\n1,VCC\n2,GND",
+      newSource: "pin,signal\n1,VCC\n2,GROUND",
+      keyColumns: ["pin"]
+    }).events[0];
+
+    const result = applyDataGridRowMerge({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      baselineSource: "pin,signal\n1,VCC\n2,GND",
+      proposedSource: "pin,signal\n1,VCC\n2,GROUND",
+      currentSource: "pin,signal\n1,VCC\n2,GND",
+      event,
+      keyColumns: ["pin"]
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.source : "").toBe("pin,signal\n1,VCC\n2,GROUND\n");
+  });
+
+  it("applies guarded JSON row additions while preserving JSON format", () => {
+    const baselineSource = JSON.stringify([{ id: "REQ-1", status: "draft" }]);
+    const proposedSource = JSON.stringify([
+      { id: "REQ-1", status: "draft" },
+      { id: "REQ-2", status: "approved" }
+    ]);
+    const event = createDataGridRowDiff({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_requirements.json",
+      format: "json",
+      oldSource: baselineSource,
+      newSource: proposedSource
+    }).events[0];
+
+    const result = applyDataGridRowMerge({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_requirements.json",
+      format: "json",
+      baselineSource,
+      proposedSource,
+      currentSource: baselineSource,
+      event
+    });
+
+    expect(result.ok).toBe(true);
+    expect(JSON.parse(result.ok ? result.source : "[]")).toEqual([
+      { id: "REQ-1", status: "draft" },
+      { id: "REQ-2", status: "approved" }
+    ]);
+  });
+
+  it("refuses stale row merges when the current asset changed after diff creation", () => {
+    const event = createDataGridRowDiff({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      oldSource: "pin,signal\n1,VCC\n2,GND",
+      newSource: "pin,signal\n1,VCC\n2,GROUND",
+      keyColumns: ["pin"]
+    }).events[0];
+
+    const result = applyDataGridRowMerge({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      baselineSource: "pin,signal\n1,VCC\n2,GND",
+      proposedSource: "pin,signal\n1,VCC\n2,GROUND",
+      currentSource: "pin,signal\n1,VDD\n2,GND",
+      event,
+      keyColumns: ["pin"]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "stale",
+      message: "Current data grid source changed since the row diff was created"
+    });
+  });
+
+  it("refuses guarded row merges for conflicting keyed diffs", () => {
+    const event = createDataGridRowDiff({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      oldSource: "pin,signal\n1,VCC\n1,GND",
+      newSource: "pin,signal\n1,VCC",
+      keyColumns: ["pin"]
+    }).events[0];
+
+    const result = applyDataGridRowMerge({
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      format: "csv",
+      baselineSource: "pin,signal\n1,VCC\n1,GND",
+      proposedSource: "pin,signal\n1,VCC",
+      currentSource: "pin,signal\n1,VCC\n1,GND",
+      event,
+      keyColumns: ["pin"]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "conflict",
+      message: "Row merge requires a conflict-free diff with reliable row keys"
+    });
   });
 });
 

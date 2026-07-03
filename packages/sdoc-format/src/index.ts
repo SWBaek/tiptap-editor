@@ -126,6 +126,31 @@ export interface DataGridRowDiff {
   events: DataGridRowDiffEvent[];
 }
 
+export interface ApplyDataGridRowMergeOptions {
+  gridId: string;
+  sourceAssetId: string;
+  format: "csv" | "json";
+  baselineSource: string;
+  proposedSource: string;
+  currentSource: string;
+  event: DataGridRowDiffEvent;
+  keyColumns?: string[];
+}
+
+export type ApplyDataGridRowMergeResult =
+  | {
+      ok: true;
+      source: string;
+      diff: DataGridRowDiff;
+      appliedEvent: DataGridRowDiffEvent;
+    }
+  | {
+      ok: false;
+      reason: "conflict" | "stale" | "unsupported";
+      message: string;
+      diff: DataGridRowDiff;
+    };
+
 export interface DiagramSourceStore {
   collectReferencedAssetIds(node: SDocNode): string[];
 }
@@ -467,6 +492,88 @@ export function createDataGridRowDiff(options: CreateDataGridRowDiffOptions): Da
     oldRowCount: oldGrid.rows.length,
     newRowCount: newGrid.rows.length,
     events
+  };
+}
+
+export function applyDataGridRowMerge(options: ApplyDataGridRowMergeOptions): ApplyDataGridRowMergeResult {
+  const diff = createDataGridRowDiff({
+    gridId: options.gridId,
+    sourceAssetId: options.sourceAssetId,
+    format: options.format,
+    oldSource: options.baselineSource,
+    newSource: options.proposedSource,
+    keyColumns: options.keyColumns
+  });
+
+  if (!diff.hasReliableKey || diff.events.some((event) => event.kind === "conflict")) {
+    return { ok: false, reason: "conflict", message: "Row merge requires a conflict-free diff with reliable row keys", diff };
+  }
+
+  const currentDiff = createDataGridRowDiff({
+    gridId: options.gridId,
+    sourceAssetId: options.sourceAssetId,
+    format: options.format,
+    oldSource: options.baselineSource,
+    newSource: options.currentSource,
+    keyColumns: options.keyColumns
+  });
+  if (currentDiff.events.length > 0) {
+    return { ok: false, reason: "stale", message: "Current data grid source changed since the row diff was created", diff };
+  }
+
+  const matchingEvent = diff.events.find((event) => dataGridRowDiffEventsMatch(event, options.event));
+  if (!matchingEvent) {
+    return { ok: false, reason: "stale", message: "Requested row merge event is no longer present", diff };
+  }
+
+  if (matchingEvent.kind === "conflict") {
+    return { ok: false, reason: "conflict", message: matchingEvent.message, diff };
+  }
+
+  const baselineGrid = parseDataGridRows(options.baselineSource, options.format);
+  const proposedGrid = parseDataGridRows(options.proposedSource, options.format);
+  const currentGrid = parseDataGridRows(options.currentSource, options.format);
+  const columns = mergeDataGridColumns(currentGrid.columns, proposedGrid.columns);
+  const keyColumns = diff.keyColumns;
+  const baselineRows = indexDataGridRows(options, baselineGrid.rows, keyColumns, "old").rows;
+  const proposedRows = indexDataGridRows(options, proposedGrid.rows, keyColumns, "new").rows;
+  const mergedRows = [...currentGrid.rows];
+
+  if (matchingEvent.kind === "row-added") {
+    const proposedRow = matchingEvent.rowKey ? proposedRows.get(matchingEvent.rowKey) : undefined;
+    if (!proposedRow) {
+      return { ok: false, reason: "stale", message: "Added row is no longer available in proposed source", diff };
+    }
+    mergedRows.push(copyDataGridRow(proposedRow, columns));
+  }
+
+  if (matchingEvent.kind === "row-deleted") {
+    const rowIndex = findDataGridRowIndex(mergedRows, keyColumns, matchingEvent.rowKey);
+    if (rowIndex < 0 || (matchingEvent.rowKey && !baselineRows.has(matchingEvent.rowKey))) {
+      return { ok: false, reason: "stale", message: "Deleted row is no longer available in current source", diff };
+    }
+    mergedRows.splice(rowIndex, 1);
+  }
+
+  if (matchingEvent.kind === "cell-modified") {
+    if (!matchingEvent.column) {
+      return { ok: false, reason: "unsupported", message: "Cell merge event is missing a column", diff };
+    }
+    const rowIndex = findDataGridRowIndex(mergedRows, keyColumns, matchingEvent.rowKey);
+    if (rowIndex < 0) {
+      return { ok: false, reason: "stale", message: "Modified row is no longer available in current source", diff };
+    }
+    mergedRows[rowIndex] = { ...mergedRows[rowIndex], [matchingEvent.column]: matchingEvent.newValue ?? "" };
+    if (!columns.includes(matchingEvent.column)) {
+      columns.push(matchingEvent.column);
+    }
+  }
+
+  return {
+    ok: true,
+    source: serializeDataGridRows(mergedRows, columns, options.format),
+    diff,
+    appliedEvent: matchingEvent
   };
 }
 
@@ -894,7 +1001,7 @@ function resolveDataGridKeyColumns(oldColumns: string[], newColumns: string[], r
 }
 
 function indexDataGridRows(
-  options: CreateDataGridRowDiffOptions,
+  options: Pick<CreateDataGridRowDiffOptions, "gridId" | "sourceAssetId">,
   rows: Array<Record<string, string>>,
   keyColumns: string[],
   side: "old" | "new"
@@ -903,7 +1010,7 @@ function indexDataGridRows(
   const events: DataGridRowDiffEvent[] = [];
 
   rows.forEach((row, index) => {
-    const rowKey = keyColumns.map((column) => row[column]?.trim() ?? "").join("\u001f");
+    const rowKey = createDataGridRowKey(row, keyColumns);
     const readableRowKey = keyColumns.map((column) => `${column}=${row[column]?.trim() ?? ""}`).join(", ");
     if (rowKey.replace(/\u001f/g, "").length === 0) {
       events.push(
@@ -952,6 +1059,67 @@ function stringifyDataGridCellValue(value: unknown): string {
   }
 
   return JSON.stringify(value);
+}
+
+function dataGridRowDiffEventsMatch(left: DataGridRowDiffEvent, right: DataGridRowDiffEvent): boolean {
+  return (
+    left.kind === right.kind &&
+    left.gridId === right.gridId &&
+    left.sourceAssetId === right.sourceAssetId &&
+    left.rowKey === right.rowKey &&
+    left.column === right.column &&
+    left.oldValue === right.oldValue &&
+    left.newValue === right.newValue
+  );
+}
+
+function mergeDataGridColumns(left: string[], right: string[]): string[] {
+  return [...left, ...right.filter((column) => !left.includes(column))];
+}
+
+function copyDataGridRow(row: Record<string, string>, columns: string[]): Record<string, string> {
+  const copied: Record<string, string> = {};
+  columns.forEach((column) => {
+    copied[column] = row[column] ?? "";
+  });
+  return copied;
+}
+
+function findDataGridRowIndex(rows: Array<Record<string, string>>, keyColumns: string[], rowKey: string | undefined): number {
+  if (!rowKey) {
+    return -1;
+  }
+
+  return rows.findIndex((row) => createDataGridRowKey(row, keyColumns) === rowKey);
+}
+
+function createDataGridRowKey(row: Record<string, string>, keyColumns: string[]): string {
+  return keyColumns.map((column) => row[column]?.trim() ?? "").join("\u001f");
+}
+
+function serializeDataGridRows(rows: Array<Record<string, string>>, columns: string[], format: "csv" | "json"): string {
+  if (format === "json") {
+    const jsonRows = rows.map((row) => {
+      const result: Record<string, string> = {};
+      columns.forEach((column) => {
+        result[column] = row[column] ?? "";
+      });
+      return result;
+    });
+    return `${JSON.stringify(jsonRows, null, 2)}\n`;
+  }
+
+  return `${[columns, ...rows.map((row) => columns.map((column) => row[column] ?? ""))]
+    .map((row) => row.map(escapeCsvCell).join(","))
+    .join("\n")}\n`;
+}
+
+function escapeCsvCell(value: string): string {
+  if (/[",\r\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  return value;
 }
 
 function parseCsvRecordsWithDiagnostics(source: string): {

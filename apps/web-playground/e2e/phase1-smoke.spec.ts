@@ -329,6 +329,38 @@ test("inserts cross references from the target picker", async ({ page }) => {
   await expect(page.getByRole("complementary", { name: "Settings side panel" }).getByLabel("Schema status")).toContainText("Valid");
 });
 
+test("sets requirement traceability IDs from the Traceability side panel", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const beforeTag = await readPreviewDocument(page);
+
+  await page.locator('.editor-surface [data-id="blk_intro"]').click();
+  await page.getByRole("button", { name: "Traceability panel" }).click();
+  const traceabilityPanel = page.getByRole("complementary", { name: "Traceability side panel" });
+  await expect(traceabilityPanel).toBeVisible();
+  await expect(traceabilityPanel.getByLabel("Requirement traceability summary")).toContainText("Tagged");
+  await expect(traceabilityPanel.getByLabel("Requirement traceability summary")).toContainText("Gaps");
+  await expect(traceabilityPanel).toContainText("System Overview");
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toBe("Requirement ID");
+    await dialog.accept("REQ-OBC-012");
+  });
+  await traceabilityPanel.getByRole("button", { name: "Set selected ID" }).click();
+  await expect(page.locator(".status-note")).toContainText("Set requirement ID REQ-OBC-012 on blk_intro");
+  await expect(traceabilityPanel).toContainText("REQ-OBC-012");
+
+  const afterTag = await readPreviewDocument(page);
+  expect(afterTag).not.toEqual(beforeTag);
+  expect(JSON.stringify(afterTag)).toContain('"humanId":"REQ-OBC-012"');
+  expect(JSON.stringify(afterTag)).not.toContain("traceabilityPanel");
+
+  await traceabilityPanel.getByRole("button", { name: "Clear selected ID" }).click();
+  await expect(page.locator(".status-note")).toContainText("Cleared requirement ID on blk_intro");
+  const afterClear = await readPreviewDocument(page);
+  expect(JSON.stringify(afterClear)).not.toContain("REQ-OBC-012");
+});
+
 test("detects broken cross references in the playground", async ({ page }, testInfo) => {
   await page.goto("/");
 

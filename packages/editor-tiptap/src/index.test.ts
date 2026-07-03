@@ -11,6 +11,7 @@ import {
   EquationBlockNode,
   FigureNode,
   fromSdocDocument,
+  getSelectedBlockHumanIdTarget,
   insertCrossReference,
   InlineEquationNode,
   insertEquationBlock,
@@ -21,6 +22,7 @@ import {
   repairJsonBlockIds,
   repairEditorBlockIds,
   runAdvancedTableCommand,
+  setSelectedBlockHumanId,
   setSelectedTableCellsAlignment,
   TableExtensions,
   toSdocDocument
@@ -545,6 +547,31 @@ describe("BlockIdExtension", () => {
     editor.destroy();
 
     expect(document.content[0].attrs?.humanId).toBe("REQ-OBC-012");
+  });
+
+  it("sets and clears the selected block human-facing id", () => {
+    const editor = new Editor({
+      extensions: [StarterKit, CalloutNode, BlockIdExtension],
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { id: "blk_req" }, content: [{ type: "text", text: "Requirement text" }] }]
+      }
+    });
+
+    editor.commands.setTextSelection(3);
+    const before = getSelectedBlockHumanIdTarget(editor);
+    const tagged = setSelectedBlockHumanId(editor, "  REQ-OBC-013  ");
+    const afterTag = toSdocDocument(editor.getJSON(), "doc_req_set");
+    const cleared = setSelectedBlockHumanId(editor, null);
+    const afterClear = toSdocDocument(editor.getJSON(), "doc_req_clear");
+    editor.destroy();
+
+    expect(before).toEqual({ id: "blk_req", type: "paragraph", humanId: null });
+    expect(tagged).toBe(true);
+    expect(afterTag.content[0].attrs?.humanId).toBe("REQ-OBC-013");
+    expect(cleared).toBe(true);
+    expect(afterClear.content[0].attrs).not.toHaveProperty("humanId");
+    expect(validateDocument(afterClear).ok).toBe(true);
   });
 
   it("assigns ids to figure blocks and captions in editor state", () => {

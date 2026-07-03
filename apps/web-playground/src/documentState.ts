@@ -1,5 +1,14 @@
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
-import { getNodeAnchor, getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocNode, type ValidationResult } from "@sdoc/schema";
+import {
+  getNodeAnchor,
+  getNodeHumanId,
+  getNodeId,
+  getPlainText,
+  isBlockNode,
+  type SDocDocument,
+  type SDocNode,
+  type ValidationResult
+} from "@sdoc/schema";
 import type { SDocDiffEvent } from "@sdoc/diff";
 
 export interface ChangeReviewSection {
@@ -57,6 +66,40 @@ export interface SectionFoldRange {
   headingLevel: number;
   title: string;
   hiddenBlockIds: string[];
+}
+
+export interface RequirementTraceItem {
+  id: string;
+  humanId: string;
+  type: string;
+  label: string;
+  path: string;
+}
+
+export interface RequirementCoverageGap {
+  id: string;
+  type: "heading";
+  label: string;
+  path: string;
+}
+
+export interface RequirementHumanIdIssue {
+  humanId: string;
+  severity: "warning";
+  message: string;
+  blocks: RequirementTraceItem[];
+}
+
+export interface RequirementTraceabilityModel {
+  taggedCount: number;
+  duplicateCount: number;
+  formatIssueCount: number;
+  coverageGapCount: number;
+  label: string;
+  taggedBlocks: RequirementTraceItem[];
+  duplicateHumanIds: RequirementHumanIdIssue[];
+  formatIssues: RequirementHumanIdIssue[];
+  coverageGaps: RequirementCoverageGap[];
 }
 
 export interface VisualDiffOverlayItem {
@@ -313,6 +356,72 @@ export function createReferenceDiagnostics(document: SDocDocument): ReferenceDia
   };
 }
 
+export function createRequirementTraceability(document: SDocDocument): RequirementTraceabilityModel {
+  const taggedBlocks: RequirementTraceItem[] = [];
+  const coverageGaps: RequirementCoverageGap[] = [];
+  const byHumanId = new Map<string, RequirementTraceItem[]>();
+
+  function visit(node: SDocNode, path: string): void {
+    if (isBlockNode(node)) {
+      const id = getNodeId(node);
+      const label = getReferenceTargetLabel(node);
+      const humanId = getNodeHumanId(node);
+      if (id && humanId) {
+        const item: RequirementTraceItem = {
+          id,
+          humanId,
+          type: node.type,
+          label,
+          path
+        };
+        taggedBlocks.push(item);
+        byHumanId.set(humanId, [...(byHumanId.get(humanId) ?? []), item]);
+      } else if (id && node.type === "heading") {
+        coverageGaps.push({
+          id,
+          type: "heading",
+          label,
+          path
+        });
+      }
+    }
+
+    node.content?.forEach((child, index) => visit(child, `${path}.${index}`));
+  }
+
+  document.content.forEach((node, index) => visit(node, `${index}`));
+
+  const duplicateHumanIds: RequirementHumanIdIssue[] = [...byHumanId.entries()]
+    .filter(([, blocks]) => blocks.length > 1)
+    .map(([humanId, blocks]) => ({
+      humanId,
+      severity: "warning",
+      message: `${humanId} appears on ${blocks.length} blocks`,
+      blocks
+    }));
+  const formatIssues: RequirementHumanIdIssue[] = [...byHumanId.entries()]
+    .filter(([humanId]) => !isRecommendedHumanId(humanId))
+    .map(([humanId, blocks]) => ({
+      humanId,
+      severity: "warning",
+      message: `${humanId} does not match the recommended tag pattern`,
+      blocks
+    }));
+  const issueCount = duplicateHumanIds.length + formatIssues.length + coverageGaps.length;
+
+  return {
+    taggedCount: taggedBlocks.length,
+    duplicateCount: duplicateHumanIds.length,
+    formatIssueCount: formatIssues.length,
+    coverageGapCount: coverageGaps.length,
+    label: issueCount === 0 ? `${taggedBlocks.length} tagged` : `${issueCount} trace ${issueCount === 1 ? "issue" : "issues"}`,
+    taggedBlocks,
+    duplicateHumanIds,
+    formatIssues,
+    coverageGaps
+  };
+}
+
 export function createSectionFoldRanges(document: SDocDocument): SectionFoldRange[] {
   const ranges: SectionFoldRange[] = [];
 
@@ -454,6 +563,10 @@ function formatReferenceDiagnosticsLabel(brokenCount: number, staleCount: number
   ]
     .filter(Boolean)
     .join(", ");
+}
+
+function isRecommendedHumanId(value: string): boolean {
+  return /^[A-Z0-9][A-Z0-9._-]*$/.test(value);
 }
 
 function getVisualDiffLabel(kind: SDocDiffEvent["kind"]): string {

@@ -20,6 +20,7 @@ Recommended Activity Bar items:
 - `Files`: current document, recent documents, open/save actions, and later folder exploration.
 - `Review`: semantic diff, change review, and optional Git/unpacked workflow entry points.
 - `References`: target picker, broken reference diagnostics, stale label sync, and navigation.
+- `Traceability`: requirement IDs, duplicate/tag format warnings, coverage gaps, and requirement navigation.
 - `History`: local snapshots, rename/delete, and compare controls.
 - `Export`: `.sdoc`, Markdown, AI/RAG, HTML/PDF/slide exports as they become available.
 - `Settings`: document metadata, editor preferences, schema/version details, and advanced options.

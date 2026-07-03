@@ -5,6 +5,7 @@ import {
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
+  createRequirementTraceability,
   createSectionFoldRanges,
   createVisualDiffOverlayItems,
   filterVisualDiffOverlayItems,
@@ -196,6 +197,53 @@ describe("document state helpers", () => {
     ]);
 
     expect(createReferenceDiagnostics(updateCrossReferenceLabel(document, "ref_target", "Updated Target")).staleCount).toBe(0);
+  });
+
+  it("summarizes requirement traceability tags without using them as identity", () => {
+    const document: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_traceability" },
+      content: [
+        { type: "heading", attrs: { id: "blk_tagged", humanId: "REQ-OBC-012", level: 1 }, content: [{ type: "text", text: "Tagged" }] },
+        { type: "paragraph", attrs: { id: "blk_dup_a", humanId: "REQ-OBC-012" }, content: [{ type: "text", text: "Duplicate A" }] },
+        { type: "paragraph", attrs: { id: "blk_format", humanId: "req lowercase" }, content: [{ type: "text", text: "Bad format" }] },
+        { type: "heading", attrs: { id: "blk_missing", level: 2 }, content: [{ type: "text", text: "Missing tag" }] }
+      ]
+    };
+
+    expect(createRequirementTraceability(document)).toEqual({
+      taggedCount: 3,
+      duplicateCount: 1,
+      formatIssueCount: 1,
+      coverageGapCount: 1,
+      label: "3 trace issues",
+      taggedBlocks: [
+        { id: "blk_tagged", humanId: "REQ-OBC-012", type: "heading", label: "Tagged", path: "0" },
+        { id: "blk_dup_a", humanId: "REQ-OBC-012", type: "paragraph", label: "Duplicate A", path: "1" },
+        { id: "blk_format", humanId: "req lowercase", type: "paragraph", label: "Bad format", path: "2" }
+      ],
+      duplicateHumanIds: [
+        {
+          humanId: "REQ-OBC-012",
+          severity: "warning",
+          message: "REQ-OBC-012 appears on 2 blocks",
+          blocks: [
+            { id: "blk_tagged", humanId: "REQ-OBC-012", type: "heading", label: "Tagged", path: "0" },
+            { id: "blk_dup_a", humanId: "REQ-OBC-012", type: "paragraph", label: "Duplicate A", path: "1" }
+          ]
+        }
+      ],
+      formatIssues: [
+        {
+          humanId: "req lowercase",
+          severity: "warning",
+          message: "req lowercase does not match the recommended tag pattern",
+          blocks: [{ id: "blk_format", humanId: "req lowercase", type: "paragraph", label: "Bad format", path: "2" }]
+        }
+      ],
+      coverageGaps: [{ id: "blk_missing", type: "heading", label: "Missing tag", path: "3" }]
+    });
   });
 
   it("derives section fold ranges from heading levels and stable heading ids", () => {

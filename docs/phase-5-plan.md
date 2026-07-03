@@ -90,7 +90,7 @@ Acceptance evidence:
 
 ## Slice 4: Review UX Hardening
 
-Status: started on 2026-07-03. Visual semantic diff review UX is implemented; requirement tagging diagnostics and broken reference repair actions remain open.
+Status: started on 2026-07-03. Visual semantic diff review UX and requirement tagging diagnostics are implemented; broken reference repair actions remain open.
 
 Productize the visual semantic diff overlay, requirement tagging diagnostics, and broken reference repair actions. These features must consume existing semantic diff and reference diagnostic sources instead of creating independent review state in canonical JSON.
 
@@ -108,10 +108,13 @@ Acceptance evidence:
 - `apps/web-playground/src/App.tsx` adds Review panel event filters, selectable review events, and stable-ID editor focusing for anchorable changes.
 - Unit tests cover event projection, filter counts, filtered results, selected overlay CSS, and deleted-event exclusion from editor CSS.
 - Playwright coverage verifies Review panel filtering/selection and confirms `document.json` remains unchanged by review-only interactions.
+- `apps/web-playground/src/documentState.ts` creates requirement traceability diagnostics for tagged blocks, duplicate `humanId` values, recommended-pattern warnings, and heading coverage gaps.
+- `packages/editor-tiptap/src/index.ts` exposes selected-block `humanId` helpers so the UI can set or clear authored tags without treating them as internal identity.
+- The Traceability Activity panel lets authors set/clear selected block IDs, inspect diagnostics, and jump to tagged or missing-heading blocks.
+- Unit and Playwright coverage verify traceability diagnostics, selected-block tag editing, and runtime panel state staying out of `document.json`.
 
 Open work:
 
-- Requirement tagging diagnostics.
 - Broken reference repair actions beyond the existing reference-label update flow.
 - Side-by-side or accept/reject review workflow.
 

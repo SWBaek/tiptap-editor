@@ -47,6 +47,16 @@ Changing `humanId` must not break `crossReference` nodes, because cross referenc
 
 The editor may show `humanId` in the left margin, block toolbar, or inspector. Editing should be explicit and auditable, not generated silently from heading text or position.
 
+## Initial Productization
+
+Implemented on 2026-07-03:
+
+- The web playground exposes a Traceability Activity panel for `humanId` diagnostics.
+- Authors can explicitly set or clear the selected block's `humanId`; the value is trimmed and stored only as canonical authored metadata.
+- The traceability model reports tagged blocks, duplicate `humanId` warnings, recommended-pattern warnings, and heading coverage gaps.
+- Duplicate tags remain warnings because some teams intentionally repeat high-level requirement IDs across related blocks.
+- Traceability panel state, selected diagnostics, and prompt state remain runtime-only and are not written to `document.json`.
+
 ## Deferred Work
 
 - multiple tags per block;

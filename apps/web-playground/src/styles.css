@@ -1342,6 +1342,193 @@ button {
   grid-column: 2;
 }
 
+.traceability-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: #fbfcfd;
+}
+
+.side-panel .traceability-panel {
+  margin: 0 -18px -18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.traceability-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: #dfe5ea;
+  border-bottom: 1px solid #dfe5ea;
+}
+
+.traceability-summary div {
+  min-width: 0;
+  padding: 12px 10px;
+  background: #ffffff;
+}
+
+.traceability-summary span,
+.traceability-summary strong {
+  display: block;
+  text-align: center;
+}
+
+.traceability-summary span {
+  overflow: hidden;
+  color: #657484;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.traceability-summary strong {
+  margin-top: 4px;
+  color: #17212b;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.traceability-summary strong.ok {
+  color: #317053;
+}
+
+.traceability-summary strong.warning {
+  color: #9c6a12;
+}
+
+.traceability-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e4e9ee;
+}
+
+.traceability-actions button,
+.traceability-block-links button,
+.traceability-gap-list button,
+.traceability-tag-list button {
+  min-height: 30px;
+  color: #17212b;
+  background: #ffffff;
+  border: 1px solid #cfd7df;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.traceability-section {
+  min-width: 0;
+  padding: 14px;
+  border-bottom: 1px solid #e4e9ee;
+}
+
+.traceability-section h3 {
+  margin: 0 0 12px;
+  color: #17212b;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.traceability-issue-list,
+.traceability-gap-list,
+.traceability-tag-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.traceability-issue-list li,
+.traceability-gap-list li,
+.traceability-tag-list li {
+  min-width: 0;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid #dfe5ea;
+  border-radius: 6px;
+}
+
+.traceability-gap-list li,
+.traceability-tag-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.traceability-gap-list li.selected,
+.traceability-tag-list li.selected {
+  border-color: #4c95a3;
+  box-shadow: 0 0 0 2px rgba(76, 149, 163, 0.14);
+}
+
+.traceability-issue-list strong,
+.traceability-issue-list span,
+.traceability-gap-list strong,
+.traceability-gap-list code,
+.traceability-tag-list span,
+.traceability-tag-list strong,
+.traceability-tag-list small,
+.traceability-tag-list code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.traceability-issue-list strong,
+.traceability-gap-list strong,
+.traceability-tag-list strong {
+  color: #17212b;
+  font-size: 13px;
+}
+
+.traceability-issue-list span,
+.traceability-tag-list small {
+  display: block;
+  margin-top: 3px;
+  color: #657484;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.traceability-tag-list span {
+  color: #657484;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.traceability-gap-list code,
+.traceability-tag-list code {
+  display: block;
+  margin-top: 4px;
+  color: #657484;
+  font-size: 11px;
+}
+
+.traceability-block-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.traceability-block-links button {
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.traceability-empty {
+  margin: 0;
+  color: #657484;
+  font-size: 13px;
+}
+
 .reference-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

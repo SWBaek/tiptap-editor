@@ -58,12 +58,14 @@ import {
   InlineEquationNode,
   initialContent,
   insertEquationBlock,
+  getSelectedBlockHumanIdTarget,
   insertInlineEquation,
   insertMermaidDiagram,
   insertSimpleTable,
   moveSelectedTopLevelBlock,
   repairEditorBlockIds,
   runAdvancedTableCommand,
+  setSelectedBlockHumanId,
   setSelectedTableCellsAlignment,
   TableExtensions,
   toSdocDocument,
@@ -78,6 +80,7 @@ import {
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
   createReferenceDiagnostics,
+  createRequirementTraceability,
   createSectionFoldRanges,
   createVisualDiffOverlayItems,
   filterVisualDiffOverlayItems,
@@ -99,6 +102,7 @@ import {
   type ChangeReviewModel,
   type ReferenceDiagnosticsModel,
   type ReferenceTargetSummary,
+  type RequirementTraceabilityModel,
   type SectionFoldRange,
   type VisualDiffFilterCounts,
   type VisualDiffFilterKind,
@@ -106,7 +110,7 @@ import {
 } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
-type ActivityPanel = "files" | "review" | "references" | "history" | "export" | "settings";
+type ActivityPanel = "files" | "review" | "references" | "traceability" | "history" | "export" | "settings";
 type CalloutKind = "note" | "warning";
 type RecentFileAction = "opened" | "saved";
 type DerivedOutputName = "plain.md" | "chunks.jsonl" | "outline.json" | "references.json";
@@ -230,6 +234,7 @@ export function App() {
   const diffPreview = renderDiffPreview(documentDiffLines, metadataDiffLines);
   const changeReview = createChangeReview(documentDiffLines, metadataDiffLines);
   const referenceDiagnostics = createReferenceDiagnostics(document);
+  const requirementTraceability = useMemo(() => createRequirementTraceability(document), [document]);
   const visualDiffOverlayItems = useMemo(() => createVisualDiffOverlayItems(documentDiffEvents), [documentDiffEvents]);
   const visualDiffFilterCounts = useMemo(() => createVisualDiffFilterCounts(visualDiffOverlayItems), [visualDiffOverlayItems]);
   const visibleVisualDiffItems = useMemo(
@@ -612,6 +617,42 @@ export function App() {
     setStatusMessage(`Updated reference label: ${reference.targetLabel}`);
   }
 
+  function tagSelectedBlock() {
+    const target = getSelectedBlockHumanIdTarget(editor);
+    if (!target) {
+      setStatusMessage("Select a block before setting a requirement ID");
+      return;
+    }
+
+    const value = window.prompt("Requirement ID", target.humanId ?? "REQ-OBC-001");
+    if (value === null) {
+      setStatusMessage("Canceled requirement ID update");
+      return;
+    }
+
+    const normalized = value.trim();
+    if (normalized.length === 0) {
+      setStatusMessage("Requirement ID cannot be empty");
+      return;
+    }
+
+    const updated = setSelectedBlockHumanId(editor, normalized);
+    openActivityPanel("traceability");
+    setStatusMessage(updated ? `Set requirement ID ${normalized} on ${target.id}` : `Cannot set requirement ID on ${target.id}`);
+  }
+
+  function clearSelectedBlockTag() {
+    const target = getSelectedBlockHumanIdTarget(editor);
+    if (!target) {
+      setStatusMessage("Select a block before clearing a requirement ID");
+      return;
+    }
+
+    const updated = setSelectedBlockHumanId(editor, null);
+    openActivityPanel("traceability");
+    setStatusMessage(updated ? `Cleared requirement ID on ${target.id}` : `Cannot clear requirement ID on ${target.id}`);
+  }
+
   function revealEditorNode(nodeId: string, label: string) {
     const element = findEditorElementByDataId(nodeId);
     if (!element) {
@@ -815,6 +856,16 @@ export function App() {
               onInsertReference={insertCrossReferenceToTarget}
               onRevealNode={revealEditorNode}
               onUpdateReferenceLabel={updateReferenceLabel}
+            />
+          )}
+
+          {activePanel === "traceability" && (
+            <TraceabilityPanel
+              traceability={requirementTraceability}
+              highlightedNodeId={highlightedNodeId}
+              onSetSelectedTag={tagSelectedBlock}
+              onClearSelectedTag={clearSelectedBlockTag}
+              onRevealNode={revealEditorNode}
             />
           )}
 
@@ -1044,6 +1095,9 @@ function ActivityBar({
       </ActivityButton>
       <ActivityButton active={activePanel === "references" && isOpen} label="References" onClick={() => onSelect("references")}>
         <Link2 size={20} />
+      </ActivityButton>
+      <ActivityButton active={activePanel === "traceability" && isOpen} label="Traceability" onClick={() => onSelect("traceability")}>
+        <Sigma size={20} />
       </ActivityButton>
       <ActivityButton active={activePanel === "history" && isOpen} label="History" onClick={() => onSelect("history")}>
         <HistoryIcon size={20} />
@@ -1682,6 +1736,134 @@ function HistoryEntryCard({
   );
 }
 
+function TraceabilityPanel({
+  traceability,
+  highlightedNodeId,
+  onSetSelectedTag,
+  onClearSelectedTag,
+  onRevealNode
+}: {
+  traceability: RequirementTraceabilityModel;
+  highlightedNodeId: string | null;
+  onSetSelectedTag: () => void;
+  onClearSelectedTag: () => void;
+  onRevealNode: (nodeId: string, label: string) => void;
+}) {
+  return (
+    <div className="traceability-panel">
+      <div className="traceability-summary" aria-label="Requirement traceability summary">
+        <div>
+          <span>Tagged</span>
+          <strong>{traceability.taggedCount}</strong>
+        </div>
+        <div>
+          <span>Duplicates</span>
+          <strong className={traceability.duplicateCount > 0 ? "warning" : "ok"}>{traceability.duplicateCount}</strong>
+        </div>
+        <div>
+          <span>Format</span>
+          <strong className={traceability.formatIssueCount > 0 ? "warning" : "ok"}>{traceability.formatIssueCount}</strong>
+        </div>
+        <div>
+          <span>Gaps</span>
+          <strong className={traceability.coverageGapCount > 0 ? "warning" : "ok"}>{traceability.coverageGapCount}</strong>
+        </div>
+      </div>
+
+      <div className="traceability-actions">
+        <button type="button" onClick={onSetSelectedTag}>
+          Set selected ID
+        </button>
+        <button type="button" onClick={onClearSelectedTag}>
+          Clear selected ID
+        </button>
+      </div>
+
+      {traceability.duplicateHumanIds.length > 0 && (
+        <section className="traceability-section">
+          <h3>Duplicate IDs</h3>
+          <ul className="traceability-issue-list">
+            {traceability.duplicateHumanIds.map((issue) => (
+              <li key={issue.humanId}>
+                <strong>{issue.humanId}</strong>
+                <span>{issue.message}</span>
+                <div className="traceability-block-links">
+                  {issue.blocks.map((block) => (
+                    <button type="button" key={block.id} onClick={() => onRevealNode(block.id, `${block.humanId} ${block.label}`)}>
+                      {block.id}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {traceability.formatIssues.length > 0 && (
+        <section className="traceability-section">
+          <h3>Format warnings</h3>
+          <ul className="traceability-issue-list">
+            {traceability.formatIssues.map((issue) => (
+              <li key={issue.humanId}>
+                <strong>{issue.humanId}</strong>
+                <span>{issue.message}</span>
+                <div className="traceability-block-links">
+                  {issue.blocks.map((block) => (
+                    <button type="button" key={block.id} onClick={() => onRevealNode(block.id, `${block.humanId} ${block.label}`)}>
+                      {block.id}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {traceability.coverageGaps.length > 0 && (
+        <section className="traceability-section">
+          <h3>Heading gaps</h3>
+          <ul className="traceability-gap-list">
+            {traceability.coverageGaps.map((gap) => (
+              <li className={highlightedNodeId === gap.id ? "selected" : undefined} key={gap.id}>
+                <div>
+                  <strong>{gap.label}</strong>
+                  <code>{gap.id}</code>
+                </div>
+                <button type="button" onClick={() => onRevealNode(gap.id, `heading ${gap.label}`)}>
+                  Show
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="traceability-section">
+        <h3>Tagged blocks</h3>
+        {traceability.taggedBlocks.length === 0 ? (
+          <p className="traceability-empty">No requirement IDs</p>
+        ) : (
+          <ul className="traceability-tag-list">
+            {traceability.taggedBlocks.map((block) => (
+              <li className={highlightedNodeId === block.id ? "selected" : undefined} key={`${block.humanId}-${block.id}`}>
+                <span>{block.type}</span>
+                <strong>{block.humanId}</strong>
+                <small>{block.label}</small>
+                <code>{block.id}</code>
+                <button type="button" onClick={() => onRevealNode(block.id, `${block.humanId} ${block.label}`)}>
+                  Show
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function ReferencePanel({
   diagnostics,
   highlightedNodeId,
@@ -1822,6 +2004,7 @@ function getActivityPanelLabel(panel: ActivityPanel): string {
     files: "Files",
     review: "Review",
     references: "References",
+    traceability: "Traceability",
     history: "History",
     export: "Export",
     settings: "Settings"

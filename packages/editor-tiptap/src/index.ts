@@ -48,8 +48,9 @@ interface BlockIdDocument {
 }
 
 interface BlockIdTransaction {
-  setNodeMarkup: (pos: number, type?: any, attrs?: Record<string, unknown>) => unknown;
+  setNodeMarkup: (pos: number, type?: any, attrs?: Record<string, unknown>) => BlockIdTransaction;
   setMeta?: (key: string, value: unknown) => unknown;
+  scrollIntoView?: () => BlockIdTransaction;
 }
 
 export interface EditorBlockMoveTarget {
@@ -65,6 +66,28 @@ export interface EditorBlockMoveTarget {
   view: {
     dispatch: (transaction: any) => void;
   };
+}
+
+export interface EditorHumanIdTarget {
+  state: {
+    selection: {
+      $from: {
+        depth: number;
+        node: (depth: number) => BlockIdNode;
+        before: (depth: number) => number;
+      };
+    };
+    tr: BlockIdTransaction;
+  };
+  view: {
+    dispatch: (transaction: any) => void;
+  };
+}
+
+export interface SelectedBlockHumanIdTarget {
+  id: string;
+  type: string;
+  humanId: string | null;
 }
 
 interface TopLevelDocument {
@@ -757,6 +780,54 @@ export function moveSelectedTopLevelBlock(editor: EditorBlockMoveTarget, directi
   transaction.scrollIntoView?.();
   editor.view.dispatch(transaction);
   return true;
+}
+
+export function getSelectedBlockHumanIdTarget(editor: EditorHumanIdTarget): SelectedBlockHumanIdTarget | null {
+  const selection = editor.state.selection;
+  for (let depth = selection.$from.depth; depth > 0; depth -= 1) {
+    const node = selection.$from.node(depth);
+    if (!blockTypeSet.has(node.type.name)) {
+      continue;
+    }
+
+    const id = typeof node.attrs.id === "string" && node.attrs.id.length > 0 ? node.attrs.id : null;
+    if (!id) {
+      return null;
+    }
+
+    return {
+      id,
+      type: node.type.name,
+      humanId: typeof node.attrs.humanId === "string" && node.attrs.humanId.length > 0 ? node.attrs.humanId : null
+    };
+  }
+
+  return null;
+}
+
+export function setSelectedBlockHumanId(editor: EditorHumanIdTarget, humanId: string | null): boolean {
+  const selection = editor.state.selection;
+  for (let depth = selection.$from.depth; depth > 0; depth -= 1) {
+    const node = selection.$from.node(depth);
+    if (!blockTypeSet.has(node.type.name)) {
+      continue;
+    }
+
+    const attrs = { ...node.attrs };
+    const nextHumanId = humanId?.trim() ?? "";
+    if (nextHumanId.length > 0) {
+      attrs.humanId = nextHumanId;
+    } else {
+      delete attrs.humanId;
+    }
+
+    let transaction = editor.state.tr.setNodeMarkup(selection.$from.before(depth), undefined, attrs);
+    transaction = transaction.scrollIntoView?.() ?? transaction;
+    editor.view.dispatch(transaction);
+    return true;
+  }
+
+  return false;
 }
 
 export const initialContent: JSONContent = {

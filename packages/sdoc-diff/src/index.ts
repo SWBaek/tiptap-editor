@@ -70,6 +70,25 @@ export type SDocReviewActionResult =
       issues?: ValidationIssue[];
     };
 
+export interface SDocReviewBatchItem {
+  id: string;
+  kind: SDocDiffEvent["kind"];
+}
+
+export interface SDocReviewBatchFailure {
+  id: string;
+  kind: SDocDiffEvent["kind"];
+  reason: SDocReviewActionFailureReason;
+  message: string;
+}
+
+export interface SDocReviewBatchResult {
+  document: SDocDocument;
+  appliedCount: number;
+  skippedCount: number;
+  failures: SDocReviewBatchFailure[];
+}
+
 interface BlockInfo {
   id: string;
   node: SDocNode;
@@ -311,6 +330,93 @@ export function applyDiffEventAcceptanceToBaseline(
     changed: stableStringify(normalized) !== stableStringify(baseline),
     document: normalized
   };
+}
+
+export function applyDiffEventBatchAction(
+  baselineDocument: SDocDocument,
+  currentDocument: SDocDocument,
+  items: SDocReviewBatchItem[],
+  action: SDocReviewAction
+): SDocReviewBatchResult {
+  if (action === "accept") {
+    return applyDiffEventBatchAcceptanceToBaseline(baselineDocument, currentDocument, items);
+  }
+
+  let current = normalizeDocument(currentDocument);
+  const baseline = normalizeDocument(baselineDocument);
+  const failures: SDocReviewBatchFailure[] = [];
+  let appliedCount = 0;
+
+  for (const item of items) {
+    const event = findCurrentBatchEvent(baseline, current, item);
+    if (!event) {
+      failures.push({
+        ...item,
+        reason: "stale-event",
+        message: `Cannot reject ${item.kind} ${item.id}: review event is stale or already resolved.`
+      });
+      continue;
+    }
+
+    const result = applyDiffEventAction(baseline, current, event, "reject");
+    if (!result.ok) {
+      failures.push({ ...item, reason: result.reason, message: result.message });
+      continue;
+    }
+
+    current = result.document;
+    appliedCount += 1;
+  }
+
+  return {
+    document: current,
+    appliedCount,
+    skippedCount: failures.length,
+    failures
+  };
+}
+
+export function applyDiffEventBatchAcceptanceToBaseline(
+  baselineDocument: SDocDocument,
+  currentDocument: SDocDocument,
+  items: SDocReviewBatchItem[]
+): SDocReviewBatchResult {
+  let baseline = normalizeDocument(baselineDocument);
+  const current = normalizeDocument(currentDocument);
+  const failures: SDocReviewBatchFailure[] = [];
+  let appliedCount = 0;
+
+  for (const item of items) {
+    const event = findCurrentBatchEvent(baseline, current, item);
+    if (!event) {
+      failures.push({
+        ...item,
+        reason: "stale-event",
+        message: `Cannot accept ${item.kind} ${item.id}: review event is stale or already resolved.`
+      });
+      continue;
+    }
+
+    const result = applyDiffEventAcceptanceToBaseline(baseline, current, event);
+    if (!result.ok) {
+      failures.push({ ...item, reason: result.reason, message: result.message });
+      continue;
+    }
+
+    baseline = result.document;
+    appliedCount += 1;
+  }
+
+  return {
+    document: baseline,
+    appliedCount,
+    skippedCount: failures.length,
+    failures
+  };
+}
+
+function findCurrentBatchEvent(baseline: SDocDocument, current: SDocDocument, item: SDocReviewBatchItem): SDocDiffEvent | undefined {
+  return diffDocuments(baseline, current).find((event) => event.id === item.id && event.kind === item.kind);
 }
 
 function acceptDiffEventIntoBaseline(

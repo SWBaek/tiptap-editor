@@ -97,3 +97,5 @@ The headless review apply path uses the same semantic diff events. Before applyi
 - `reference-broken` is not directly accepted or rejected; it is repaired through the References workflow.
 
 The resulting document must validate and serialize deterministically as normal `document.json`. Review action choices, previews, and batch selections remain runtime state only.
+
+Batch accept/reject is an ordered application of the same single-event semantics. Implementations must recompute semantic diff after each applied event and skip stale or already-resolved events instead of applying stored paths.

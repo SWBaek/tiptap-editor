@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { applyDiffEventAcceptanceToBaseline, applyDiffEventAction, diffDocuments, renderDiffEvents, renderReadableDiffEvents } from "./index";
+import {
+  applyDiffEventAcceptanceToBaseline,
+  applyDiffEventAction,
+  applyDiffEventBatchAction,
+  diffDocuments,
+  renderDiffEvents,
+  renderReadableDiffEvents
+} from "./index";
 import { getPlainText, validateDocument, type SDocDocument } from "@sdoc/schema";
 
 const oldDocument: SDocDocument = {
@@ -417,6 +424,46 @@ describe("applyDiffEventAction", () => {
     expect(remainingEvents.some((candidate) => candidate.kind === "added" && candidate.id === "blk_added")).toBe(false);
     expect(remainingEvents.some((candidate) => candidate.kind === "deleted" && candidate.id === "blk_removed")).toBe(false);
     expect(remainingEvents.some((candidate) => candidate.kind === "moved" && candidate.id === "blk_intro")).toBe(false);
+  });
+
+  it("batch accepts selected events into the review baseline with stale-event skips", () => {
+    const result = applyDiffEventBatchAction(
+      oldDocument,
+      newDocument,
+      [
+        { kind: "modified", id: "blk_body" },
+        { kind: "added", id: "blk_added" },
+        { kind: "modified", id: "blk_already_resolved" }
+      ],
+      "accept"
+    );
+
+    expect(result.appliedCount).toBe(2);
+    expect(result.skippedCount).toBe(1);
+    expect(result.failures[0]).toMatchObject({ id: "blk_already_resolved", reason: "stale-event" });
+    const remainingEvents = diffDocuments(result.document, newDocument);
+    expect(remainingEvents.some((candidate) => candidate.kind === "modified" && candidate.id === "blk_body")).toBe(false);
+    expect(remainingEvents.some((candidate) => candidate.kind === "added" && candidate.id === "blk_added")).toBe(false);
+  });
+
+  it("batch rejects selected events into the current document with stale-event skips", () => {
+    const result = applyDiffEventBatchAction(
+      oldDocument,
+      newDocument,
+      [
+        { kind: "modified", id: "blk_body" },
+        { kind: "added", id: "blk_added" },
+        { kind: "modified", id: "blk_already_resolved" }
+      ],
+      "reject"
+    );
+
+    expect(result.appliedCount).toBe(2);
+    expect(result.skippedCount).toBe(1);
+    expect(result.failures[0]).toMatchObject({ id: "blk_already_resolved", reason: "stale-event" });
+    const remainingEvents = diffDocuments(oldDocument, result.document);
+    expect(remainingEvents.some((candidate) => candidate.kind === "modified" && candidate.id === "blk_body")).toBe(false);
+    expect(remainingEvents.some((candidate) => candidate.kind === "added" && candidate.id === "blk_added")).toBe(false);
   });
 
   it("routes broken references to explicit repair workflows instead of direct accept/reject", () => {

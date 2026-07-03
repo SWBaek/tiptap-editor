@@ -90,7 +90,7 @@ Acceptance evidence:
 
 ## Slice 4: Review UX Hardening
 
-Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, broken reference repair actions, runtime accept/reject action planning, headless single-event accept/reject apply, and browser Review panel single-event apply UX are implemented; side-by-side diff and batch/conflict UX remain open.
+Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, broken reference repair actions, runtime accept/reject action planning, headless single-event accept/reject apply, browser Review panel single-event apply UX, and visible-event batch accept/reject are implemented; side-by-side diff and advanced conflict UX remain open.
 
 Productize the visual semantic diff overlay, requirement tagging diagnostics, and broken reference repair actions. These features must consume existing semantic diff and reference diagnostic sources instead of creating independent review state in canonical JSON.
 
@@ -121,10 +121,11 @@ Acceptance evidence:
 - `@sdoc/diff` applies single-event accept/reject actions with stale-event protection for added, deleted, modified, and moved events.
 - `sdoc review <accept|reject>` exposes the headless review action path for developer/reviewer workflows without making Git mandatory.
 - The browser Review panel exposes per-event Accept/Reject actions for saved-baseline review, confirms each action, recomputes semantic diff, and keeps review action state out of `document.json`.
+- Batch accept/reject applies visible non-broken review events, recomputes diff between each event, and reports skipped stale events without serializing batch state.
 
 Open work:
 
-- Batch accept/reject and conflict resolution UX.
+- Advanced conflict resolution UX for partially applied batches.
 - Side-by-side document diff.
 
 ## Slice 5: Enterprise Authoring And Publishing

@@ -42,7 +42,15 @@ import {
   Underline as UnderlineIcon,
   Workflow
 } from "lucide-react";
-import { applyDiffEventAcceptanceToBaseline, applyDiffEventAction, diffDocuments, renderReadableDiffEvents, type SDocDiffEvent } from "@sdoc/diff";
+import {
+  applyDiffEventAcceptanceToBaseline,
+  applyDiffEventAction,
+  applyDiffEventBatchAction,
+  diffDocuments,
+  renderReadableDiffEvents,
+  type SDocDiffEvent,
+  type SDocReviewBatchItem
+} from "@sdoc/diff";
 import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
 import { stableStringify, type SDocMetadata } from "@sdoc/format";
 import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, type ValidationResult, validateDocument } from "@sdoc/schema";
@@ -251,6 +259,7 @@ export function App() {
     [visualDiffFilter, visualDiffOverlayItems]
   );
   const visibleReviewActionItems = useMemo(() => createReviewActionPlan(visibleVisualDiffItems).items, [visibleVisualDiffItems]);
+  const visibleBatchReviewItems = useMemo(() => createReviewBatchItems(visibleReviewActionItems), [visibleReviewActionItems]);
   const visualDiffRuntimeCss = useMemo(
     () => (isDiffOverlayEnabled ? renderVisualDiffRuntimeCss(visibleVisualDiffItems, selectedVisualDiffId) : ""),
     [isDiffOverlayEnabled, selectedVisualDiffId, visibleVisualDiffItems]
@@ -811,6 +820,38 @@ export function App() {
     setStatusMessage(`Rejected ${item.kind} ${item.id}`);
   }
 
+  function applyVisibleReviewBatch(action: ReviewActionKind) {
+    if (selectedHistoryEntry) {
+      setStatusMessage("Use saved baseline before applying review actions");
+      return;
+    }
+
+    if (visibleBatchReviewItems.length === 0) {
+      setStatusMessage("No visible review events can be applied");
+      return;
+    }
+
+    const label = action === "accept" ? "Accept" : "Reject";
+    if (!window.confirm(`${label} ${visibleBatchReviewItems.length} visible document event${visibleBatchReviewItems.length === 1 ? "" : "s"}?`)) {
+      setStatusMessage(`Canceled batch ${action}`);
+      return;
+    }
+
+    const result = applyDiffEventBatchAction(baselineDocument, document, visibleBatchReviewItems, action);
+    if (action === "accept") {
+      setBaselineDocument(result.document);
+    } else {
+      editor.commands.setContent(fromSdocDocument(result.document, createAssetSourceMap(assets)), { emitUpdate: true });
+      repairEditorBlockIds(editor);
+      setDocumentId(result.document.attrs.id);
+    }
+
+    setSelectedVisualDiffId(null);
+    setActiveTab("diff");
+    const skipped = result.skippedCount > 0 ? `, skipped ${result.skippedCount}` : "";
+    setStatusMessage(`${label}ed ${result.appliedCount} visible review event${result.appliedCount === 1 ? "" : "s"}${skipped}`);
+  }
+
   function insertInlineEquationFromPrompt() {
     const latex = window.prompt("Inline equation", "E=mc^2")?.trim();
     if (!latex) {
@@ -955,6 +996,7 @@ export function App() {
               onShowDiff={() => setActiveTab("diff")}
               onCompareSavedBaseline={compareSavedBaseline}
               onApplyReviewAction={applyReviewAction}
+              onApplyReviewBatch={applyVisibleReviewBatch}
               onMarkSaved={markCurrentAsBaseline}
               onSelectVisualDiff={selectVisualDiffItem}
               onSetVisualDiffFilter={setVisualDiffFilter}
@@ -1555,6 +1597,7 @@ function ReviewPanel({
   onShowDiff,
   onCompareSavedBaseline,
   onApplyReviewAction,
+  onApplyReviewBatch,
   onMarkSaved,
   onSelectVisualDiff,
   onSetVisualDiffFilter,
@@ -1573,6 +1616,7 @@ function ReviewPanel({
   onShowDiff: () => void;
   onCompareSavedBaseline: () => void;
   onApplyReviewAction: (item: ReviewActionPlanItem, action: ReviewActionKind) => void;
+  onApplyReviewBatch: (action: ReviewActionKind) => void;
   onMarkSaved: () => void;
   onSelectVisualDiff: (item: VisualDiffOverlayItem) => void;
   onSetVisualDiffFilter: (filter: VisualDiffFilterKind) => void;
@@ -1581,6 +1625,7 @@ function ReviewPanel({
 }) {
   const isHistoryBase = baseLabel !== "Saved baseline";
   const semanticDiffCommand = 'npm run sdoc -- diff "old.document.json" "new.document.json"';
+  const batchableCount = createReviewBatchItems(visualDiffItems).length;
   const filterOptions: Array<{ value: VisualDiffFilterKind; label: string; count: number }> = [
     { value: "all", label: "All", count: visualDiffCounts.total },
     { value: "added", label: "Added", count: visualDiffCounts.added },
@@ -1627,6 +1672,14 @@ function ReviewPanel({
         <input type="checkbox" checked={isDiffOverlayEnabled} onChange={onToggleDiffOverlay} />
         <span>Inline overlay</span>
       </label>
+      <div className="review-batch-actions" aria-label="Visible review batch actions">
+        <button type="button" disabled={batchableCount === 0} onClick={() => onApplyReviewBatch("accept")}>
+          Accept visible
+        </button>
+        <button type="button" disabled={batchableCount === 0} onClick={() => onApplyReviewBatch("reject")}>
+          Reject visible
+        </button>
+      </div>
 
       <section className="review-events" aria-label="Semantic review events">
         <div className="review-event-filters" aria-label="Review event filters">
@@ -2181,6 +2234,15 @@ function getActivityPanelLabel(panel: ActivityPanel): string {
 
 function findDiffEventForReviewItem(events: SDocDiffEvent[], item: ReviewActionPlanItem): SDocDiffEvent | undefined {
   return events.find((event) => event.id === item.id && event.kind === item.kind);
+}
+
+function createReviewBatchItems(items: ReviewActionPlanItem[]): SDocReviewBatchItem[] {
+  return items
+    .filter((item) => item.kind !== "reference-broken")
+    .map((item) => ({
+      id: item.id,
+      kind: item.kind
+    }));
 }
 
 function getSelectedSectionFoldRange(editor: Editor, ranges: SectionFoldRange[]): SectionFoldRange | null {

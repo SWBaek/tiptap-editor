@@ -129,6 +129,30 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   expect(await readPreviewDocument(page)).toEqual(beforeReviewSelection);
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
 
+  await page.locator(".editor-surface p").first().click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" Batch accepted.");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const batchAcceptedDocument = await readPreviewDocument(page);
+  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("Modified paragraph");
+  page.once("dialog", (dialog) => dialog.accept());
+  await reviewPanel.getByRole("button", { name: "Accept visible" }).click();
+  await expect(page.locator(".status-note")).toContainText("Accepted 1 visible review event");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  expect(await readPreviewDocument(page)).toEqual(batchAcceptedDocument);
+  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
+
+  await page.locator(".editor-surface p").first().click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" Batch rejected.");
+  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("Modified paragraph");
+  page.once("dialog", (dialog) => dialog.accept());
+  await reviewPanel.getByRole("button", { name: "Reject visible" }).click();
+  await expect(page.locator(".status-note")).toContainText("Rejected 1 visible review event");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  expect(await readPreviewDocument(page)).toEqual(batchAcceptedDocument);
+  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
+
   await expect(reviewPanel.getByLabel("Git integration boundary")).toContainText("Git is optional");
   await reviewPanel.getByRole("button", { name: "Copy semantic diff command" }).click();
   await expect(page.locator(".status-note")).toContainText('npm run sdoc -- diff "old.document.json" "new.document.json"');

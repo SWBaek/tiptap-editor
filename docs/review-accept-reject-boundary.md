@@ -46,10 +46,11 @@ Implemented on 2026-07-04:
 - broken references remain unsupported for direct accept/reject and must use the References repair flow.
 - `sdoc review <accept|reject>` provides a developer/reviewer CLI path that writes the resulting `document.json`.
 - the web Review panel exposes per-event Accept/Reject controls with confirmation, saved-baseline-only application, and diff recomputation after each action.
+- batch accept/reject applies all currently visible non-broken document events and recomputes semantic diff between each event, skipping stale or already-resolved events instead of applying by path.
 
 Deferred:
 
-- Batch accept/reject.
+- advanced conflict resolution UI for partially applied batches.
 - Tauri-native review persistence and file save integration beyond the browser playground.
 - Side-by-side document diff.
 - metadata field-level accept/reject.

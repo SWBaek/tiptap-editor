@@ -69,7 +69,24 @@ Acceptance evidence:
 
 ## Slice 3: Draw.io External Editor Bridge
 
+Status: initial bridge primitive implemented on 2026-07-03.
+
 Implement the bridge described in `docs/drawio-external-editor-bridge.md`. The bridge checks out Draw.io source assets into temporary files, launches the configured external editor, validates save-back, and writes accepted changes through the existing asset-backed diagram source policy.
+
+Acceptance criteria:
+
+- Keep Draw.io XML in `.sdoc/assets/` and out of `document.json`.
+- Check out source asset bytes to a private Tauri temp file.
+- Launch a configured external editor or platform default opener without storing executable/process state in canonical JSON.
+- Read edited temp file bytes back and classify invalid source or source conflict as runtime status.
+- Keep preview regeneration, file watching, and save-back UI as later slices.
+
+Acceptance evidence:
+
+- `checkout_drawio_source_asset`, `open_drawio_external_editor`, `read_drawio_external_edit`, and `close_drawio_external_edit` are exposed as Tauri commands.
+- `apps/desktop/src/nativeDrawioExternalEditorBridge.ts` wraps the commands behind a desktop adapter.
+- `apps/desktop/src/drawioBridgeModel.ts` resolves Draw.io diagram references, validates source XML, and classifies save-back status without mutating document JSON.
+- Unit tests cover Draw.io reference resolution, source validation, conflict classification, and runtime status event shape.
 
 ## Slice 4: Review UX Hardening
 

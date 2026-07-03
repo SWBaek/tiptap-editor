@@ -47,7 +47,25 @@ Acceptance evidence:
 
 ## Slice 2: Native File Explorer And Workspace Adapter
 
+Status: initial workspace adapter implemented on 2026-07-03.
+
 Add a VS Code-like Files activity panel for desktop. It should expose current document, recent documents, open/save/save-as, and later unpacked folder workflows. Git and unpacked folders must remain optional and hidden from the normal authoring path.
+
+Acceptance criteria:
+
+- Document the browser/desktop boundary for native file exploration.
+- Add a desktop workspace adapter that lists `.sdoc` files without exposing broad filesystem APIs to browser code.
+- Keep unpacked folder workflow optional and explicitly marked as developer/reviewer scope.
+- Keep recent files, selected folders, expanded nodes, sort order, and Git status out of `document.json`.
+- Reuse the existing Activity Bar and Files panel direction instead of adding a competing shell model.
+
+Acceptance evidence:
+
+- `docs/native-file-explorer-boundary.md` records the explorer boundary and deferred work.
+- `list_sdoc_workspace_entries` returns immediate `.sdoc` files and optional unpacked `.sdoc` folders.
+- `apps/desktop/src/nativeWorkspaceAdapter.ts` keeps workspace listing and `.sdoc` byte IO behind a Tauri adapter.
+- `apps/desktop/src/workspaceModel.ts` provides testable entry sorting, labeling, and validation.
+- Unit tests cover workspace entry ordering, labeling, and bridge response validation.
 
 ## Slice 3: Draw.io External Editor Bridge
 

@@ -65,12 +65,13 @@ npm run sdoc -- export document.sdoc --format pdf --template controlled -o docum
 - `exportDocx(document, { template: "controlled", metadata })` emits a derived OOXML `.docx` package with editable text, headings, tables, data grid references, and document-control metadata.
 - CLI `sdoc export --format docx --template controlled -o output.docx` exposes the derived Word handoff path.
 - `validateWordTemplatePackage` and CLI `sdoc template validate <template.docx|template.dotx>` reject unsafe external Word template packages before future injection work.
+- `validateWordTemplateMapping` and CLI `sdoc template validate-mapping` verify required Word style IDs and content-control placeholders before future template rendering work.
 - Template selection is an explicit export option and is not stored in `document.json`.
 - Strict enterprise pagination remains deferred.
 
 ## Deferred Work
 
-- external `.dotx`/`.docx` template injection and company-specific style mapping following `docs/word-template-injection-boundary.md`;
+- external `.dotx`/`.docx` template injection and company-specific style/content-control rendering following `docs/word-template-injection-boundary.md`;
 - strict page header/footer support;
 - approval table and revision history rendering;
 - watermark and classification markings;

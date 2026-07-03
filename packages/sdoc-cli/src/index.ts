@@ -3,7 +3,17 @@
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { applyDiffEventAction, diffDocuments, renderDiffEvents, type SDocDiffEvent, type SDocReviewAction } from "@sdoc/diff";
-import { exportDerivedOutputs, exportDocx, exportHtml, exportMarkdown, exportPptx, validateWordTemplatePackage, type CorporateTemplateName } from "@sdoc/export";
+import {
+  exportDerivedOutputs,
+  exportDocx,
+  exportHtml,
+  exportMarkdown,
+  exportPptx,
+  validateWordTemplateMapping,
+  validateWordTemplatePackage,
+  type CorporateTemplateName,
+  type WordTemplateMappingRequirement
+} from "@sdoc/export";
 import {
   applyDataGridRowMerge,
   createDataGridRowDiff,
@@ -52,17 +62,36 @@ async function main(args: string[]): Promise<void> {
 }
 
 async function runTemplate(args: string[]): Promise<void> {
-  const [subcommand, templatePath] = args;
-  if (subcommand !== "validate" || !templatePath) {
-    throw new Error("usage: sdoc template validate <template.docx|template.dotx>");
+  const [subcommand, templatePath, ...rest] = args;
+  if (subcommand === "validate" && templatePath) {
+    const result = await validateWordTemplatePackage(await readFile(templatePath), { fileName: path.basename(templatePath) });
+    if (!result.ok) {
+      throw new Error(`invalid Word template package ${templatePath}:\n${formatWordTemplateIssues(result.issues)}`);
+    }
+
+    process.stdout.write(`VALID_TEMPLATE ${templatePath} parts=${result.partCount}\n`);
+    return;
   }
 
-  const result = await validateWordTemplatePackage(await readFile(templatePath), { fileName: path.basename(templatePath) });
-  if (!result.ok) {
-    throw new Error(`invalid Word template package ${templatePath}:\n${formatWordTemplatePackageIssues(result.issues)}`);
+  if (subcommand === "validate-mapping" && templatePath) {
+    const result = await validateWordTemplateMapping(await readFile(templatePath), {
+      fileName: path.basename(templatePath),
+      requiredStyles: parseTemplateStyleRequirements(getOptions(rest, "--style")),
+      requiredPlaceholders: getOptions(rest, "--placeholder")
+    });
+    if (!result.ok) {
+      throw new Error(`invalid Word template mapping ${templatePath}:\n${formatWordTemplateIssues(result.issues)}`);
+    }
+
+    process.stdout.write(
+      `VALID_TEMPLATE_MAPPING ${templatePath} styles=${result.availableStyles.length} placeholders=${result.availablePlaceholders.length}\n`
+    );
+    return;
   }
 
-  process.stdout.write(`VALID_TEMPLATE ${templatePath} parts=${result.partCount}\n`);
+  throw new Error(
+    "usage: sdoc template <validate|validate-mapping> <template.docx|template.dotx> [--style nodeType=StyleId] [--placeholder tag]"
+  );
 }
 
 async function runDataGrid(args: string[]): Promise<void> {
@@ -426,6 +455,18 @@ function getOption(args: string[], name: string): string | undefined {
   return index >= 0 ? args[index + 1] : undefined;
 }
 
+function getOptions(args: string[], name: string): string[] {
+  const values: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === name && args[index + 1]) {
+      values.push(args[index + 1]);
+      index += 1;
+    }
+  }
+
+  return values;
+}
+
 function getPositionals(args: string[], optionsWithValues: Set<string>): string[] {
   const positionals: string[] = [];
   for (let index = 0; index < args.length; index += 1) {
@@ -524,6 +565,7 @@ Commands:
   sdoc pack <folder> <output.sdoc>
   sdoc review <accept|reject> <baseline.sdoc|document.json> <current.sdoc|document.json> --event <id> [--kind added|deleted|modified|moved] [-o output.document.json]
   sdoc template validate <template.docx|template.dotx>
+  sdoc template validate-mapping <template.docx|template.dotx> [--style nodeType=StyleId] [--placeholder tag]
   sdoc unpack <input.sdoc> <folder>
   sdoc validate <input.sdoc|document.json|unpacked-folder>
 `);
@@ -607,8 +649,22 @@ function formatValidationIssues(issues: ValidationIssue[]): string {
   return issues.length > 0 ? issues.map((issue) => `- ${issue.path}: ${issue.message}`).join("\n") : "- schema validation failed";
 }
 
-function formatWordTemplatePackageIssues(issues: Array<{ path: string; message: string }>): string {
+function formatWordTemplateIssues(issues: Array<{ path: string; message: string }>): string {
   return issues.length > 0 ? issues.map((issue) => `- ${issue.path}: ${issue.message}`).join("\n") : "- template package validation failed";
+}
+
+function parseTemplateStyleRequirements(values: string[]): WordTemplateMappingRequirement[] {
+  return values.map((value) => {
+    const separator = value.indexOf("=");
+    if (separator <= 0 || separator === value.length - 1) {
+      throw new Error(`invalid --style requirement "${value}"; expected nodeType=StyleId`);
+    }
+
+    return {
+      nodeType: value.slice(0, separator).trim(),
+      styleId: value.slice(separator + 1).trim()
+    };
+  });
 }
 
 function stripBom(value: string): string {

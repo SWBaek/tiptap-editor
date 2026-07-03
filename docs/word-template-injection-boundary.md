@@ -29,6 +29,8 @@ The adapter should support:
 - keeping source block IDs in custom properties, comments, bookmarks, or debug metadata only when useful for review;
 - failing with clear diagnostics when required placeholders/styles are missing.
 
+The first mapping implementation validates the contract only. It checks that a safe `.docx/.dotx` package exposes required style IDs and content-control placeholders before any future renderer writes SDoc content into that template.
+
 ## Safety Boundary
 
 Template files are untrusted binary Office packages until validated. The implementation must reject or strip macros, embedded scripts, external relationships, remote images, and unexpected package parts before using a template.
@@ -46,12 +48,14 @@ Template injection is one-way: SDoc to derived Word. Editing the generated `.doc
 - `docs/phase-5-plan.md` distinguishes built-in controlled DOCX export from future external template injection.
 - `validateWordTemplatePackage` inspects `.docx/.dotx` packages before any future injection path uses them.
 - `sdoc template validate <template.docx|template.dotx>` exposes the package safety check for developer/reviewer workflows.
+- `validateWordTemplateMapping` reports missing required Word styles and content-control placeholders without mutating canonical document data or rendering a derived file.
+- `sdoc template validate-mapping <template.docx|template.dotx> --style nodeType=StyleId --placeholder tag` exposes mapping diagnostics for developer/reviewer workflows.
 - Future implementation includes tests for template package validation, missing placeholders/styles, canonical document immutability, and deterministic output for the same template/input pair.
 
 ## Deferred Work
 
 - `--template-file` CLI option that reuses trusted template validation;
-- `.dotx` style/content-control mapping;
+- `.dotx` style/content-control rendering from SDoc blocks;
 - company policy registry and template management UI;
 - Word review import/redline workflows;
 - visual/rendered DOCX regression checks.

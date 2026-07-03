@@ -310,6 +310,64 @@ describe("sdoc CLI", () => {
     }
   });
 
+  it("validates Word template mapping requirements in the CLI", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const templatePath = path.join(tempDir, "company.dotx");
+
+    try {
+      await writeFile(
+        templatePath,
+        await createWordTemplateBuffer({
+          styles: ["Normal", "Heading1", "SDocDataGrid"],
+          placeholders: ["sdoc-body", "sdoc-approval-table"]
+        })
+      );
+
+      const result = await runSdoc([
+        "template",
+        "validate-mapping",
+        templatePath,
+        "--style",
+        "paragraph=Normal",
+        "--style",
+        "heading=Heading1",
+        "--placeholder",
+        "sdoc-body"
+      ]);
+
+      expect(result.stdout).toContain(`VALID_TEMPLATE_MAPPING ${templatePath}`);
+      expect(result.stdout).toContain("styles=3");
+      expect(result.stdout).toContain("placeholders=2");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports missing Word template mapping requirements in the CLI", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const templatePath = path.join(tempDir, "company.dotx");
+
+    try {
+      await writeFile(templatePath, await createWordTemplateBuffer({ styles: ["Normal"], placeholders: ["sdoc-body"] }));
+
+      await expect(
+        runSdoc([
+          "template",
+          "validate-mapping",
+          templatePath,
+          "--style",
+          "heading=Heading1",
+          "--placeholder",
+          "sdoc-revision-history"
+        ])
+      ).rejects.toMatchObject({
+        stderr: expect.stringContaining('Template is missing required style "Heading1"')
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("applies a review reject action to a semantic diff event", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const outputPath = path.join(tempDir, "reviewed.document.json");
@@ -372,6 +430,27 @@ const ROOT_RELS_FOR_TEST = `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>`;
+
+async function createWordTemplateBuffer(parts: { styles: string[]; placeholders: string[] }): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES_FOR_TEST);
+  zip.folder("_rels")?.file(".rels", ROOT_RELS_FOR_TEST);
+  zip.folder("word")?.file("document.xml", createWordDocumentXml(parts.placeholders));
+  zip.folder("word")?.file("styles.xml", createWordStylesXml(parts.styles));
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
+function createWordStylesXml(styleIds: string[]): string {
+  return `<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${styleIds
+    .map((styleId) => `<w:style w:type="paragraph" w:styleId="${styleId}"><w:name w:val="${styleId}"/></w:style>`)
+    .join("")}</w:styles>`;
+}
+
+function createWordDocumentXml(placeholders: string[]): string {
+  return `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${placeholders
+    .map((placeholder) => `<w:sdt><w:sdtPr><w:tag w:val="${placeholder}"/></w:sdtPr><w:sdtContent><w:p/></w:sdtContent></w:sdt>`)
+    .join("")}</w:body></w:document>`;
+}
 
 async function runSdoc(args: string[]): Promise<{ stdout: string; stderr: string }> {
   const result = await execFileAsync(process.execPath, [cliPath, ...args], { encoding: "utf8" });

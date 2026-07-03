@@ -8,6 +8,7 @@ import {
   exportHtml,
   exportMarkdown,
   exportPptx,
+  validateWordTemplateMapping,
   validateWordTemplatePackage
 } from "./index";
 import type { SDocDocument } from "@sdoc/schema";
@@ -559,6 +560,80 @@ describe("validateWordTemplatePackage", () => {
   });
 });
 
+describe("validateWordTemplateMapping", () => {
+  it("accepts templates that expose required styles and content controls", async () => {
+    const bytes = await createTemplatePackage({
+      stylesXml: createStylesXml(["Normal", "Heading1", "SDocCallout"]),
+      documentXml: createDocumentXml(["sdoc-body", "sdoc-approval-table"])
+    });
+
+    const result = await validateWordTemplateMapping(bytes, {
+      fileName: "company.dotx",
+      requiredStyles: [
+        { nodeType: "paragraph", styleId: "Normal" },
+        { nodeType: "heading", styleId: "Heading1" },
+        { nodeType: "callout", styleId: "SDocCallout" }
+      ],
+      requiredPlaceholders: ["sdoc-body", "sdoc-approval-table"]
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.availableStyles).toEqual(["Heading1", "Normal", "SDocCallout"]);
+    expect(result.availablePlaceholders).toEqual(["sdoc-approval-table", "sdoc-body"]);
+    expect(result.issues).toEqual([]);
+  });
+
+  it("reports missing style and placeholder diagnostics without applying the template", async () => {
+    const bytes = await createTemplatePackage({
+      stylesXml: createStylesXml(["Normal"]),
+      documentXml: createDocumentXml(["sdoc-body"])
+    });
+
+    const result = await validateWordTemplateMapping(bytes, {
+      fileName: "company.dotx",
+      requiredStyles: [
+        { nodeType: "heading", styleId: "Heading1" },
+        { nodeType: "dataGrid", styleId: "SDocDataGrid" }
+      ],
+      requiredPlaceholders: ["sdoc-body", "sdoc-revision-history"]
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "missing-style", message: expect.stringContaining("Heading1") }),
+        expect.objectContaining({ code: "missing-style", message: expect.stringContaining("SDocDataGrid") }),
+        expect.objectContaining({ code: "missing-placeholder", message: expect.stringContaining("sdoc-revision-history") })
+      ])
+    );
+  });
+
+  it("returns package-invalid diagnostics before mapping checks for unsafe templates", async () => {
+    const zip = new JSZip();
+    zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES_FOR_TEST);
+    zip.folder("_rels")?.file(".rels", ROOT_RELS_FOR_TEST);
+    zip.folder("word")?.file("document.xml", "<w:document/>");
+    zip.folder("word")?.file("vbaProject.bin", "macro");
+
+    const result = await validateWordTemplateMapping(await zip.generateAsync({ type: "uint8array" }), {
+      fileName: "unsafe.dotx",
+      requiredStyles: [{ nodeType: "paragraph", styleId: "Normal" }]
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.availableStyles).toEqual([]);
+    expect(result.availablePlaceholders).toEqual([]);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "package-invalid",
+          path: "word/vbaProject.bin"
+        })
+      ])
+    );
+  });
+});
+
 const DOCX_CONTENT_TYPES_FOR_TEST = `<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -570,6 +645,27 @@ const ROOT_RELS_FOR_TEST = `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>`;
+
+async function createTemplatePackage(parts: { stylesXml: string; documentXml: string }): Promise<Uint8Array> {
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", DOCX_CONTENT_TYPES_FOR_TEST);
+  zip.folder("_rels")?.file(".rels", ROOT_RELS_FOR_TEST);
+  zip.folder("word")?.file("document.xml", parts.documentXml);
+  zip.folder("word")?.file("styles.xml", parts.stylesXml);
+  return zip.generateAsync({ type: "uint8array" });
+}
+
+function createStylesXml(styleIds: string[]): string {
+  return `<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${styleIds
+    .map((styleId) => `<w:style w:type="paragraph" w:styleId="${styleId}"><w:name w:val="${styleId}"/></w:style>`)
+    .join("")}</w:styles>`;
+}
+
+function createDocumentXml(placeholders: string[]): string {
+  return `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${placeholders
+    .map((placeholder) => `<w:sdt><w:sdtPr><w:tag w:val="${placeholder}"/><w:alias w:val="${placeholder}"/></w:sdtPr><w:sdtContent><w:p/></w:sdtContent></w:sdt>`)
+    .join("")}</w:body></w:document>`;
+}
 
 function createDiagramDocument(): SDocDocument {
   return {

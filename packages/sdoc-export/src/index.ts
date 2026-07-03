@@ -67,6 +67,33 @@ export interface WordTemplatePackageValidation {
   partCount: number;
 }
 
+export type WordTemplateMappingIssueCode = "package-invalid" | "missing-style" | "missing-placeholder";
+
+export interface WordTemplateMappingIssue {
+  code: WordTemplateMappingIssueCode;
+  path: string;
+  message: string;
+}
+
+export interface WordTemplateMappingRequirement {
+  nodeType: string;
+  styleId: string;
+}
+
+export interface WordTemplateMappingOptions {
+  fileName?: string;
+  requiredStyles?: WordTemplateMappingRequirement[];
+  requiredPlaceholders?: string[];
+}
+
+export interface WordTemplateMappingValidation {
+  ok: boolean;
+  issues: WordTemplateMappingIssue[];
+  availableStyles: string[];
+  availablePlaceholders: string[];
+  packageValidation: WordTemplatePackageValidation;
+}
+
 export interface DerivedOutputs extends Record<string, string> {
   "plain.md": string;
   "outline.json": string;
@@ -342,6 +369,73 @@ export async function validateWordTemplatePackage(
   };
 }
 
+export async function validateWordTemplateMapping(
+  bytes: Uint8Array,
+  options: WordTemplateMappingOptions = {}
+): Promise<WordTemplateMappingValidation> {
+  const packageValidation = await validateWordTemplatePackage(bytes, { fileName: options.fileName });
+  const issues: WordTemplateMappingIssue[] = packageValidation.ok
+    ? []
+    : packageValidation.issues.map((issue) => ({
+        code: "package-invalid",
+        path: issue.path,
+        message: issue.message
+      }));
+
+  if (!packageValidation.ok) {
+    return {
+      ok: false,
+      issues,
+      availableStyles: [],
+      availablePlaceholders: [],
+      packageValidation
+    };
+  }
+
+  const zip = await JSZip.loadAsync(bytes);
+  const availableStyles = extractWordStyleIds((await zip.file("word/styles.xml")?.async("string")) ?? "");
+  const availablePlaceholders = extractWordContentControlTags(
+    (
+      await Promise.all(
+        Object.keys(zip.files)
+          .filter((name) => !zip.files[name].dir && /^word\/(?:document|header\d+|footer\d+)\.xml$/i.test(name))
+          .sort()
+          .map((name) => zip.file(name)?.async("string") ?? "")
+      )
+    ).join("\n")
+  );
+
+  const styleSet = new Set(availableStyles);
+  for (const requirement of options.requiredStyles ?? []) {
+    if (!styleSet.has(requirement.styleId)) {
+      issues.push({
+        code: "missing-style",
+        path: "word/styles.xml",
+        message: `Template is missing required style "${requirement.styleId}" for SDoc node type "${requirement.nodeType}".`
+      });
+    }
+  }
+
+  const placeholderSet = new Set(availablePlaceholders);
+  for (const placeholder of options.requiredPlaceholders ?? []) {
+    if (!placeholderSet.has(placeholder)) {
+      issues.push({
+        code: "missing-placeholder",
+        path: "word/document.xml",
+        message: `Template is missing required content-control placeholder "${placeholder}".`
+      });
+    }
+  }
+
+  return {
+    ok: issues.length === 0,
+    issues,
+    availableStyles,
+    availablePlaceholders,
+    packageValidation
+  };
+}
+
 function renderDocxCorporateTemplate(document: SDocDocument, title: string, options: DocxExportOptions): string[] {
   if (normalizeCorporateTemplate(options.template) !== "controlled") {
     return [];
@@ -523,6 +617,28 @@ function isBlockedRelationshipType(type: string): boolean {
 
 function hasBlockedWordContentType(contentTypesXml: string): boolean {
   return /macroEnabled|vbaProject|ms-office\.activeX|oleObject/i.test(contentTypesXml);
+}
+
+function extractWordStyleIds(stylesXml: string): string[] {
+  const styleIds = new Set<string>();
+  const stylePattern = /<w:style\b[^>]*\bw:styleId="([^"]+)"/gi;
+  let match: RegExpExecArray | null;
+  while ((match = stylePattern.exec(stylesXml))) {
+    styleIds.add(match[1]);
+  }
+
+  return [...styleIds].sort();
+}
+
+function extractWordContentControlTags(documentXml: string): string[] {
+  const tags = new Set<string>();
+  const tagPattern = /<w:(?:tag|alias)\b[^>]*\bw:val="([^"]+)"/gi;
+  let match: RegExpExecArray | null;
+  while ((match = tagPattern.exec(documentXml))) {
+    tags.add(match[1]);
+  }
+
+  return [...tags].sort();
 }
 
 function escapeXml(value: string): string {

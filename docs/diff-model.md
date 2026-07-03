@@ -83,3 +83,16 @@ The editor should eventually project the same semantic diff events as inline rev
 Overlay state, reviewer cursor state, expanded/collapsed diff panels, and accepted/rejected preview state must not be stored in `document.json`. If accepted changes are implemented later, the result should be a normal edited document that passes the same normalization and validation pipeline.
 
 나중에 visual diff UI는 같은 event model을 사용한다. UI 전용 포맷을 별도로 만들지 않는다.
+
+## Accept/Reject Apply
+
+The headless review apply path uses the same semantic diff events. Before applying an action, it recomputes the diff between the baseline and current document and refuses stale events.
+
+- `accept` keeps the current normalized document.
+- `reject added` removes the current block.
+- `reject deleted` restores the baseline block at the baseline parent/order.
+- `reject modified` restores baseline attrs/content for the same stable block ID.
+- `reject moved` restores the baseline parent/order for the same stable block ID.
+- `reference-broken` is not directly accepted or rejected; it is repaired through the References workflow.
+
+The resulting document must validate and serialize deterministically as normal `document.json`. Review action choices, previews, and batch selections remain runtime state only.

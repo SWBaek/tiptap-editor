@@ -90,7 +90,7 @@ Acceptance evidence:
 
 ## Slice 4: Review UX Hardening
 
-Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, broken reference repair actions, and runtime accept/reject action planning are implemented; side-by-side diff and accept/reject apply commands remain open.
+Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, broken reference repair actions, runtime accept/reject action planning, and headless single-event accept/reject apply are implemented; side-by-side diff and Review panel apply UX remain open.
 
 Productize the visual semantic diff overlay, requirement tagging diagnostics, and broken reference repair actions. These features must consume existing semantic diff and reference diagnostic sources instead of creating independent review state in canonical JSON.
 
@@ -118,10 +118,13 @@ Acceptance evidence:
 - `docs/review-accept-reject-boundary.md` records accept/reject as canonical edit semantics, not stored review state.
 - `apps/web-playground/src/documentState.ts` derives runtime-only accept/reject action availability from semantic review items.
 - Unit coverage verifies action classification and broken-reference routing to the References repair workflow.
+- `@sdoc/diff` applies single-event accept/reject actions with stale-event protection for added, deleted, modified, and moved events.
+- `sdoc review <accept|reject>` exposes the headless review action path for developer/reviewer workflows without making Git mandatory.
 
 Open work:
 
-- Accept/reject apply and revert commands with stale-baseline protection.
+- Review panel buttons and confirmation UX for single-event accept/reject.
+- Batch accept/reject and conflict resolution UX.
 - Side-by-side document diff.
 
 ## Slice 5: Enterprise Authoring And Publishing

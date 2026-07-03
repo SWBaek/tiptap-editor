@@ -2,7 +2,7 @@
 
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { diffDocuments, renderDiffEvents } from "@sdoc/diff";
+import { applyDiffEventAction, diffDocuments, renderDiffEvents, type SDocDiffEvent, type SDocReviewAction } from "@sdoc/diff";
 import { exportDerivedOutputs, exportHtml, exportMarkdown, exportPptx, type CorporateTemplateName } from "@sdoc/export";
 import { isLikelyZipContainer, normalizeDocument, packSdoc, stableStringify, unpackSdoc, type SDocContainer } from "@sdoc/format";
 import { validateDocument, type SDocDocument, type ValidationIssue } from "@sdoc/schema";
@@ -19,6 +19,9 @@ async function main(args: string[]): Promise<void> {
       break;
     case "pack":
       await runPack(rest);
+      break;
+    case "review":
+      await runReview(rest);
       break;
     case "unpack":
       await runUnpack(rest);
@@ -42,6 +45,32 @@ async function runDiff(args: string[]): Promise<void> {
   const newDocument = await loadDocument(newPath);
   const lines = renderDiffEvents(diffDocuments(oldDocument, newDocument));
   process.stdout.write(lines.length > 0 ? `${lines.join("\n")}\n` : "NO_CHANGES\n");
+}
+
+async function runReview(args: string[]): Promise<void> {
+  const [actionValue, baselinePath, currentPath, ...rest] = args;
+  const action = parseReviewAction(actionValue);
+  const eventId = getOption(rest, "--event");
+  const eventKind = getOption(rest, "--kind") as SDocDiffEvent["kind"] | undefined;
+  const output = getOption(rest, "-o");
+  if (!action || !baselinePath || !currentPath || !eventId) {
+    throw new Error("usage: sdoc review <accept|reject> <baseline.sdoc|document.json> <current.sdoc|document.json> --event <id> [--kind added|deleted|modified|moved] [-o output.document.json]");
+  }
+
+  const baseline = await loadDocument(baselinePath);
+  const current = await loadDocument(currentPath);
+  const event = selectReviewEvent(diffDocuments(baseline, current), eventId, eventKind);
+  const result = applyDiffEventAction(baseline, current, event, action);
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
+
+  const text = stableStringify(result.document);
+  if (output) {
+    await writeFile(output, text, "utf8");
+  } else {
+    process.stdout.write(text);
+  }
 }
 
 async function runExport(args: string[]): Promise<void> {
@@ -294,6 +323,27 @@ function parseCorporateTemplate(value: string | undefined): CorporateTemplateNam
   throw new Error(`unsupported export template: ${value}`);
 }
 
+function parseReviewAction(value: string | undefined): SDocReviewAction | undefined {
+  if (value === "accept" || value === "reject") {
+    return value;
+  }
+
+  return undefined;
+}
+
+function selectReviewEvent(events: SDocDiffEvent[], eventId: string, eventKind?: SDocDiffEvent["kind"]): SDocDiffEvent {
+  const candidates = events.filter((event) => event.id === eventId && (!eventKind || event.kind === eventKind));
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
+
+  if (candidates.length === 0) {
+    throw new Error(`review event not found: ${eventKind ? `${eventKind} ` : ""}${eventId}`);
+  }
+
+  throw new Error(`review event is ambiguous for ${eventId}; pass --kind to select one event`);
+}
+
 function decodeTextAsset(asset: Uint8Array | undefined): string | undefined {
   return asset ? new TextDecoder().decode(asset).replace(/^\uFEFF/, "") : undefined;
 }
@@ -306,6 +356,7 @@ Commands:
   sdoc export <input.sdoc|document.json> <markdown|html|pdf|chunks|outline|references> [output]
   sdoc export <input.sdoc> --format html|pdf --template controlled [-o output]
   sdoc pack <folder> <output.sdoc>
+  sdoc review <accept|reject> <baseline.sdoc|document.json> <current.sdoc|document.json> --event <id> [--kind added|deleted|modified|moved] [-o output.document.json]
   sdoc unpack <input.sdoc> <folder>
   sdoc validate <input.sdoc|document.json|unpacked-folder>
 `);

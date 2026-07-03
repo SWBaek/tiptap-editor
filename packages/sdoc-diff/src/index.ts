@@ -1,5 +1,5 @@
 import { stableStringify, normalizeDocument } from "@sdoc/format";
-import { getNodeId, getPlainText, isBlockNode, type SDocDocument, type SDocNode } from "@sdoc/schema";
+import { getNodeId, getPlainText, isBlockNode, validateDocument, type SDocDocument, type SDocNode, type ValidationIssue } from "@sdoc/schema";
 
 export type SDocDiffEvent =
   | {
@@ -41,6 +41,31 @@ export type SDocDiffEvent =
       targetId: string;
     };
 
+export type SDocReviewAction = "accept" | "reject";
+
+export type SDocReviewActionStatus =
+  | "accepted-current"
+  | "rejected-added"
+  | "rejected-deleted"
+  | "rejected-modified"
+  | "rejected-moved";
+
+export type SDocReviewActionFailureReason = "stale-event" | "unsupported-event" | "validation-failed";
+
+export type SDocReviewActionResult =
+  | {
+      ok: true;
+      status: SDocReviewActionStatus;
+      changed: boolean;
+      document: SDocDocument;
+    }
+  | {
+      ok: false;
+      reason: SDocReviewActionFailureReason;
+      message: string;
+      issues?: ValidationIssue[];
+    };
+
 interface BlockInfo {
   id: string;
   node: SDocNode;
@@ -56,6 +81,12 @@ interface TableCellSnapshot {
   type: string;
   text: string;
   align: string;
+}
+
+interface MutableBlockLocation {
+  node: SDocNode;
+  parent: SDocDocument | SDocNode;
+  index: number;
 }
 
 export function diffDocuments(oldDocument: SDocDocument, newDocument: SDocDocument): SDocDiffEvent[] {
@@ -175,6 +206,208 @@ export function renderReadableDiffEvents(events: SDocDiffEvent[]): string[] {
         return `Broken ${humanizeNodeType(event.nodeType)} ${event.label} (${event.id}) at ${event.path}: missing ${event.targetId}`;
     }
   });
+}
+
+export function applyDiffEventAction(
+  baselineDocument: SDocDocument,
+  currentDocument: SDocDocument,
+  event: SDocDiffEvent,
+  action: SDocReviewAction
+): SDocReviewActionResult {
+  const baseline = normalizeDocument(baselineDocument);
+  const current = normalizeDocument(currentDocument);
+
+  if (!hasCurrentEvent(baseline, current, event)) {
+    return {
+      ok: false,
+      reason: "stale-event",
+      message: `Cannot ${action} ${event.kind} ${event.id}: review event is stale. Recompute the diff before applying.`
+    };
+  }
+
+  if (event.kind === "reference-broken") {
+    return {
+      ok: false,
+      reason: "unsupported-event",
+      message: "Broken references require explicit retarget or remove actions from the References repair workflow."
+    };
+  }
+
+  if (action === "accept") {
+    return { ok: true, status: "accepted-current", changed: false, document: current };
+  }
+
+  const rejected = rejectDiffEvent(baseline, current, event);
+  if (!rejected.ok) {
+    return rejected;
+  }
+
+  const normalized = normalizeDocument(rejected.document);
+  const validation = validateDocument(normalized);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      reason: "validation-failed",
+      message: `Rejecting ${event.kind} ${event.id} produced an invalid SDoc document.`,
+      issues: validation.issues
+    };
+  }
+
+  return {
+    ok: true,
+    status: rejected.status,
+    changed: stableStringify(normalized) !== stableStringify(current),
+    document: normalized
+  };
+}
+
+function rejectDiffEvent(
+  baseline: SDocDocument,
+  current: SDocDocument,
+  event: Exclude<SDocDiffEvent, { kind: "reference-broken" }>
+): Extract<SDocReviewActionResult, { ok: true }> | Extract<SDocReviewActionResult, { ok: false }> {
+  switch (event.kind) {
+    case "added": {
+      const document = cloneDocument(current);
+      if (!removeBlockById(document, event.id)) {
+        return staleMutationFailure(event, "added block is no longer present in the current document");
+      }
+
+      return { ok: true, status: "rejected-added", changed: true, document };
+    }
+    case "deleted": {
+      const baselineLocation = findBlockLocation(baseline, event.id);
+      if (!baselineLocation) {
+        return staleMutationFailure(event, "deleted block is no longer present in the baseline document");
+      }
+
+      const document = cloneDocument(current);
+      const targetParent = findMatchingParent(document, baseline, baselineLocation.parent);
+      if (!targetParent) {
+        return staleMutationFailure(event, "baseline parent is not available in the current document");
+      }
+
+      insertBlock(targetParent, baselineLocation.index, cloneNode(baselineLocation.node));
+      return { ok: true, status: "rejected-deleted", changed: true, document };
+    }
+    case "modified": {
+      const baselineLocation = findBlockLocation(baseline, event.id);
+      if (!baselineLocation) {
+        return staleMutationFailure(event, "baseline block is no longer available");
+      }
+
+      const document = cloneDocument(current);
+      const currentLocation = findBlockLocation(document, event.id);
+      if (!currentLocation) {
+        return staleMutationFailure(event, "current block is no longer available");
+      }
+
+      currentLocation.parent.content![currentLocation.index] = cloneNode(baselineLocation.node);
+      return { ok: true, status: "rejected-modified", changed: true, document };
+    }
+    case "moved": {
+      const baselineLocation = findBlockLocation(baseline, event.id);
+      if (!baselineLocation) {
+        return staleMutationFailure(event, "baseline block position is no longer available");
+      }
+
+      const document = cloneDocument(current);
+      const movedNode = removeBlockById(document, event.id);
+      if (!movedNode) {
+        return staleMutationFailure(event, "moved block is no longer present in the current document");
+      }
+
+      const targetParent = findMatchingParent(document, baseline, baselineLocation.parent);
+      if (!targetParent) {
+        return staleMutationFailure(event, "baseline parent is not available in the current document");
+      }
+
+      insertBlock(targetParent, baselineLocation.index, movedNode);
+      return { ok: true, status: "rejected-moved", changed: true, document };
+    }
+  }
+}
+
+function hasCurrentEvent(baseline: SDocDocument, current: SDocDocument, event: SDocDiffEvent): boolean {
+  const expected = stableStringify(event);
+  return diffDocuments(baseline, current).some((currentEvent) => stableStringify(currentEvent) === expected);
+}
+
+function findBlockLocation(document: SDocDocument, id: string): MutableBlockLocation | null {
+  return findBlockLocationInParent(document, id);
+}
+
+function findBlockLocationInParent(parent: SDocDocument | SDocNode, id: string): MutableBlockLocation | null {
+  const content = parent.content ?? [];
+  for (let index = 0; index < content.length; index += 1) {
+    const node = content[index];
+    if (isBlockNode(node) && getNodeId(node) === id) {
+      return { node, parent, index };
+    }
+
+    const nested = findBlockLocationInParent(node, id);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
+}
+
+function findMatchingParent(document: SDocDocument, baseline: SDocDocument, baselineParent: SDocDocument | SDocNode): SDocDocument | SDocNode | null {
+  if (baselineParent === baseline) {
+    return document;
+  }
+
+  const parentId = getNodeId(baselineParent);
+  if (!parentId) {
+    return null;
+  }
+
+  return findBlockLocation(document, parentId)?.node ?? null;
+}
+
+function removeBlockById(document: SDocDocument, id: string): SDocNode | null {
+  return removeBlockFromParent(document, id);
+}
+
+function removeBlockFromParent(parent: SDocDocument | SDocNode, id: string): SDocNode | null {
+  const content = parent.content ?? [];
+  for (let index = 0; index < content.length; index += 1) {
+    const node = content[index];
+    if (isBlockNode(node) && getNodeId(node) === id) {
+      const [removed] = content.splice(index, 1);
+      return removed ?? null;
+    }
+
+    const nested = removeBlockFromParent(node, id);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
+}
+
+function insertBlock(parent: SDocDocument | SDocNode, index: number, node: SDocNode): void {
+  parent.content ??= [];
+  parent.content.splice(Math.min(index, parent.content.length), 0, node);
+}
+
+function cloneDocument(document: SDocDocument): SDocDocument {
+  return JSON.parse(JSON.stringify(document)) as SDocDocument;
+}
+
+function cloneNode(node: SDocNode): SDocNode {
+  return JSON.parse(JSON.stringify(node)) as SDocNode;
+}
+
+function staleMutationFailure(event: SDocDiffEvent, detail: string): Extract<SDocReviewActionResult, { ok: false }> {
+  return {
+    ok: false,
+    reason: "stale-event",
+    message: `Cannot reject ${event.kind} ${event.id}: ${detail}. Recompute the diff before applying.`
+  };
 }
 
 function flattenBlocks(document: SDocDocument): Map<string, BlockInfo> {

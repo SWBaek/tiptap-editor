@@ -36,14 +36,23 @@ Implemented first:
 - Action availability labels for accept/reject decisions.
 - Manual repair classification for broken references.
 
+Implemented on 2026-07-04:
+
+- `@sdoc/diff` exposes a headless single-event apply function for review accept/reject.
+- `accept` validates that the reviewed event is still current and then keeps the current normalized document unchanged.
+- `reject` supports `added`, `deleted`, `modified`, and `moved` events by producing a normal edited SDoc document.
+- stale events are refused by recomputing the semantic diff before applying any mutation.
+- broken references remain unsupported for direct accept/reject and must use the References repair flow.
+- `sdoc review <accept|reject>` provides a developer/reviewer CLI path that writes the resulting `document.json`.
+
 Deferred:
 
-- Actual apply/revert document mutations.
 - Batch accept/reject.
-- Conflict handling for stale baselines.
+- Web/Tauri Review panel buttons and confirmation UX.
 - Side-by-side document diff.
+- metadata field-level accept/reject.
 - Comment threads, reviewer assignments, and Git-backed PR review.
 
 ## Tests
 
-Unit tests should verify action classification and confirm the source review items are not mutated. Future apply-command tests must include pack/unpack round trip, validation failure cases, deterministic serialization, and semantic diff after each accepted or rejected result.
+Unit tests should verify action classification and confirm the source review items are not mutated. Apply-command tests must cover added, deleted, modified, moved, unsupported broken-reference, stale-event refusal, validation after mutation, and deterministic `document.json` output.

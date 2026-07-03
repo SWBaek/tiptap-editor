@@ -169,6 +169,21 @@ describe("sdoc CLI", () => {
     }
   });
 
+  it("applies a review reject action to a semantic diff event", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const outputPath = path.join(tempDir, "reviewed.document.json");
+
+    try {
+      await runSdoc(["review", "reject", validDocumentPath, modifiedDocumentPath, "--event", "blk_intro", "--kind", "modified", "-o", outputPath]);
+
+      const reviewed = JSON.parse(await readFile(outputPath, "utf8"));
+      const intro = reviewed.content.find((node: { attrs?: { id?: string } }) => node.attrs?.id === "blk_intro");
+      expect(intro.content[0].text).toBe("This document describes the initial architecture.");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("runs the Phase 0 pack/unpack/diff/export smoke flow", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const basicFolder = path.join(tempDir, "basic.sdoc.d");

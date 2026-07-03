@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { diffDocuments, renderDiffEvents, renderReadableDiffEvents } from "./index";
-import type { SDocDocument } from "@sdoc/schema";
+import { applyDiffEventAction, diffDocuments, renderDiffEvents, renderReadableDiffEvents } from "./index";
+import { getPlainText, validateDocument, type SDocDocument } from "@sdoc/schema";
 
 const oldDocument: SDocDocument = {
   schemaVersion: 1,
@@ -321,6 +321,100 @@ describe("renderReadableDiffEvents", () => {
       'Moved heading "Moved heading" (blk_move) from doc[2]/blk_move to doc[1]/blk_move',
       'Broken cross reference "Missing section" (ref_missing) at 0.1: missing blk_missing'
     ]);
+  });
+});
+
+describe("applyDiffEventAction", () => {
+  it("rejects an added block by removing it from the canonical document", () => {
+    const event = diffDocuments(oldDocument, newDocument).find((candidate) => candidate.kind === "added" && candidate.id === "blk_added");
+    expect(event).toBeDefined();
+
+    const result = applyDiffEventAction(oldDocument, newDocument, event!, "reject");
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.status : undefined).toBe("rejected-added");
+    expect(result.ok ? result.changed : false).toBe(true);
+    expect(result.ok ? result.document.content.some((node) => node.attrs?.id === "blk_added") : true).toBe(false);
+    expect(result.ok ? validateDocument(result.document).ok : false).toBe(true);
+  });
+
+  it("rejects a deleted block by restoring the baseline block at the baseline position", () => {
+    const event = diffDocuments(oldDocument, newDocument).find((candidate) => candidate.kind === "deleted" && candidate.id === "blk_removed");
+    expect(event).toBeDefined();
+
+    const result = applyDiffEventAction(oldDocument, newDocument, event!, "reject");
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.status : undefined).toBe("rejected-deleted");
+    expect(result.ok ? result.document.content.map((node) => node.attrs?.id) : []).toContain("blk_removed");
+    expect(result.ok ? getPlainText(result.document.content[2]) : "").toBe("Remove me");
+    expect(result.ok ? validateDocument(result.document).ok : false).toBe(true);
+  });
+
+  it("rejects a modified block by restoring baseline attrs and content for the same stable id", () => {
+    const event = diffDocuments(oldDocument, newDocument).find((candidate) => candidate.kind === "modified" && candidate.id === "blk_body");
+    expect(event).toBeDefined();
+
+    const result = applyDiffEventAction(oldDocument, newDocument, event!, "reject");
+
+    expect(result.ok).toBe(true);
+    const restored = result.ok ? result.document.content.find((node) => node.attrs?.id === "blk_body") : undefined;
+    expect(restored?.attrs?.id).toBe("blk_body");
+    expect(restored ? getPlainText(restored) : "").toBe("Old body");
+    expect(result.ok ? validateDocument(result.document).ok : false).toBe(true);
+  });
+
+  it("rejects a moved block by restoring the baseline sibling order", () => {
+    const event = diffDocuments(oldDocument, newDocument).find((candidate) => candidate.kind === "moved" && candidate.id === "blk_intro");
+    expect(event).toBeDefined();
+
+    const result = applyDiffEventAction(oldDocument, newDocument, event!, "reject");
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.status : undefined).toBe("rejected-moved");
+    expect(result.ok ? result.document.content.map((node) => node.attrs?.id) : []).toEqual(["blk_intro", "blk_body", "blk_added"]);
+    expect(result.ok ? validateDocument(result.document).ok : false).toBe(true);
+  });
+
+  it("accepts a current event without adding review state to the document", () => {
+    const event = diffDocuments(oldDocument, newDocument).find((candidate) => candidate.kind === "modified" && candidate.id === "blk_body");
+    expect(event).toBeDefined();
+
+    const result = applyDiffEventAction(oldDocument, newDocument, event!, "accept");
+
+    expect(result).toMatchObject({ ok: true, status: "accepted-current", changed: false });
+    expect(result.ok ? result.document : null).toEqual(newDocument);
+  });
+
+  it("routes broken references to explicit repair workflows instead of direct accept/reject", () => {
+    const event = diffDocuments(oldDocument, newDocument).find((candidate) => candidate.kind === "reference-broken");
+    expect(event).toBeDefined();
+
+    const result = applyDiffEventAction(oldDocument, newDocument, event!, "reject");
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "unsupported-event",
+      message: "Broken references require explicit retarget or remove actions from the References repair workflow."
+    });
+  });
+
+  it("refuses stale review events when current content no longer matches the reviewed diff", () => {
+    const event = diffDocuments(oldDocument, newDocument).find((candidate) => candidate.kind === "modified" && candidate.id === "blk_body");
+    expect(event).toBeDefined();
+    const staleCurrent: SDocDocument = {
+      ...newDocument,
+      content: newDocument.content.map((node) =>
+        node.attrs?.id === "blk_body" ? { ...node, content: [{ type: "text", text: "Edited again" }] } : node
+      )
+    };
+
+    const result = applyDiffEventAction(oldDocument, staleCurrent, event!, "reject");
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "stale-event"
+    });
   });
 });
 

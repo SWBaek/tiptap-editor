@@ -111,11 +111,31 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Add focused tests for CLI output, section mapping, assets, and deterministic projection behavior.
 - Expose a browser Export panel command that copies the CLI/Tauri PPTX workflow without claiming direct browser generation.
 
-## Current Slice: Embedded Draw.io Editor Integration Boundary
+## Current Slice: Draw.io External Editor / Tauri Bridge Boundary
 
-- Decide whether embedded Draw.io editing should run inside the browser playground, future Tauri, or both.
-- Keep Draw.io XML source asset-backed; embedded editor state and preview state must not enter `document.json`.
-- Define asset update, preview regeneration, and failure recovery behavior before implementation.
+- Define the future native bridge for launching an installed Draw.io editor from the Tauri app.
+- Keep the browser playground limited to import, static preview, and source-preserving placeholders.
+- Treat deep iframe embedding as an optional experiment, not the default integration path.
+- Keep Draw.io XML source asset-backed; external editor state, temporary paths, preview state, and conflict markers must not enter `document.json`.
+- Define temp checkout, file watching, asset update, preview regeneration, and failure recovery behavior before implementation.
+
+## UX Simulation Review Adjustments
+
+Gemini's UX simulation review changes planning priority but not the canonical architecture. Accepted adjustments:
+
+- Prioritize a visual semantic diff overlay for non-developer reviewers while preserving the existing semantic diff event model.
+- Add a requirement-tagging boundary for optional human-readable IDs such as `REQ-OBC-012`, without replacing stable `attrs.id`.
+- Add broken-reference inline highlighting to the editor review surface.
+- Move Draw.io editing toward a Tauri external-editor bridge before attempting embedded iframe editing.
+- Add a large data grid boundary for CSV/JSON-backed engineering tables stored in `.sdoc/assets/`.
+- Add a corporate template export boundary for controlled Word/PDF outputs beyond MVP HTML-to-PDF.
+
+Rejected or deferred adjustments:
+
+- Do not make Git a required user workflow.
+- Do not replace stable block IDs with human-facing requirement IDs.
+- Do not replace the current small canonical table model with spreadsheet behavior.
+- Do not remove the existing CLI HTML-to-PDF path; treat enterprise template output as a later renderer.
 
 ## Acceptance Evidence
 
@@ -138,6 +158,7 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 - Unit tests cover heading-derived PPTX slide grouping, non-empty native PPTX output, and asset-backed figure handling without mutating `document.json`.
 - CLI tests cover `sdoc export <document> --format pptx -o output.pptx`.
 - Playwright verifies the Export side panel marks PPTX as CLI/Tauri-only and exposes a PPTX CLI command.
+- Gemini UX simulation review outcomes are recorded in the plan without changing canonical `document.json` ownership.
 
 ## Boundaries
 
@@ -148,7 +169,13 @@ Phase 4 extends SDoc from an authoring/review MVP into a publishing-capable tech
 ## Later Slices
 
 - Native PPTX browser download
-- Embedded Draw.io editor integration
+- Draw.io external editor / Tauri bridge boundary
+- Visual semantic diff overlay boundary
+- Requirement tagging boundary
+- Broken reference inline highlight
+- Large data grid asset boundary
+- Corporate template export boundary
+- Embedded Draw.io iframe experiment
 - Draw.io structural diff
 - Merged table cells
 - Authored disclosure blocks

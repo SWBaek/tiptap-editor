@@ -39,6 +39,14 @@ Markdown export should continue using pipe tables. Cell alignment may be reflect
 
 Semantic diff should remain table-level for v1 advanced editing. It may summarize row count, column count, header role changes, alignment changes, and changed cell text. It should not emit noisy per-cell move events unless a future table-specific diff model is introduced.
 
+## Large Table Boundary
+
+Small authored technical tables remain canonical `table` nodes. Large BOM, pinout, signal list, calibration, or spreadsheet-like data should use a future asset-backed data grid model instead of expanding canonical tables into full spreadsheet behavior.
+
+That future model should store CSV or JSON data in `.sdoc/assets/` and keep `document.json` limited to semantic references, captions, column intent, and display hints. Transient grid viewport, selection, scroll position, sort state, filter state, and column resize handles must not be stored in `document.json`.
+
+A `dataGrid` or similar node requires a separate schema, diff, export, and UI boundary before implementation.
+
 ## Deferred Work
 
 - merged cells, `rowspan`, and `colspan`
@@ -47,6 +55,7 @@ Semantic diff should remain table-level for v1 advanced editing. It may summariz
 - persistent column width/layout storage
 - structural table merge conflict resolution
 - spreadsheet-like selection model in canonical data
+- asset-backed large data grid nodes
 
 ## Minimal Controls Implementation
 

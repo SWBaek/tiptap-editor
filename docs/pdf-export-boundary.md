@@ -38,10 +38,17 @@ Implementation notes:
 
 The desktop app can wrap the CLI-grade renderer behind a native save dialog and progress/error UI. It may also preserve user-level export preferences, but those preferences should be app settings, not canonical document fields.
 
+## Corporate Template Boundary
+
+The current HTML-to-PDF path remains the MVP publishing pipeline. Enterprise deliverables that require controlled headers, footers, watermarks, document-control blocks, page numbering, approval tables, or strict corporate typography should use a future template exporter.
+
+That exporter may target `.docx`, LaTeX, or a dedicated PDF renderer, but it must remain a derived projection from `document.json`. Template choices and export preferences belong in app settings, project policy, or explicit export options; they should not become required canonical document fields.
+
 ## Deferred
 
 - Browser one-click PDF download
 - PDF theme presets
 - PDF metadata, headers, footers, and page numbers
+- Corporate `.docx` or template-driven PDF export
 - Mermaid/KaTeX live rendering inside PDF output
 - PDF visual regression tests

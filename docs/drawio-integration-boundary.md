@@ -37,17 +37,25 @@ Implementation should introduce a small policy or adapter boundary, such as `Dia
 
 The browser MVP may import a `.drawio` or `.drawio.xml` file, store it as an asset, and render a static preview or source-preserving placeholder. It must not claim native folder watching, external file links, or full Draw.io editing. Embedded Draw.io editor integration is deferred until source ownership, save behavior, and conflict handling are proven.
 
+## External Editor Bridge Direction
+
+The preferred editing direction is a future Tauri bridge, not a deep browser iframe. The desktop adapter may check out the source asset to a temporary working file, launch the installed Draw.io application, watch for saves, validate the updated source, write it back through `DiagramSourceStore`, and regenerate a preview asset when possible.
+
+The bridge must keep temporary paths, external process state, file watcher state, editor viewport, and conflict markers out of `document.json`. If the external editor fails, saves invalid XML, or conflicts with a newer asset revision, the app should preserve the previous source asset and report a recoverable error.
+
+Embedded iframe editing remains a deferred experiment for small diagrams after the external asset lifecycle is proven.
+
 ## Diff And Export
 
 Semantic diff should initially report Draw.io changes at the diagram block level: source asset changed, preview changed, caption changed, or attributes changed. Raw XML structural diff is deferred. Exports should prefer the preview asset when present and fall back to a labeled diagram placeholder that preserves the block ID and source asset reference.
 
 ## Deferred Work
 
+- Tauri external editor bridge.
 - Embedded Draw.io editor round trip.
 - Structural XML diff and merge.
 - Live preview generation in browser.
 - External path references for normal users.
-- Tauri file watching and external editor integration.
 
 ## Minimal Asset Model Implementation
 

@@ -72,4 +72,10 @@ Core rendering exposes two levels:
 
 Metadata changes are rendered outside semantic document diff. They may appear in UI as a separate metadata section, but they are not part of `document.json` block matching.
 
+## Visual Review Projection
+
+The editor should eventually project the same semantic diff events as inline review UI: inserted blocks, deleted blocks, modified text spans, moved-block badges, and broken-reference markers. This is a presentation layer for non-developer reviewers, not a second diff format.
+
+Overlay state, reviewer cursor state, expanded/collapsed diff panels, and accepted/rejected preview state must not be stored in `document.json`. If accepted changes are implemented later, the result should be a normal edited document that passes the same normalization and validation pipeline.
+
 나중에 visual diff UI는 같은 event model을 사용한다. UI 전용 포맷을 별도로 만들지 않는다.

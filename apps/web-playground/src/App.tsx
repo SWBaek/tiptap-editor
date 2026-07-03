@@ -88,6 +88,7 @@ import {
   addLocalHistoryEntry,
   createChangeReview,
   createReviewActionPlan,
+  createReviewBatchConflictSummary,
   createSideBySideDiffRows,
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
@@ -120,6 +121,7 @@ import {
   type SectionFoldRange,
   type ReviewActionKind,
   type ReviewActionPlanItem,
+  type ReviewBatchConflictSummary,
   type SideBySideDiffRow,
   type VisualDiffFilterCounts,
   type VisualDiffFilterKind,
@@ -192,6 +194,7 @@ export function App() {
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
+  const [lastReviewBatchSummary, setLastReviewBatchSummary] = useState<ReviewBatchConflictSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const dataGridInputRef = useRef<HTMLInputElement>(null);
@@ -807,6 +810,7 @@ export function App() {
 
       setBaselineDocument(result.document);
       setSelectedVisualDiffId(null);
+      setLastReviewBatchSummary(null);
       setActiveTab("diff");
       setStatusMessage(`Accepted ${item.kind} ${item.id}`);
       return;
@@ -822,6 +826,7 @@ export function App() {
     repairEditorBlockIds(editor);
     setDocumentId(result.document.attrs.id);
     setSelectedVisualDiffId(null);
+    setLastReviewBatchSummary(null);
     setActiveTab("diff");
     setStatusMessage(`Rejected ${item.kind} ${item.id}`);
   }
@@ -844,6 +849,7 @@ export function App() {
     }
 
     const result = applyDiffEventBatchAction(baselineDocument, document, visibleBatchReviewItems, action);
+    const summary = createReviewBatchConflictSummary(action, result);
     if (action === "accept") {
       setBaselineDocument(result.document);
     } else {
@@ -853,9 +859,9 @@ export function App() {
     }
 
     setSelectedVisualDiffId(null);
+    setLastReviewBatchSummary(summary);
     setActiveTab("diff");
-    const skipped = result.skippedCount > 0 ? `, skipped ${result.skippedCount}` : "";
-    setStatusMessage(`${label}ed ${result.appliedCount} visible review event${result.appliedCount === 1 ? "" : "s"}${skipped}`);
+    setStatusMessage(summary.detail);
   }
 
   function insertInlineEquationFromPrompt() {
@@ -999,6 +1005,7 @@ export function App() {
               visualDiffCounts={visualDiffFilterCounts}
               visualDiffFilter={visualDiffFilter}
               selectedVisualDiffId={selectedVisualDiffId}
+              batchSummary={lastReviewBatchSummary}
               onShowDiff={() => setActiveTab("diff")}
               onCompareSavedBaseline={compareSavedBaseline}
               onApplyReviewAction={applyReviewAction}
@@ -1606,6 +1613,7 @@ function ReviewPanel({
   visualDiffCounts,
   visualDiffFilter,
   selectedVisualDiffId,
+  batchSummary,
   onShowDiff,
   onCompareSavedBaseline,
   onApplyReviewAction,
@@ -1625,6 +1633,7 @@ function ReviewPanel({
   visualDiffCounts: VisualDiffFilterCounts;
   visualDiffFilter: VisualDiffFilterKind;
   selectedVisualDiffId: string | null;
+  batchSummary: ReviewBatchConflictSummary | null;
   onShowDiff: () => void;
   onCompareSavedBaseline: () => void;
   onApplyReviewAction: (item: ReviewActionPlanItem, action: ReviewActionKind) => void;
@@ -1692,6 +1701,36 @@ function ReviewPanel({
           Reject visible
         </button>
       </div>
+      {batchSummary && (
+        <section className={`review-batch-result ${batchSummary.status}`} aria-label="Review batch result">
+          <div>
+            <strong>{batchSummary.title}</strong>
+            <span>{batchSummary.detail}</span>
+          </div>
+          <dl>
+            <div>
+              <dt>Applied</dt>
+              <dd>{batchSummary.appliedCount}</dd>
+            </div>
+            <div>
+              <dt>Skipped</dt>
+              <dd>{batchSummary.skippedCount}</dd>
+            </div>
+          </dl>
+          {batchSummary.failures.length > 0 && (
+            <ul>
+              {batchSummary.failures.map((failure) => (
+                <li key={`${failure.kind}-${failure.id}`}>
+                  <span className={`review-event-kind ${failure.kind}`}>{failure.kind}</span>
+                  <code>{failure.id}</code>
+                  <small>{failure.reason}</small>
+                  <p>{failure.message}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section className="review-events" aria-label="Semantic review events">
         <div className="review-event-filters" aria-label="Review event filters">

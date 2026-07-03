@@ -9,7 +9,7 @@ import {
   type SDocNode,
   type ValidationResult
 } from "@sdoc/schema";
-import type { SDocDiffEvent } from "@sdoc/diff";
+import type { SDocDiffEvent, SDocReviewBatchFailure, SDocReviewBatchResult } from "@sdoc/diff";
 
 export interface ChangeReviewSection {
   title: string;
@@ -165,6 +165,23 @@ export interface ReviewActionPlan {
   items: ReviewActionPlanItem[];
 }
 
+export interface ReviewBatchConflictItem {
+  id: string;
+  kind: SDocDiffEvent["kind"];
+  reason: string;
+  message: string;
+}
+
+export interface ReviewBatchConflictSummary {
+  action: ReviewActionKind;
+  status: "complete" | "partial" | "no-op";
+  title: string;
+  detail: string;
+  appliedCount: number;
+  skippedCount: number;
+  failures: ReviewBatchConflictItem[];
+}
+
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
   return stableStringify(current) !== stableStringify(baseline);
 }
@@ -312,6 +329,24 @@ export function createReviewActionPlan(items: VisualDiffOverlayItem[]): ReviewAc
     ).length,
     unsupportedCount: planItems.filter((item) => item.actions.every((action) => action.availability === "unsupported")).length,
     items: planItems
+  };
+}
+
+export function createReviewBatchConflictSummary(
+  action: ReviewActionKind,
+  result: SDocReviewBatchResult
+): ReviewBatchConflictSummary {
+  const actionLabel = action === "accept" ? "accept" : "reject";
+  const status = getReviewBatchStatus(result);
+  const skippedDetail = result.skippedCount > 0 ? `, skipped ${result.skippedCount}` : "";
+  return {
+    action,
+    status,
+    title: getReviewBatchTitle(action, status),
+    detail: `${capitalize(actionLabel)}ed ${result.appliedCount} review event${result.appliedCount === 1 ? "" : "s"}${skippedDetail}.`,
+    appliedCount: result.appliedCount,
+    skippedCount: result.skippedCount,
+    failures: result.failures.map(createReviewBatchConflictItem)
   };
 }
 
@@ -899,6 +934,39 @@ function getReviewActionOptions(item: VisualDiffOverlayItem): ReviewActionOption
         }
       ];
   }
+}
+
+function getReviewBatchStatus(result: SDocReviewBatchResult): ReviewBatchConflictSummary["status"] {
+  if (result.appliedCount === 0) {
+    return result.skippedCount > 0 ? "no-op" : "complete";
+  }
+
+  return result.skippedCount > 0 ? "partial" : "complete";
+}
+
+function getReviewBatchTitle(action: ReviewActionKind, status: ReviewBatchConflictSummary["status"]): string {
+  const label = action === "accept" ? "accept" : "reject";
+  switch (status) {
+    case "complete":
+      return `Batch ${label} complete`;
+    case "partial":
+      return `Partial batch ${label}`;
+    case "no-op":
+      return `No batch ${label} applied`;
+  }
+}
+
+function createReviewBatchConflictItem(failure: SDocReviewBatchFailure): ReviewBatchConflictItem {
+  return {
+    id: failure.id,
+    kind: failure.kind,
+    reason: failure.reason,
+    message: failure.message
+  };
+}
+
+function capitalize(value: string): string {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
 function getVisualDiffColor(kind: VisualDiffOverlayItem["kind"]): string {

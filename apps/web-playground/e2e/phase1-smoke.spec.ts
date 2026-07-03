@@ -142,7 +142,9 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("Modified paragraph");
   page.once("dialog", (dialog) => dialog.accept());
   await reviewPanel.getByRole("button", { name: "Accept visible" }).click();
-  await expect(page.locator(".status-note")).toContainText("Accepted 1 visible review event");
+  await expect(page.locator(".status-note")).toContainText("Accepted 1 review event.");
+  await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Batch accept complete");
+  await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Applied");
   await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
   expect(await readPreviewDocument(page)).toEqual(batchAcceptedDocument);
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
@@ -153,7 +155,9 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("Modified paragraph");
   page.once("dialog", (dialog) => dialog.accept());
   await reviewPanel.getByRole("button", { name: "Reject visible" }).click();
-  await expect(page.locator(".status-note")).toContainText("Rejected 1 visible review event");
+  await expect(page.locator(".status-note")).toContainText("Rejected 1 review event.");
+  await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Batch reject complete");
+  await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Skipped");
   await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
   expect(await readPreviewDocument(page)).toEqual(batchAcceptedDocument);
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");

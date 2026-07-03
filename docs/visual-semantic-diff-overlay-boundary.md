@@ -68,10 +68,10 @@ Extended on 2026-07-04:
 - Broken reference events are routed to the References repair workflow instead of direct accept/reject.
 - Single-event and visible-event batch accept/reject actions apply through headless semantic diff helpers with stale-event protection.
 - The Diff tab renders side-by-side baseline/current block previews from the same semantic diff events and keeps the raw textual diff for debugging.
+- The Review panel renders batch apply results with applied/skipped counts and conflict messages as runtime-only review state.
 
 ## Deferred Work
 
 - full inline word decoration from token spans;
-- advanced conflict resolution UI for partially applied batches;
 - comment threads and reviewer assignments;
 - Git-backed PR review integration.

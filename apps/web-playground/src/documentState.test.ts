@@ -3,6 +3,7 @@ import {
   addLocalHistoryEntry,
   createChangeReview,
   createReviewActionPlan,
+  createReviewBatchConflictSummary,
   createSideBySideDiffRows,
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
@@ -201,6 +202,39 @@ describe("document state helpers", () => {
     ]);
     expect(plan.items[2].actions.every((action) => action.availability === "manual-repair")).toBe(true);
     expect("actions" in items[0]).toBe(false);
+  });
+
+  it("summarizes partially applied review batches without canonical state", () => {
+    const summary = createReviewBatchConflictSummary("reject", {
+      document: historyDocument,
+      appliedCount: 2,
+      skippedCount: 1,
+      failures: [
+        {
+          id: "blk_stale",
+          kind: "modified",
+          reason: "stale-event",
+          message: "Cannot reject modified blk_stale: review event is stale or already resolved."
+        }
+      ]
+    });
+
+    expect(summary).toEqual({
+      action: "reject",
+      status: "partial",
+      title: "Partial batch reject",
+      detail: "Rejected 2 review events, skipped 1.",
+      appliedCount: 2,
+      skippedCount: 1,
+      failures: [
+        {
+          id: "blk_stale",
+          kind: "modified",
+          reason: "stale-event",
+          message: "Cannot reject modified blk_stale: review event is stale or already resolved."
+        }
+      ]
+    });
   });
 
   it("projects broken reference diagnostics to inline marker css", () => {

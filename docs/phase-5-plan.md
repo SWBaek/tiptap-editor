@@ -90,7 +90,7 @@ Acceptance evidence:
 
 ## Slice 4: Review UX Hardening
 
-Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, broken reference repair actions, runtime accept/reject action planning, headless single-event accept/reject apply, browser Review panel single-event apply UX, visible-event batch accept/reject, and side-by-side document diff are implemented; advanced conflict UX remains open.
+Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, broken reference repair actions, runtime accept/reject action planning, headless single-event accept/reject apply, browser Review panel single-event apply UX, visible-event batch accept/reject, side-by-side document diff, and partial batch conflict summaries are implemented.
 
 Productize the visual semantic diff overlay, requirement tagging diagnostics, and broken reference repair actions. These features must consume existing semantic diff and reference diagnostic sources instead of creating independent review state in canonical JSON.
 
@@ -123,10 +123,11 @@ Acceptance evidence:
 - The browser Review panel exposes per-event Accept/Reject actions for saved-baseline review, confirms each action, recomputes semantic diff, and keeps review action state out of `document.json`.
 - Batch accept/reject applies visible non-broken review events, recomputes diff between each event, and reports skipped stale events without serializing batch state.
 - The Diff tab renders side-by-side baseline/current block previews derived from `SDocDiffEvent` and stable block IDs while preserving the raw textual diff as the debug view.
+- The Review panel renders the latest batch result as runtime-only applied/skipped counts plus stale/conflict messages for partially applied batches.
 
 Open work:
 
-- Advanced conflict resolution UX for partially applied batches.
+- Full inline word decoration and collaboration-grade reviewer workflows remain deferred beyond the current Review UX hardening scope.
 
 ## Slice 5: Enterprise Authoring And Publishing
 

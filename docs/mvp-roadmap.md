@@ -91,3 +91,18 @@
 - Draw.io integration
 - advanced table editing
 - section folding
+
+## Phase 5: Productization
+
+상태: 진행 중. 범위와 acceptance criteria는 `docs/phase-5-plan.md`를 기준으로 한다.
+
+목표는 MVP 기능을 실제 제품 사용 흐름에 가깝게 만드는 것이다.
+
+우선순위:
+
+- Tauri desktop shell과 native `.sdoc` open/save/save-as 기반
+- VS Code-like native file explorer와 workspace adapter
+- Draw.io external editor bridge
+- visual semantic diff review UX
+- requirement tagging, traceability diagnostics, broken reference repair UX
+- asset-backed large data grid와 corporate template export

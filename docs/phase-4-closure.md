@@ -56,4 +56,4 @@ npm run build
 
 ## Handoff
 
-Phase 5 should focus on productizing the strongest user-facing workflows: desktop shell, visual review overlay, requirement tagging, broken reference repair, and native Draw.io editing. Each feature should still follow the established process: boundary document, schema/core impact analysis, headless implementation, CLI or UI wiring, tests, documentation, and commit/push.
+Phase 5 should focus on productizing the strongest user-facing workflows: desktop shell, visual review overlay, requirement tagging, broken reference repair, and native Draw.io editing. Each feature should still follow the established process: boundary document, schema/core impact analysis, headless implementation, CLI or UI wiring, tests, documentation, and commit/push. The active Phase 5 scope is tracked in `docs/phase-5-plan.md`.

@@ -56,8 +56,11 @@ Use npm workspaces from the repository root.
 
 - `npm install`: install project dependencies.
 - `npm run dev:web`: start the browser playground at `http://127.0.0.1:6280`.
+- `npm run dev:desktop`: start the future Tauri desktop shell; requires Rust/Cargo and native Tauri prerequisites.
 - `npm run build`: compile packages and build the browser playground.
 - `npm run build:packages`: compile only the TypeScript packages.
+- `npm run build:desktop`: build the Tauri desktop app; requires Rust/Cargo and native Tauri prerequisites.
+- `npm run typecheck:desktop`: type-check the desktop adapter TypeScript without running the native Tauri build.
 - `npm test`: build packages and run unit tests with Vitest.
 - `npx playwright install chromium`: install the browser runtime needed for E2E checks.
 - `npm run test:e2e`: run the Playwright browser smoke test for the Phase 1 playground.
@@ -68,7 +71,7 @@ Use npm workspaces from the repository root.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format pptx -o deck.pptx`: generate a derived native PowerPoint deck.
 - `npm run clean`: remove TypeScript build artifacts through `tsc -b --clean`.
 
-When Tauri is introduced later, add `npm run tauri dev` and `npm run tauri build` here in the same change.
+Desktop development uses the `@sdoc/desktop` workspace and reuses the web playground frontend until a dedicated desktop UI split is justified.
 
 ## Coding Style & Naming Conventions
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SDoc Editor",
+  "version": "0.0.0",
+  "identifier": "com.sdoc.editor",
+  "build": {
+    "beforeDevCommand": "npm run dev -w @sdoc/web-playground",
+    "beforeBuildCommand": "npm run build -w @sdoc/web-playground",
+    "devUrl": "http://127.0.0.1:6280",
+    "frontendDist": "../../web-playground/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "SDoc Editor",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 960,
+        "minHeight": 640
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

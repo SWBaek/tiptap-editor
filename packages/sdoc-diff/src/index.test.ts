@@ -252,6 +252,26 @@ describe("diffDocuments", () => {
       'preview asset changed "asset_architecture.svg" -> "asset_architecture_v2.svg"'
     ]);
   });
+
+  it("summarizes human-facing id changes while matching by stable block id", () => {
+    const oldReqDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_req" },
+      content: [{ type: "paragraph", attrs: { id: "blk_body", humanId: "REQ-OBC-001" }, content: [{ type: "text", text: "Requirement" }] }]
+    };
+    const newReqDocument: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_req" },
+      content: [{ type: "paragraph", attrs: { id: "blk_body", humanId: "REQ-OBC-002" }, content: [{ type: "text", text: "Requirement" }] }]
+    };
+
+    const modified = diffDocuments(oldReqDocument, newReqDocument).find((event) => event.kind === "modified" && event.id === "blk_body");
+
+    expect(modified?.kind).toBe("modified");
+    expect(modified?.kind === "modified" ? modified.changes : []).toEqual(['humanId changed "REQ-OBC-001" -> "REQ-OBC-002"']);
+  });
 });
 
 describe("renderReadableDiffEvents", () => {

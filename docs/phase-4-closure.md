@@ -34,7 +34,7 @@ Phase 4 Publishing & Advanced Features is accepted for the MVP slice. The work e
 
 ## Acceptance Evidence
 
-Evidence is recorded in `docs/phase-4-plan.md`. The implemented slices have unit and Playwright coverage for HTML/PDF/PPTX export behavior, Draw.io asset references, advanced table controls, section folding runtime state, visual diff overlay runtime projection, broken reference inline markers, and `humanId` validation/export/editor preservation. Large data grids and corporate template export remain boundary-only Phase 5 decisions.
+Evidence is recorded in `docs/phase-4-plan.md`. The implemented slices have unit and Playwright coverage for HTML/PDF/PPTX export behavior, Draw.io asset references, advanced table controls, section folding runtime state, visual diff overlay runtime projection, broken reference inline markers, and `humanId` validation/diff/export/editor preservation. Large data grids and corporate template export remain boundary-only Phase 5 decisions.
 
 Required closure validation:
 

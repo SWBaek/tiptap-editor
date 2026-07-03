@@ -338,12 +338,16 @@ function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
     changes.push(`type changed ${oldNode.type} -> ${newNode.type}`);
   }
 
+  changes.push(...summarizeHumanIdChange(oldNode, newNode));
+
   if (oldNode.type === "table" && newNode.type === "table") {
-    return summarizeTableChanges(oldNode, newNode);
+    changes.push(...summarizeTableChanges(oldNode, newNode));
+    return changes.length > 0 ? changes : ["table changed"];
   }
 
   if (oldNode.type === "diagram" && newNode.type === "diagram") {
-    return summarizeDiagramChanges(oldNode, newNode);
+    changes.push(...summarizeDiagramChanges(oldNode, newNode));
+    return changes.length > 0 ? changes : ["diagram changed"];
   }
 
   const oldText = getPlainText(oldNode);
@@ -359,6 +363,12 @@ function summarizeChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
   }
 
   return changes.length > 0 ? changes : ["content changed"];
+}
+
+function summarizeHumanIdChange(oldNode: SDocNode, newNode: SDocNode): string[] {
+  const oldHumanId = typeof oldNode.attrs?.humanId === "string" ? oldNode.attrs.humanId : "";
+  const newHumanId = typeof newNode.attrs?.humanId === "string" ? newNode.attrs.humanId : "";
+  return oldHumanId !== newHumanId ? [`humanId changed ${quote(oldHumanId)} -> ${quote(newHumanId)}`] : [];
 }
 
 function summarizeDiagramChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
@@ -621,21 +631,22 @@ function omitId(attrs: Record<string, unknown>): Record<string, unknown> {
 
 function omitDiffAttrs(node: SDocNode): Record<string, unknown> {
   const attrs = omitId(node.attrs ?? {});
+  const { humanId: _humanId, ...attrsWithoutHumanId } = attrs;
   if (node.type === "equationBlock" || node.type === "equation") {
-    const { latex: _latex, ...rest } = attrs;
+    const { latex: _latex, ...rest } = attrsWithoutHumanId;
     return rest;
   }
 
   if (node.type === "diagram") {
-    const { source: _source, ...rest } = attrs;
+    const { source: _source, ...rest } = attrsWithoutHumanId;
     return rest;
   }
-  return attrs;
+  return attrsWithoutHumanId;
 }
 
 function omitDrawioDiffAttrs(node: SDocNode): Record<string, unknown> {
   const attrs = omitId(node.attrs ?? {});
-  const { sourceAssetId: _sourceAssetId, previewAssetId: _previewAssetId, ...rest } = attrs;
+  const { humanId: _humanId, sourceAssetId: _sourceAssetId, previewAssetId: _previewAssetId, ...rest } = attrs;
   return rest;
 }
 

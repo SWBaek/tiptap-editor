@@ -53,7 +53,7 @@ The merge helper never stores selected rows, pending decisions, stale state, or 
 
 The editor should present row diff as a review tool attached to the `dataGrid` block. Selected row, expanded conflict, preview mode, and pending accept/reject choices are runtime state and must stay outside `document.json`.
 
-The first browser slices project saved-baseline/current assets into row review readiness in the Export panel and allow accepting or rejecting individual mergeable row changes. Accept updates the saved-baseline asset snapshot so the current asset remains unchanged and the accepted event disappears from review. Reject writes the current asset back toward the saved-baseline row value through the `update` policy. Reject-as-revision creates a new revision asset, preserves the previous asset, and updates the reviewed `dataGrid.attrs.sourceAssetId` as an explicit canonical edit. Because history snapshots do not yet carry asset snapshots, row review readiness and row actions are limited to the saved baseline.
+The first browser slices project saved-baseline/current assets into row review readiness in the Export panel and allow accepting or rejecting individual mergeable row changes. Accept updates the saved-baseline asset snapshot so the current asset remains unchanged and the accepted event disappears from review. Reject writes the current asset back toward the saved-baseline row value through the `update` policy. Reject-as-revision creates a new revision asset, preserves the previous asset, and updates the reviewed `dataGrid.attrs.sourceAssetId` as an explicit canonical edit. Asset-only row reject writes still mark the file as unsaved by comparing current assets against the saved-baseline asset snapshot. Because history snapshots do not yet carry asset snapshots, row review readiness and row actions are limited to the saved baseline.
 
 ## Acceptance Criteria
 
@@ -79,6 +79,7 @@ The first browser slices project saved-baseline/current assets into row review r
 - Browser row review accept actions apply one selected row event to the saved-baseline asset snapshot, preserving the current asset and leaving `document.json` unchanged.
 - Browser row review reject actions reverse one selected row event through `applyDataGridRowMerge` and `applyDataGridAssetRevision({ policy: "update" })`, preserving unrelated row changes and leaving `document.json` unchanged.
 - Browser row review reject-as-revision actions use `applyDataGridAssetRevision({ policy: "revision" })`, preserve the previous source asset, and update only the reviewed `dataGrid.attrs.sourceAssetId` in `document.json`.
+- Browser dirty-state tracking treats asset byte or asset id changes as save-relevant even when `document.json` and metadata are unchanged.
 - Browser row review can expand each ready grid from the first three row events to the full event list as runtime-only UI state.
 - Browser row review can filter row events by title, source asset, event kind, row key, column, message, and old/new values without serializing filter state.
 - Browser row review renders compact side-by-side before/after cell values for row events from the runtime diff event data.

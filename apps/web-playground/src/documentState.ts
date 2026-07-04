@@ -219,6 +219,27 @@ export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): 
   return stableStringify(current) !== stableStringify(baseline);
 }
 
+export function areAssetsDirty(current: Record<string, Uint8Array>, baseline: Record<string, Uint8Array>): boolean {
+  const currentAssetIds = Object.keys(current).sort((left, right) => left.localeCompare(right));
+  const baselineAssetIds = Object.keys(baseline).sort((left, right) => left.localeCompare(right));
+  if (currentAssetIds.length !== baselineAssetIds.length) {
+    return true;
+  }
+
+  for (let index = 0; index < currentAssetIds.length; index += 1) {
+    const assetId = currentAssetIds[index];
+    if (assetId !== baselineAssetIds[index]) {
+      return true;
+    }
+
+    if (!assetBytesAreEqual(current[assetId], baseline[assetId])) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function getSavedLabel(savedAt: string, hasUnsavedChanges: boolean): string {
   return hasUnsavedChanges ? "Unsaved changes" : savedAt;
 }
@@ -777,6 +798,20 @@ export function parseLocalHistory(value: string | null): LocalHistoryEntry[] {
 
 function renderSection(title: string, lines: string[]): string {
   return [`${title} (${lines.length})`, ...lines.map((line) => `- ${line}`)].join("\n");
+}
+
+function assetBytesAreEqual(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.byteLength !== right.byteLength) {
+    return false;
+  }
+
+  for (let index = 0; index < left.byteLength; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 interface DataGridBlockSummary {

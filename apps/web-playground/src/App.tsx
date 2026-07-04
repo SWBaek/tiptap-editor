@@ -96,6 +96,7 @@ import {
 import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
 import {
   addLocalHistoryEntry,
+  areAssetsDirty,
   createChangeReview,
   createDataGridRowReviewModel,
   createReviewActionPlan,
@@ -300,7 +301,8 @@ export function App() {
   );
   const hasDocumentChanges = diffDocuments(baselineDocument, document).length > 0;
   const hasMetadataChanges = isMetadataDirty(metadata, baselineMetadata);
-  const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges;
+  const hasAssetChanges = areAssetsDirty(assets, baselineAssets);
+  const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges || hasAssetChanges;
   const fileLabel = getFileLabel(currentFilename, metadata);
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
   const exportBaseName = safeFilename(metadata.title || "document");

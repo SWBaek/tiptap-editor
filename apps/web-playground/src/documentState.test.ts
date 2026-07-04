@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addLocalHistoryEntry,
+  areAssetsDirty,
   createChangeReview,
   createReviewActionPlan,
   createReviewBatchConflictSummary,
@@ -64,6 +65,28 @@ describe("document state helpers", () => {
   it("detects metadata changes with stable key ordering", () => {
     expect(isMetadataDirty({ title: "Spec", author: "A" }, { author: "A", title: "Spec" })).toBe(false);
     expect(isMetadataDirty({ title: "Spec", author: "B" }, { title: "Spec", author: "A" })).toBe(true);
+  });
+
+  it("detects asset-only changes by id and bytes", () => {
+    expect(
+      areAssetsDirty(
+        { "assets/pinout.csv": new Uint8Array([1, 2, 3]) },
+        { "assets/pinout.csv": new Uint8Array([1, 2, 3]) }
+      )
+    ).toBe(false);
+    expect(
+      areAssetsDirty(
+        { "assets/pinout.csv": new Uint8Array([1, 2, 4]) },
+        { "assets/pinout.csv": new Uint8Array([1, 2, 3]) }
+      )
+    ).toBe(true);
+    expect(
+      areAssetsDirty(
+        { "assets/pinout.csv": new Uint8Array([1]), "assets/pinout.rev1.csv": new Uint8Array([2]) },
+        { "assets/pinout.csv": new Uint8Array([1]) }
+      )
+    ).toBe(true);
+    expect(areAssetsDirty({}, { "assets/pinout.csv": new Uint8Array([1]) })).toBe(true);
   });
 
   it("shows unsaved changes ahead of the last save timestamp", () => {

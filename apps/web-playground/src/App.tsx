@@ -96,7 +96,7 @@ import {
 import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
 import { runSdocSaveAction } from "./documentFileActions";
 import { detectDocumentFileRuntime, resolveSdocSaveRoute } from "./documentFileRuntime";
-import { getWindowSdocNativeSaveAdapter } from "./documentNativeBridge";
+import { getWindowSdocNativeOpenAdapter, getWindowSdocNativeSaveAdapter } from "./documentNativeBridge";
 import {
   addLocalHistoryEntry,
   areAssetsDirty,
@@ -311,6 +311,7 @@ export function App() {
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
   const documentFileRuntime = useMemo(() => detectDocumentFileRuntime(), []);
   const nativeSdocSaveAdapter = useMemo(() => getWindowSdocNativeSaveAdapter(), []);
+  const nativeSdocOpenAdapter = useMemo(() => getWindowSdocNativeOpenAdapter(), []);
   const sdocSaveRoute = useMemo(() => resolveSdocSaveRoute(documentFileRuntime, currentNativePath), [currentNativePath, documentFileRuntime]);
   const exportBaseName = safeFilename(metadata.title || "document");
   const exportFilenames = {
@@ -406,41 +407,45 @@ export function App() {
     setStatusMessage(`Exported ${name}`);
   }
 
+  async function openDocumentBytes(name: string, data: ArrayBuffer | Uint8Array, nativePath: string | null) {
+    const loaded = await openDocumentInput({
+      name,
+      data,
+      fallbackMetadata: metadata
+    });
+
+    const validationResult = validateDocument(loaded.document);
+    if (!validationResult.ok) {
+      setStatusMessage(`Invalid document: ${validationResult.issues[0]?.message ?? "schema validation failed"}`);
+      return;
+    }
+
+    editor.commands.setContent(fromSdocDocument(loaded.document, createAssetSourceMap(loaded.assets)), { emitUpdate: true });
+    repairEditorBlockIds(editor);
+    setAssets(loaded.assets);
+    setDocumentId(loaded.document.attrs.id);
+    const appliedDocument = toSdocDocument(editor.getJSON(), loaded.document.attrs.id);
+    const nextMetadata = {
+      ...metadata,
+      ...loaded.metadata,
+      title: loaded.metadata.title || metadata.title
+    };
+    setMetadata(nextMetadata);
+    setBaselineDocument(appliedDocument);
+    setBaselineMetadata(nextMetadata);
+    setBaselineAssets(loaded.assets);
+    setSelectedHistoryId(null);
+    setCollapsedHeadingIds(new Set());
+    setCurrentFilename(name);
+    setCurrentNativePath(nativePath);
+    addRecentFile(name, nextMetadata.title || name, "opened");
+    setActiveTab("json");
+    markSaved(loaded.statusMessage);
+  }
+
   async function openFile(file: File) {
     try {
-      const loaded = await openDocumentInput({
-        name: file.name,
-        data: await file.arrayBuffer(),
-        fallbackMetadata: metadata
-      });
-
-      const validationResult = validateDocument(loaded.document);
-      if (!validationResult.ok) {
-        setStatusMessage(`Invalid document: ${validationResult.issues[0]?.message ?? "schema validation failed"}`);
-        return;
-      }
-
-      editor.commands.setContent(fromSdocDocument(loaded.document, createAssetSourceMap(loaded.assets)), { emitUpdate: true });
-      repairEditorBlockIds(editor);
-      setAssets(loaded.assets);
-      setDocumentId(loaded.document.attrs.id);
-      const appliedDocument = toSdocDocument(editor.getJSON(), loaded.document.attrs.id);
-      const nextMetadata = {
-        ...metadata,
-        ...loaded.metadata,
-        title: loaded.metadata.title || metadata.title
-      };
-      setMetadata(nextMetadata);
-      setBaselineDocument(appliedDocument);
-      setBaselineMetadata(nextMetadata);
-      setBaselineAssets(loaded.assets);
-      setSelectedHistoryId(null);
-      setCollapsedHeadingIds(new Set());
-      setCurrentFilename(file.name);
-      setCurrentNativePath(null);
-      addRecentFile(file.name, nextMetadata.title || file.name, "opened");
-      setActiveTab("json");
-      markSaved(loaded.statusMessage);
+      await openDocumentBytes(file.name, await file.arrayBuffer(), null);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -448,6 +453,30 @@ export function App() {
         fileInputRef.current.value = "";
       }
     }
+  }
+
+  async function openDocumentAction() {
+    if (documentFileRuntime.kind === "desktop") {
+      if (!nativeSdocOpenAdapter) {
+        setStatusMessage("Native open adapter is not available.");
+        return;
+      }
+
+      try {
+        const opened = await nativeSdocOpenAdapter.open();
+        if (!opened) {
+          setStatusMessage("Open cancelled.");
+          return;
+        }
+
+        await openDocumentBytes(filenameFromNativePath(opened.path), opened.bytes, opened.path);
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : String(error));
+      }
+      return;
+    }
+
+    fileInputRef.current?.click();
   }
 
   function markSaved(message: string) {
@@ -1167,7 +1196,7 @@ export function App() {
               savedLabel={savedLabel}
               recentFiles={recentFiles}
               onNewDocument={createNewDocument}
-              onOpenDocument={() => fileInputRef.current?.click()}
+              onOpenDocument={openDocumentAction}
               onSaveSdoc={downloadSdoc}
               sdocSaveLabel={sdocSaveRoute.label}
               onSelectRecentFile={explainRecentFileAccess}
@@ -1394,7 +1423,7 @@ export function App() {
           <ToolbarButton title="New document" onClick={createNewDocument}>
             <FilePlus size={18} />
           </ToolbarButton>
-          <ToolbarButton title="Open .sdoc or document.json" onClick={() => fileInputRef.current?.click()}>
+          <ToolbarButton title="Open .sdoc or document.json" onClick={openDocumentAction}>
             <FolderOpen size={18} />
           </ToolbarButton>
           <ToolbarButton title="Download document.json" onClick={downloadJson}>
@@ -2817,6 +2846,12 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function filenameFromNativePath(path: string): string {
+  const normalized = path.replace(/\\/g, "/");
+  const filename = normalized.split("/").filter(Boolean).pop();
+  return filename && filename.length > 0 ? filename : "document.sdoc";
 }
 
 function loadStoredHistory(): LocalHistoryEntry[] {

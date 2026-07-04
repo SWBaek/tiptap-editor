@@ -80,6 +80,35 @@ describe("native sdoc save bridge", () => {
     await expect(bridge.chooseSdocSavePath("Spec.sdoc")).resolves.toBe("C:/docs/Spec.sdoc");
   });
 
+  it("opens .sdoc bytes through the injected native reader", async () => {
+    const bridge = createNativeSdocSaveBridge({
+      async chooseOpenPath() {
+        return "C:/docs/Spec.sdoc";
+      },
+      async readPackage(path: string) {
+        return new Uint8Array(path.endsWith("Spec.sdoc") ? [80, 75, 3, 4] : []);
+      }
+    });
+
+    await expect(bridge.openSdoc()).resolves.toEqual({
+      path: "C:/docs/Spec.sdoc",
+      bytes: new Uint8Array([80, 75, 3, 4])
+    });
+  });
+
+  it("returns null when native open is cancelled", async () => {
+    const bridge = createNativeSdocSaveBridge({
+      async chooseOpenPath() {
+        return null;
+      },
+      async readPackage() {
+        throw new Error("should not read after cancellation");
+      }
+    });
+
+    await expect(bridge.openSdoc()).resolves.toBeNull();
+  });
+
   it("installs the bridge on an explicit global scope", () => {
     const globalScope: WindowWithSdocNativeSaveBridge = {};
     const bridge = installNativeSdocSaveBridge({

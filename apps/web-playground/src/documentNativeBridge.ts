@@ -6,6 +6,16 @@ export const SDOC_NATIVE_SAVE_BRIDGE_KEY = "__SDOC_NATIVE_SAVE_BRIDGE__";
 export interface WindowSdocNativeSaveBridge {
   saveSdoc(path: string, bytes: Uint8Array, filename: string): Promise<void>;
   chooseSdocSavePath?(suggestedFilename: string): Promise<string | null>;
+  openSdoc?(): Promise<WindowSdocNativeOpenResult | null>;
+}
+
+export interface WindowSdocNativeOpenResult {
+  path: string;
+  bytes: Uint8Array;
+}
+
+export interface NativeSdocOpenAdapter {
+  open(): Promise<WindowSdocNativeOpenResult | null>;
 }
 
 export type WindowWithSdocNativeSaveBridge = {
@@ -28,6 +38,19 @@ export function getWindowSdocNativeSaveAdapter(globalScope: unknown = globalThis
   };
 }
 
+export function getWindowSdocNativeOpenAdapter(globalScope: unknown = globalThis): NativeSdocOpenAdapter | undefined {
+  const bridge = getWindowSdocNativeSaveBridge(globalScope);
+  if (!bridge?.openSdoc) {
+    return undefined;
+  }
+
+  return {
+    open() {
+      return bridge.openSdoc?.() ?? Promise.resolve(null);
+    }
+  };
+}
+
 function getWindowSdocNativeSaveBridge(globalScope: unknown): WindowSdocNativeSaveBridge | undefined {
   if (!globalScope || typeof globalScope !== "object") {
     return undefined;
@@ -44,6 +67,10 @@ function getWindowSdocNativeSaveBridge(globalScope: unknown): WindowSdocNativeSa
   }
 
   if (candidate.chooseSdocSavePath !== undefined && typeof candidate.chooseSdocSavePath !== "function") {
+    return undefined;
+  }
+
+  if (candidate.openSdoc !== undefined && typeof candidate.openSdoc !== "function") {
     return undefined;
   }
 

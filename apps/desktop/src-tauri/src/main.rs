@@ -52,6 +52,35 @@ const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
         }
       });
       return normalizePath(path);
+    },
+    async openSdoc() {
+      const path = await internals.invoke("plugin:dialog|open", {
+        options: {
+          title: "Open SDoc document",
+          multiple: false,
+          directory: false,
+          filters: [
+            {
+              name: "SDoc document",
+              extensions: ["sdoc"]
+            }
+          ]
+        }
+      });
+
+      const normalizedPath = normalizePath(path);
+      if (!normalizedPath) {
+        return null;
+      }
+
+      const bytes = await internals.invoke("read_sdoc_file", {
+        path: normalizedPath
+      });
+
+      return {
+        path: normalizedPath,
+        bytes: new Uint8Array(bytes)
+      };
     }
   };
 })();

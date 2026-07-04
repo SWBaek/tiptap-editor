@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getWindowSdocNativeSaveAdapter, SDOC_NATIVE_SAVE_BRIDGE_KEY } from "./documentNativeBridge";
+import { getWindowSdocNativeOpenAdapter, getWindowSdocNativeSaveAdapter, SDOC_NATIVE_SAVE_BRIDGE_KEY } from "./documentNativeBridge";
 
 const payload = {
   filename: "Spec.sdoc",
@@ -10,6 +10,7 @@ describe("document native bridge", () => {
   it("does not expose a native save adapter without an injected bridge", () => {
     expect(getWindowSdocNativeSaveAdapter({})).toBeUndefined();
     expect(getWindowSdocNativeSaveAdapter({ [SDOC_NATIVE_SAVE_BRIDGE_KEY]: { saveSdoc: "nope" } })).toBeUndefined();
+    expect(getWindowSdocNativeSaveAdapter({ [SDOC_NATIVE_SAVE_BRIDGE_KEY]: { saveSdoc: async () => undefined, openSdoc: "nope" } })).toBeUndefined();
   });
 
   it("adapts an injected native save bridge without importing Tauri APIs", async () => {
@@ -40,5 +41,26 @@ describe("document native bridge", () => {
     });
 
     await expect(adapter?.chooseSavePath?.("Spec.sdoc")).resolves.toBe("C:/docs/Spec.sdoc");
+  });
+
+  it("adapts an optional native open bridge", async () => {
+    const adapter = getWindowSdocNativeOpenAdapter({
+      [SDOC_NATIVE_SAVE_BRIDGE_KEY]: {
+        async saveSdoc() {
+          return undefined;
+        },
+        async openSdoc() {
+          return {
+            path: "C:/docs/Spec.sdoc",
+            bytes: new Uint8Array([80, 75, 3, 4])
+          };
+        }
+      }
+    });
+
+    await expect(adapter?.open()).resolves.toEqual({
+      path: "C:/docs/Spec.sdoc",
+      bytes: new Uint8Array([80, 75, 3, 4])
+    });
   });
 });

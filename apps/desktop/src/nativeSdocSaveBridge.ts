@@ -1,8 +1,9 @@
-import { save as showSaveDialog } from "@tauri-apps/plugin-dialog";
+import { open as showOpenDialog, save as showSaveDialog } from "@tauri-apps/plugin-dialog";
 import {
   saveSdocPackageToNativeFile,
   type NativeSdocSaveBackExecution
 } from "./nativeSdocSaveBack.js";
+import { nativeWorkspaceAdapter } from "./nativeWorkspaceAdapter.js";
 import type { NativeSdocSaveBackRequest } from "./sdocSaveBackModel.js";
 
 export const SDOC_NATIVE_SAVE_BRIDGE_KEY = "__SDOC_NATIVE_SAVE_BRIDGE__";
@@ -10,6 +11,12 @@ export const SDOC_NATIVE_SAVE_BRIDGE_KEY = "__SDOC_NATIVE_SAVE_BRIDGE__";
 export interface WindowSdocNativeSaveBridge {
   saveSdoc(path: string, bytes: Uint8Array, filename: string): Promise<void>;
   chooseSdocSavePath(suggestedFilename: string): Promise<string | null>;
+  openSdoc(): Promise<WindowSdocNativeOpenResult | null>;
+}
+
+export interface WindowSdocNativeOpenResult {
+  path: string;
+  bytes: Uint8Array;
 }
 
 export type WindowWithSdocNativeSaveBridge = {
@@ -20,11 +27,15 @@ export interface NativeSdocSaveBridgeOptions {
   globalScope?: WindowWithSdocNativeSaveBridge;
   savePackage?: (request: NativeSdocSaveBackRequest) => Promise<NativeSdocSaveBackExecution>;
   chooseSavePath?: (suggestedFilename: string) => Promise<string | null>;
+  chooseOpenPath?: () => Promise<string | null>;
+  readPackage?: (path: string) => Promise<Uint8Array>;
 }
 
 export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions = {}): WindowSdocNativeSaveBridge {
   const savePackage = options.savePackage ?? saveSdocPackageToNativeFile;
   const chooseSavePath = options.chooseSavePath ?? chooseSdocSavePathWithDialog;
+  const chooseOpenPath = options.chooseOpenPath ?? chooseSdocOpenPathWithDialog;
+  const readPackage = options.readPackage ?? nativeWorkspaceAdapter.readSdoc;
 
   return {
     async saveSdoc(path, bytes) {
@@ -41,6 +52,18 @@ export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions 
 
     chooseSdocSavePath(suggestedFilename) {
       return chooseSavePath(suggestedFilename);
+    },
+
+    async openSdoc() {
+      const path = await chooseOpenPath();
+      if (!path) {
+        return null;
+      }
+
+      return {
+        path,
+        bytes: await readPackage(path)
+      };
     }
   };
 }
@@ -65,6 +88,22 @@ export async function chooseSdocSavePathWithDialog(suggestedFilename: string): P
   });
 
   return normalizeDialogPath(path);
+}
+
+export async function chooseSdocOpenPathWithDialog(): Promise<string | null> {
+  const path = await showOpenDialog({
+    title: "Open SDoc document",
+    multiple: false,
+    directory: false,
+    filters: [
+      {
+        name: "SDoc document",
+        extensions: ["sdoc"]
+      }
+    ]
+  });
+
+  return Array.isArray(path) ? null : normalizeDialogPath(path);
 }
 
 function ensureSdocFilename(filename: string): string {

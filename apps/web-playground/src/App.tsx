@@ -202,6 +202,7 @@ export function App() {
   const [baselineAssets, setBaselineAssets] = useState<SDocAssets>({});
   const [assets, setAssets] = useState<SDocAssets>({});
   const [currentFilename, setCurrentFilename] = useState<string | null>(null);
+  const [currentNativePath, setCurrentNativePath] = useState<string | null>(null);
   const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>(loadStoredRecentFiles);
   const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>(loadStoredHistory);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
@@ -307,7 +308,7 @@ export function App() {
   const fileLabel = getFileLabel(currentFilename, metadata);
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
   const documentFileRuntime = useMemo(() => detectDocumentFileRuntime(), []);
-  const sdocSaveRoute = useMemo(() => resolveSdocSaveRoute(documentFileRuntime, null), [documentFileRuntime]);
+  const sdocSaveRoute = useMemo(() => resolveSdocSaveRoute(documentFileRuntime, currentNativePath), [currentNativePath, documentFileRuntime]);
   const exportBaseName = safeFilename(metadata.title || "document");
   const exportFilenames = {
     sdoc: `${exportBaseName}.sdoc`,
@@ -339,6 +340,7 @@ export function App() {
       setBaselineAssets(assets);
       setSelectedHistoryId(null);
       setCurrentFilename(payload.filename);
+      setCurrentNativePath(null);
       addRecentFile(payload.filename, metadata.title || payload.filename, "saved");
       markSaved("Saved .sdoc");
     } catch (error) {
@@ -417,6 +419,7 @@ export function App() {
       setSelectedHistoryId(null);
       setCollapsedHeadingIds(new Set());
       setCurrentFilename(file.name);
+      setCurrentNativePath(null);
       addRecentFile(file.name, nextMetadata.title || file.name, "opened");
       setActiveTab("json");
       markSaved(loaded.statusMessage);
@@ -575,6 +578,7 @@ export function App() {
     setSelectedHistoryId(null);
     setCollapsedHeadingIds(new Set());
     setCurrentFilename(null);
+    setCurrentNativePath(null);
     setActiveTab("json");
     setSavedAt("Not saved");
     setStatusMessage("Created new document");

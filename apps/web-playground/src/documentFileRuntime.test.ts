@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createDocumentFileRuntime, detectDocumentFileRuntime, getRuntimeFileBoundaryLabel, resolveSdocSaveRoute } from "./documentFileRuntime";
+import {
+  clearDocumentFileRuntimeState,
+  createDocumentFileRuntime,
+  createDocumentFileRuntimeState,
+  detectDocumentFileRuntime,
+  getRuntimeFileBoundaryLabel,
+  resolveSdocSaveRoute
+} from "./documentFileRuntime";
 
 describe("document file runtime", () => {
   it("keeps browser saves as complete .sdoc downloads without native filesystem claims", () => {
@@ -32,6 +39,27 @@ describe("document file runtime", () => {
       requiresNativePath: true
     });
     expect(getRuntimeFileBoundaryLabel(runtime)).toBe("Desktop native file access");
+  });
+
+  it("keeps native paths as runtime-only desktop state", () => {
+    const browser = createDocumentFileRuntime("browser");
+    const desktop = createDocumentFileRuntime("desktop");
+
+    expect(createDocumentFileRuntimeState(browser, "Spec.sdoc", "C:/docs/Spec.sdoc")).toEqual({
+      filename: "Spec.sdoc",
+      nativePath: null
+    });
+    expect(createDocumentFileRuntimeState(desktop, "Spec.sdoc", " C:/docs/Spec.sdoc ")).toEqual({
+      filename: "Spec.sdoc",
+      nativePath: "C:/docs/Spec.sdoc"
+    });
+    expect(resolveSdocSaveRoute(desktop, createDocumentFileRuntimeState(desktop, "Spec.sdoc", "C:/docs/Spec.sdoc").nativePath).kind).toBe(
+      "native-save"
+    );
+    expect(clearDocumentFileRuntimeState()).toEqual({
+      filename: null,
+      nativePath: null
+    });
   });
 
   it("detects desktop runtime from Tauri internals without importing Tauri APIs", () => {

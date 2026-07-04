@@ -7,6 +7,11 @@ export interface DocumentFileRuntimeCapabilities {
   canChooseNativeSavePath: boolean;
 }
 
+export interface DocumentFileRuntimeState {
+  filename: string | null;
+  nativePath: string | null;
+}
+
 export type SDocSaveRouteKind = "browser-download" | "native-save" | "native-save-as" | "unavailable";
 
 export interface SDocSaveRoute {
@@ -37,6 +42,24 @@ export function createDocumentFileRuntime(kind: DocumentRuntimeKind): DocumentFi
 
 export function detectDocumentFileRuntime(globalScope: unknown = globalThis): DocumentFileRuntimeCapabilities {
   return createDocumentFileRuntime(hasTauriInternals(globalScope) ? "desktop" : "browser");
+}
+
+export function createDocumentFileRuntimeState(
+  runtime: DocumentFileRuntimeCapabilities,
+  filename: string | null,
+  nativePath: string | null = null
+): DocumentFileRuntimeState {
+  return {
+    filename: normalizeDisplayFilename(filename),
+    nativePath: runtime.kind === "desktop" ? normalizeNativePath(nativePath) : null
+  };
+}
+
+export function clearDocumentFileRuntimeState(): DocumentFileRuntimeState {
+  return {
+    filename: null,
+    nativePath: null
+  };
 }
 
 export function resolveSdocSaveRoute(
@@ -90,6 +113,11 @@ export function getRuntimeFileBoundaryLabel(runtime: DocumentFileRuntimeCapabili
 
 function normalizeNativePath(path: string | null): string | null {
   const value = path?.trim() ?? "";
+  return value.length > 0 ? value : null;
+}
+
+function normalizeDisplayFilename(filename: string | null): string | null {
+  const value = filename?.trim() ?? "";
   return value.length > 0 ? value : null;
 }
 

@@ -926,9 +926,30 @@ button {
   border-radius: 4px;
 }
 
+.data-grid-row-event-list .data-grid-row-event-toggle {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+}
+
 .data-grid-row-event-list span {
   color: #dce5ec;
   font-size: 0.72rem;
+}
+
+.data-grid-row-event-toggle button {
+  min-height: 26px;
+  padding: 0 8px;
+  color: #dce5ec;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.data-grid-row-event-toggle button:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .data-grid-row-event-actions {

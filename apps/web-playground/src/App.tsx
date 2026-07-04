@@ -1679,6 +1679,19 @@ function ExportPanel({
 }) {
   const pdfCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pdf -o ${quoteCliPath(filenames.pdf)}`;
   const pptxCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pptx -o ${quoteCliPath(filenames.pptx)}`;
+  const [expandedRowReviewGrids, setExpandedRowReviewGrids] = useState<Set<string>>(new Set());
+
+  function toggleRowReviewGrid(gridId: string) {
+    setExpandedRowReviewGrids((current) => {
+      const next = new Set(current);
+      if (next.has(gridId)) {
+        next.delete(gridId);
+      } else {
+        next.add(gridId);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="side-panel-section export-panel">
@@ -1766,7 +1779,7 @@ function ExportPanel({
                   <code>{item.sourceAssetId}</code>
                   {item.status === "ready" && item.events.length > 0 && (
                     <ul className="data-grid-row-event-list">
-                      {item.events.slice(0, 3).map((event, index) => (
+                      {(expandedRowReviewGrids.has(item.gridId) ? item.events : item.events.slice(0, 3)).map((event, index) => (
                         <li key={`${item.gridId}-${index}-${event.kind}-${event.rowKey ?? "row"}`}>
                           <span>{event.message}</span>
                           <div className="data-grid-row-event-actions">
@@ -1782,6 +1795,18 @@ function ExportPanel({
                           </div>
                         </li>
                       ))}
+                      {item.events.length > 3 && (
+                        <li className="data-grid-row-event-toggle">
+                          <span>
+                            {expandedRowReviewGrids.has(item.gridId)
+                              ? `Showing all ${item.events.length} row events`
+                              : `${item.events.length - 3} more row event${item.events.length - 3 === 1 ? "" : "s"} hidden`}
+                          </span>
+                          <button type="button" onClick={() => toggleRowReviewGrid(item.gridId)}>
+                            {expandedRowReviewGrids.has(item.gridId) ? "Show less" : "Show all"}
+                          </button>
+                        </li>
+                      )}
                     </ul>
                   )}
                 </li>

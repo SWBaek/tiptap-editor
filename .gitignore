@@ -33,3 +33,5 @@ Thumbs.db
 
 # Tauri generated bundles
 src-tauri/gen/
+**/src-tauri/gen/
+**/src-tauri/target/

@@ -906,6 +906,47 @@ button {
   font-size: 0.72rem;
 }
 
+.data-grid-row-event-list {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 2px 0 0;
+  list-style: none;
+}
+
+.data-grid-row-event-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  background: rgba(12, 19, 26, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 0;
+  border-radius: 4px;
+}
+
+.data-grid-row-event-list span {
+  color: #dce5ec;
+  font-size: 0.72rem;
+}
+
+.data-grid-row-event-list button {
+  min-height: 26px;
+  padding: 0 8px;
+  color: #ffe2dc;
+  background: rgba(196, 73, 61, 0.18);
+  border: 1px solid rgba(196, 73, 61, 0.45);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.data-grid-row-event-list button:hover {
+  background: rgba(196, 73, 61, 0.28);
+}
+
 .export-action {
   display: grid;
   gap: 8px;

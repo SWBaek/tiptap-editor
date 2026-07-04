@@ -8,6 +8,7 @@ import {
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
   createDataGridRowReviewModel,
+  findDataGridRowRejectionEvent,
   createReferenceDiagnostics,
   createRequirementTraceability,
   createSectionFoldRanges,
@@ -320,6 +321,29 @@ describe("document state helpers", () => {
     expect(model.items[0]).toMatchObject({
       status: "missing-baseline-asset",
       label: "Missing baseline asset"
+    });
+  });
+
+  it("selects reverse row diff events for rejecting current dataGrid row changes", () => {
+    const event = createDataGridRowReviewModel(
+      createDataGridDocument("asset_pinout.csv"),
+      createDataGridDocument("asset_pinout.csv"),
+      { "asset_pinout.csv": new TextEncoder().encode("id,signal\n1,VCC\n2,GND\n") },
+      { "asset_pinout.csv": new TextEncoder().encode("id,signal\n1,VCC\n2,GROUND\n") }
+    ).items[0].events[0];
+    const reverseEvents = createDataGridRowReviewModel(
+      createDataGridDocument("asset_pinout.csv"),
+      createDataGridDocument("asset_pinout.csv"),
+      { "asset_pinout.csv": new TextEncoder().encode("id,signal\n1,VCC\n2,GROUND\n") },
+      { "asset_pinout.csv": new TextEncoder().encode("id,signal\n1,VCC\n2,GND\n") }
+    ).items[0].events;
+
+    expect(findDataGridRowRejectionEvent(reverseEvents, event)).toMatchObject({
+      kind: "cell-modified",
+      rowKey: "2",
+      column: "signal",
+      oldValue: "GROUND",
+      newValue: "GND"
     });
   });
 

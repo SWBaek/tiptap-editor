@@ -455,6 +455,13 @@ export function createDataGridRowReviewModel(
   };
 }
 
+export function findDataGridRowRejectionEvent(
+  reverseEvents: DataGridRowDiffEvent[],
+  event: DataGridRowDiffEvent
+): DataGridRowDiffEvent | undefined {
+  return reverseEvents.find((candidate) => dataGridRowEventsAreRejectionPair(candidate, event));
+}
+
 export function renderVisualDiffRuntimeCss(items: VisualDiffOverlayItem[], selectedId: string | null = null): string {
   const anchorableItems = items.filter((item) => item.anchorable);
   if (anchorableItems.length === 0) {
@@ -870,6 +877,31 @@ function formatDataGridRowReviewModelLabel(readyCount: number, eventCount: numbe
   }
 
   return "No row changes";
+}
+
+function dataGridRowEventsAreRejectionPair(candidate: DataGridRowDiffEvent, event: DataGridRowDiffEvent): boolean {
+  if (candidate.gridId !== event.gridId || candidate.sourceAssetId !== event.sourceAssetId || candidate.rowKey !== event.rowKey) {
+    return false;
+  }
+
+  if (event.kind === "row-added") {
+    return candidate.kind === "row-deleted";
+  }
+
+  if (event.kind === "row-deleted") {
+    return candidate.kind === "row-added";
+  }
+
+  if (event.kind === "cell-modified") {
+    return (
+      candidate.kind === "cell-modified" &&
+      candidate.column === event.column &&
+      candidate.oldValue === event.newValue &&
+      candidate.newValue === event.oldValue
+    );
+  }
+
+  return false;
 }
 
 function createLocalHistoryId(now: Date): string {

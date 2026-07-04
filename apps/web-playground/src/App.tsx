@@ -52,7 +52,16 @@ import {
   type SDocReviewBatchItem
 } from "@sdoc/diff";
 import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
-import { createDataGridDiagnostics, stableStringify, type DataGridDiagnostics, type SDocMetadata } from "@sdoc/format";
+import {
+  applyDataGridAssetRevision,
+  applyDataGridRowMerge,
+  createDataGridDiagnostics,
+  createDataGridRowDiff,
+  stableStringify,
+  type DataGridDiagnostics,
+  type DataGridRowDiffEvent,
+  type SDocMetadata
+} from "@sdoc/format";
 import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, type ValidationResult, validateDocument } from "@sdoc/schema";
 import {
   BlockIdExtension,
@@ -98,6 +107,7 @@ import {
   createSectionFoldRanges,
   createVisualDiffOverlayItems,
   filterVisualDiffOverlayItems,
+  findDataGridRowRejectionEvent,
   getFileLabel,
   getSavedLabel,
   getValidationFailureMessage,
@@ -117,6 +127,7 @@ import {
   type LocalHistoryEntry,
   type ChangeReviewModel,
   type DataGridRowReviewModel,
+  type DataGridRowReviewItem,
   type ReferenceDiagnosticsModel,
   type ReferenceTargetSummary,
   type RequirementTraceabilityModel,
@@ -876,6 +887,71 @@ export function App() {
     setStatusMessage(summary.detail);
   }
 
+  function rejectDataGridRowEvent(item: DataGridRowReviewItem, event: DataGridRowDiffEvent) {
+    if (selectedHistoryEntry) {
+      setStatusMessage("Use saved baseline before applying data grid row review actions");
+      return;
+    }
+
+    if (!window.confirm(`Reject row change in ${item.title}: ${event.message}?`)) {
+      setStatusMessage(`Canceled row reject: ${item.title}`);
+      return;
+    }
+
+    const baselineAsset = baselineAssets[item.sourceAssetId];
+    const currentAsset = assets[item.sourceAssetId];
+    if (!baselineAsset || !currentAsset) {
+      setStatusMessage(`Cannot reject row change: missing asset ${item.sourceAssetId}`);
+      return;
+    }
+
+    const baselineSource = decodeTextAsset(baselineAsset);
+    const currentSource = decodeTextAsset(currentAsset);
+    const reverseDiff = createDataGridRowDiff({
+      gridId: item.gridId,
+      sourceAssetId: item.sourceAssetId,
+      format: item.format,
+      oldSource: currentSource,
+      newSource: baselineSource,
+      keyColumns: item.keyColumns
+    });
+    const reverseEvent = findDataGridRowRejectionEvent(reverseDiff.events, event);
+    if (!reverseEvent) {
+      setStatusMessage(`Cannot reject stale row event: ${event.message}`);
+      return;
+    }
+
+    const mergeResult = applyDataGridRowMerge({
+      gridId: item.gridId,
+      sourceAssetId: item.sourceAssetId,
+      format: item.format,
+      baselineSource: currentSource,
+      proposedSource: baselineSource,
+      currentSource,
+      event: reverseEvent,
+      keyColumns: item.keyColumns
+    });
+    if (!mergeResult.ok) {
+      setStatusMessage(mergeResult.message);
+      return;
+    }
+
+    const assetResult = applyDataGridAssetRevision({
+      sourceAssetId: item.sourceAssetId,
+      source: mergeResult.source,
+      format: item.format,
+      policy: "update",
+      assets
+    });
+    if (!assetResult.ok) {
+      setStatusMessage(assetResult.message);
+      return;
+    }
+
+    setAssets(assetResult.assets);
+    setStatusMessage(`Rejected row change in ${item.title}`);
+  }
+
   function insertInlineEquationFromPrompt() {
     const latex = window.prompt("Inline equation", "E=mc^2")?.trim();
     if (!latex) {
@@ -1070,6 +1146,7 @@ export function App() {
               derivedOutputs={derivedOutputs}
               dataGridDiagnostics={dataGridDiagnostics}
               dataGridRowReview={dataGridRowReview}
+              onRejectDataGridRowEvent={rejectDataGridRowEvent}
               onExportSdoc={downloadSdoc}
               onExportJson={downloadJson}
               onExportMarkdown={downloadMarkdown}
@@ -1502,6 +1579,7 @@ function ExportPanel({
   derivedOutputs,
   dataGridDiagnostics,
   dataGridRowReview,
+  onRejectDataGridRowEvent,
   onExportSdoc,
   onExportJson,
   onExportMarkdown,
@@ -1520,6 +1598,7 @@ function ExportPanel({
   derivedOutputs: Record<DerivedOutputName, string>;
   dataGridDiagnostics: DataGridDiagnostics;
   dataGridRowReview: DataGridRowReviewModel;
+  onRejectDataGridRowEvent: (item: DataGridRowReviewItem, event: DataGridRowDiffEvent) => void;
   onExportSdoc: () => void;
   onExportJson: () => void;
   onExportMarkdown: () => void;
@@ -1614,6 +1693,18 @@ function ExportPanel({
                     <small>{item.detail}</small>
                   </div>
                   <code>{item.sourceAssetId}</code>
+                  {item.status === "ready" && item.events.length > 0 && (
+                    <ul className="data-grid-row-event-list">
+                      {item.events.slice(0, 3).map((event, index) => (
+                        <li key={`${item.gridId}-${index}-${event.kind}-${event.rowKey ?? "row"}`}>
+                          <span>{event.message}</span>
+                          <button type="button" onClick={() => onRejectDataGridRowEvent(item, event)}>
+                            Reject
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>
@@ -2688,6 +2779,10 @@ function getDataGridFormatFromFile(file: File): "csv" | "json" | null {
     return "json";
   }
   return null;
+}
+
+function decodeTextAsset(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes).replace(/^\uFEFF/, "");
 }
 
 function getImageExtension(filename: string, mimeType: string): string {

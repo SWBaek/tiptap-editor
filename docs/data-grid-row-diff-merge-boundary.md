@@ -53,7 +53,7 @@ The merge helper never stores selected rows, pending decisions, stale state, or 
 
 The editor should present row diff as a review tool attached to the `dataGrid` block. Selected row, expanded conflict, preview mode, and pending accept/reject choices are runtime state and must stay outside `document.json`.
 
-The first browser slice only projects saved-baseline/current assets into row review readiness in the Export panel. It does not yet apply row events from the UI. Because history snapshots do not yet carry asset snapshots, row review readiness is limited to the saved baseline.
+The first browser slices project saved-baseline/current assets into row review readiness in the Export panel and allow rejecting individual mergeable row changes back to the saved-baseline value. This writes only asset bytes through the `update` policy. Because history snapshots do not yet carry asset snapshots, row review readiness and row reject actions are limited to the saved baseline.
 
 ## Acceptance Criteria
 
@@ -76,11 +76,12 @@ The first browser slice only projects saved-baseline/current assets into row rev
 - `applyDataGridAssetRevision` applies the merged source through explicit `update` or `revision` asset policies; revision mode creates the next available `.revN` asset ID and leaves canonical `sourceAssetId` updates to the caller.
 - CLI `sdoc data-grid apply --asset-policy update|revision --asset-output file` exposes the policy result for developer/reviewer workflows.
 - Browser row review readiness classifies saved-baseline/current assets as ready, no changes, conflict, missing asset, source changed, or format changed without storing review state in `document.json`.
+- Browser row review reject actions reverse one selected row event through `applyDataGridRowMerge` and `applyDataGridAssetRevision({ policy: "update" })`, preserving unrelated row changes and leaving `document.json` unchanged.
 
 ## Deferred Work
 
 - authored `keyColumns` schema extension;
-- UI wiring for selecting and applying row merge events;
+- UI row accept actions and revision-policy save-back for browser/Tauri workflows;
 - visual side-by-side cell diff UI;
 - multi-user conflict resolution;
 - formula-aware spreadsheet merge;

@@ -187,6 +187,7 @@ interface DrawioExternalEditConflict {
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
 const RECENT_FILES_STORAGE_KEY = "sdoc.recentFiles.v1";
+const DRAWIO_EXECUTABLE_PATH_STORAGE_KEY = "sdoc.drawioExecutablePath.v1";
 const RECENT_FILES_LIMIT = 6;
 const DERIVED_OUTPUT_NAMES: DerivedOutputName[] = ["plain.md", "chunks.jsonl", "outline.json", "references.json"];
 
@@ -228,6 +229,7 @@ export function App() {
   const [workspaceEntries, setWorkspaceEntries] = useState<WindowSdocWorkspaceEntry[]>([]);
   const [isWorkspaceLoading, setIsWorkspaceLoading] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>(loadStoredHistory);
+  const [drawioExecutablePath, setDrawioExecutablePath] = useState<string>(loadStoredDrawioExecutablePath);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [highlightOverlay, setHighlightOverlay] = useState<EditorHighlightOverlay | null>(null);
@@ -828,7 +830,7 @@ export function App() {
 
     try {
       const session = await nativeDrawioExternalEditorAdapter.checkoutSource(reference.sourceAssetId, sourceBytes);
-      const opened = await nativeDrawioExternalEditorAdapter.openExternalEditor(session.sessionId);
+      const opened = await nativeDrawioExternalEditorAdapter.openExternalEditor(session.sessionId, drawioExecutablePath);
       if (opened.status === "launch-failed") {
         await nativeDrawioExternalEditorAdapter.closeSession(session.sessionId).catch(() => undefined);
         setStatusMessage(opened.message ?? "Cannot launch Draw.io external editor.");
@@ -1495,7 +1497,18 @@ export function App() {
           )}
 
           {activePanel === "settings" && (
-            <SettingsPanel metadata={metadata} validation={validation} document={document} assetCount={Object.keys(assets).length} onMetadataChange={setMetadata} />
+            <SettingsPanel
+              metadata={metadata}
+              validation={validation}
+              document={document}
+              assetCount={Object.keys(assets).length}
+              drawioExecutablePath={drawioExecutablePath}
+              onMetadataChange={setMetadata}
+              onDrawioExecutablePathChange={(path) => {
+                setDrawioExecutablePath(path);
+                storeDrawioExecutablePath(path);
+              }}
+            />
           )}
 
           {activePanel === "files" && (
@@ -1892,13 +1905,17 @@ function SettingsPanel({
   validation,
   document,
   assetCount,
-  onMetadataChange
+  drawioExecutablePath,
+  onMetadataChange,
+  onDrawioExecutablePathChange
 }: {
   metadata: SDocMetadata;
   validation: ValidationResult;
   document: SDocDocument;
   assetCount: number;
+  drawioExecutablePath: string;
   onMetadataChange: (metadata: SDocMetadata) => void;
+  onDrawioExecutablePathChange: (path: string) => void;
 }) {
   return (
     <div className="side-panel-section settings-panel">
@@ -1916,6 +1933,22 @@ function SettingsPanel({
           <span>Version</span>
           <input value={String(metadata.version ?? "")} onChange={(event) => onMetadataChange({ ...metadata, version: event.target.value })} />
         </label>
+      </section>
+
+      <section className="settings-section" aria-label="Native integration settings">
+        <h3>Native Integrations</h3>
+        <label className="metadata-field">
+          <span>Draw.io executable</span>
+          <input
+            value={drawioExecutablePath}
+            placeholder="Use OS default opener"
+            onChange={(event) => onDrawioExecutablePathChange(event.target.value)}
+          />
+        </label>
+        <div className="status-block">
+          <span>Draw.io launch</span>
+          <strong>{drawioExecutablePath.trim() ? "Explicit executable" : "OS default"}</strong>
+        </div>
       </section>
 
       <section className="settings-section" aria-label="Schema status">
@@ -3278,6 +3311,28 @@ function storeRecentFiles(entries: RecentFileEntry[]) {
   }
 
   window.localStorage.setItem(RECENT_FILES_STORAGE_KEY, JSON.stringify(entries));
+}
+
+function loadStoredDrawioExecutablePath(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.localStorage.getItem(DRAWIO_EXECUTABLE_PATH_STORAGE_KEY)?.trim() ?? "";
+}
+
+function storeDrawioExecutablePath(path: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const trimmed = path.trim();
+  if (trimmed) {
+    window.localStorage.setItem(DRAWIO_EXECUTABLE_PATH_STORAGE_KEY, trimmed);
+    return;
+  }
+
+  window.localStorage.removeItem(DRAWIO_EXECUTABLE_PATH_STORAGE_KEY);
 }
 
 function parseRecentFiles(value: string | null): RecentFileEntry[] {

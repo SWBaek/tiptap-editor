@@ -864,6 +864,7 @@ test("imports a Draw.io source asset and round-trips through .sdoc", async ({ pa
 test("resolves a Draw.io external edit conflict as a revision asset", async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     const editedSource = new TextEncoder().encode("<mxfile><diagram id=\"d1\">external-edit</diagram></mxfile>");
+    (window as typeof window & { __drawioLaunches?: Array<{ sessionId: string; executablePath?: string }> }).__drawioLaunches = [];
     (window as typeof window & { __SDOC_NATIVE_SAVE_BRIDGE__?: unknown }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
       async saveSdoc() {
         return undefined;
@@ -876,7 +877,11 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
           originalSourceHash: "hash-original"
         };
       },
-      async openDrawioExternalEditor(sessionId: string) {
+      async openDrawioExternalEditor(sessionId: string, executablePath?: string) {
+        (window as typeof window & { __drawioLaunches?: Array<{ sessionId: string; executablePath?: string }> }).__drawioLaunches?.push({
+          sessionId,
+          executablePath
+        });
         return { status: "opened", sessionId };
       },
       async readDrawioExternalEdit(sessionId: string) {
@@ -897,6 +902,7 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
 
   await page.goto("/");
   await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await page.getByLabel("Draw.io executable").fill("C:\\Program Files\\draw.io\\draw.io.exe");
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
 
@@ -908,6 +914,11 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
 
   await page.getByRole("button", { name: "Open Draw.io external editor" }).click();
   await expect(page.locator(".status-note")).toContainText("Opened Draw.io source");
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as typeof window & { __drawioLaunches?: Array<{ sessionId: string; executablePath?: string }> }).__drawioLaunches)
+    )
+    .toEqual([{ sessionId: "drawio-test-session", executablePath: "C:\\Program Files\\draw.io\\draw.io.exe" }]);
   await page.getByRole("button", { name: "Read Draw.io external edit" }).click();
   await expect(page.getByLabel("Draw.io external edit conflict")).toContainText("Draw.io external edit conflict");
 
@@ -920,6 +931,7 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
   const revisedDiagram = findFirstNodeByType(revisedDocument, "diagram");
   expect(revisedDiagram.attrs?.kind).toBe("drawio");
   expect(String(revisedDiagram.attrs?.sourceAssetId)).toMatch(/^asset_[a-z0-9_]+\.rev1\.drawio$/);
+  expect(JSON.stringify(revisedDocument)).not.toContain("draw.io.exe");
   expect(JSON.stringify(revisedDocument)).not.toContain("external-edit");
   expect(JSON.stringify(revisedDocument)).not.toContain("current-source");
   expectUniqueIds(collectBlockIds(revisedDocument));

@@ -43,7 +43,7 @@ The browser implementation must not claim native app launch, folder watching, or
 ## Deferred Work
 
 - File watching and debounce-based hot reload.
-- Executable discovery beyond explicit path or platform default opener.
+- Executable discovery beyond explicit path setting or platform default opener.
 - Preview rendering service selection.
 - Embedded Draw.io iframe experiment.
 - Draw.io XML structural diff and merge.
@@ -64,4 +64,6 @@ The web runtime discovers this adapter through the same desktop-injected bridge 
 
 Conflict read-back keeps the external edit bytes as a runtime candidate and asks the author to keep the current asset, replace the current asset, or save the external edit as a new revision asset. Revision mode updates only the selected Draw.io diagram `sourceAssetId`; raw Draw.io XML remains in `.sdoc/assets/`.
 
-This slice does not implement file watching, preview regeneration, executable discovery UI, or multi-version visual comparison. It provides the native bridge primitive, minimal explicit read-back workflow, and conflict-resolution actions for those later product flows.
+The Settings panel may store a user-local Draw.io executable path preference outside `document.json`. When it is blank, the desktop bridge uses the platform default opener. This preference is runtime configuration, not document content.
+
+This slice does not implement file watching, preview regeneration, automatic executable discovery, or multi-version visual comparison. It provides the native bridge primitive, minimal explicit read-back workflow, configurable launch path, and conflict-resolution actions for those later product flows.

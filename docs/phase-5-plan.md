@@ -85,7 +85,7 @@ Acceptance evidence:
 
 ## Slice 3: Draw.io External Editor Bridge
 
-Status: initial bridge primitive implemented on 2026-07-03; browser-safe Draw.io source import UX added on 2026-07-05; desktop bridge UI open/read-back wiring and explicit conflict resolution added on 2026-07-05.
+Status: initial bridge primitive implemented on 2026-07-03; browser-safe Draw.io source import UX added on 2026-07-05; desktop bridge UI open/read-back wiring, explicit conflict resolution, and local executable path setting added on 2026-07-05.
 
 Implement the bridge described in `docs/drawio-external-editor-bridge.md`. The bridge checks out Draw.io source assets into temporary files, launches the configured external editor, validates save-back, and writes accepted changes through the existing asset-backed diagram source policy.
 
@@ -111,6 +111,8 @@ Acceptance evidence:
 - Conflict read-back stores the external edit as a runtime candidate and offers explicit keep-current, replace-source, or save-as-revision actions.
 - Revision save-back creates a new Draw.io asset, updates only the reviewed diagram `sourceAssetId`, and keeps raw XML out of `document.json`.
 - Playwright coverage verifies mocked desktop conflict resolution as a revision asset and `.sdoc` package generation.
+- Settings can store a local Draw.io executable path outside canonical document data; blank settings use the OS default opener.
+- Playwright coverage verifies the executable path is passed to the native bridge and not serialized into `document.json`.
 
 ## Slice 4: Review UX Hardening
 

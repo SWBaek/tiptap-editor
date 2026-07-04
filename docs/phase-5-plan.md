@@ -17,7 +17,7 @@ Phase 5 turns the accepted MVP slices into product workflows for non-developer a
 
 ## Slice 1: Tauri Desktop Shell Foundation
 
-Status: initial foundation implemented on 2026-07-03; native save-back policy model, workspace writer entrypoint, and browser/desktop save-route boundary added on 2026-07-04.
+Status: initial foundation implemented on 2026-07-03; native save-back policy model, workspace writer entrypoint, browser/desktop save-route boundary, and Tauri runtime capability detection added on 2026-07-04.
 
 Acceptance criteria:
 
@@ -43,7 +43,7 @@ Acceptance evidence:
 - `apps/desktop/src/nativeSdocFileAdapter.ts` keeps Tauri IPC behind a desktop adapter.
 - `apps/desktop/src/sdocSaveBackModel.ts` validates native save-back targets before writes: only concrete `.sdoc` files with non-empty package bytes are writable, and unpacked folders are not treated as normal authoring save targets.
 - `apps/desktop/src/nativeSdocSaveBack.ts` connects validated save-back plans to `nativeWorkspaceAdapter.writeSdoc` without exposing broad filesystem mutation helpers to the web runtime.
-- `apps/web-playground/src/documentFileRuntime.ts` keeps browser download saves and future desktop native save/save-as routes explicit without importing Tauri IPC into the browser playground.
+- `apps/web-playground/src/documentFileRuntime.ts` keeps browser download saves and future desktop native save/save-as routes explicit, detecting Tauri capability from runtime globals without importing Tauri IPC into the browser playground.
 - Root scripts expose `npm run dev:desktop`, `npm run build:desktop`, and `npm run typecheck:desktop`.
 - Node validation passes with `npm run typecheck:desktop`, `npm test`, `npm run build`, and `npm run test:e2e`.
 - Native Tauri build requires Rust/Cargo; this local environment does not currently provide `cargo`.

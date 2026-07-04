@@ -94,7 +94,7 @@ import {
   type TableCellAlignment
 } from "@sdoc/editor-tiptap";
 import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
-import { createDocumentFileRuntime, resolveSdocSaveRoute } from "./documentFileRuntime";
+import { detectDocumentFileRuntime, resolveSdocSaveRoute } from "./documentFileRuntime";
 import {
   addLocalHistoryEntry,
   areAssetsDirty,
@@ -306,7 +306,7 @@ export function App() {
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges || hasAssetChanges;
   const fileLabel = getFileLabel(currentFilename, metadata);
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
-  const documentFileRuntime = useMemo(() => createDocumentFileRuntime("browser"), []);
+  const documentFileRuntime = useMemo(() => detectDocumentFileRuntime(), []);
   const sdocSaveRoute = useMemo(() => resolveSdocSaveRoute(documentFileRuntime, null), [documentFileRuntime]);
   const exportBaseName = safeFilename(metadata.title || "document");
   const exportFilenames = {

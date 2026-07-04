@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDocumentFileRuntime, getRuntimeFileBoundaryLabel, resolveSdocSaveRoute } from "./documentFileRuntime";
+import { createDocumentFileRuntime, detectDocumentFileRuntime, getRuntimeFileBoundaryLabel, resolveSdocSaveRoute } from "./documentFileRuntime";
 
 describe("document file runtime", () => {
   it("keeps browser saves as complete .sdoc downloads without native filesystem claims", () => {
@@ -32,6 +32,21 @@ describe("document file runtime", () => {
       requiresNativePath: true
     });
     expect(getRuntimeFileBoundaryLabel(runtime)).toBe("Desktop native file access");
+  });
+
+  it("detects desktop runtime from Tauri internals without importing Tauri APIs", () => {
+    expect(detectDocumentFileRuntime({ __TAURI_INTERNALS__: {} })).toEqual({
+      kind: "desktop",
+      canOpenNativeFile: true,
+      canSaveNativeFile: true,
+      canChooseNativeSavePath: true
+    });
+    expect(detectDocumentFileRuntime({})).toEqual({
+      kind: "browser",
+      canOpenNativeFile: false,
+      canSaveNativeFile: false,
+      canChooseNativeSavePath: false
+    });
   });
 
   it("routes desktop saves to save-as when no native path has been chosen", () => {

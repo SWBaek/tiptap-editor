@@ -35,6 +35,10 @@ export function createDocumentFileRuntime(kind: DocumentRuntimeKind): DocumentFi
   };
 }
 
+export function detectDocumentFileRuntime(globalScope: unknown = globalThis): DocumentFileRuntimeCapabilities {
+  return createDocumentFileRuntime(hasTauriInternals(globalScope) ? "desktop" : "browser");
+}
+
 export function resolveSdocSaveRoute(
   runtime: DocumentFileRuntimeCapabilities,
   currentNativePath: string | null
@@ -87,4 +91,8 @@ export function getRuntimeFileBoundaryLabel(runtime: DocumentFileRuntimeCapabili
 function normalizeNativePath(path: string | null): string | null {
   const value = path?.trim() ?? "";
   return value.length > 0 ? value : null;
+}
+
+function hasTauriInternals(value: unknown): boolean {
+  return !!value && typeof value === "object" && "__TAURI_INTERNALS__" in value;
 }

@@ -53,6 +53,8 @@ The merge helper never stores selected rows, pending decisions, stale state, or 
 
 The editor should present row diff as a review tool attached to the `dataGrid` block. Selected row, expanded conflict, preview mode, and pending accept/reject choices are runtime state and must stay outside `document.json`.
 
+The first browser slice only projects saved-baseline/current assets into row review readiness in the Export panel. It does not yet apply row events from the UI. Because history snapshots do not yet carry asset snapshots, row review readiness is limited to the saved baseline.
+
 ## Acceptance Criteria
 
 - A boundary document defines row identity, diff event shape, merge semantics, and deferred work.
@@ -73,6 +75,7 @@ The editor should present row diff as a review tool attached to the `dataGrid` b
 - CLI `sdoc data-grid diff` and `sdoc data-grid apply` expose this headless workflow for developer/reviewer asset-source review without making Git or raw line diff mandatory.
 - `applyDataGridAssetRevision` applies the merged source through explicit `update` or `revision` asset policies; revision mode creates the next available `.revN` asset ID and leaves canonical `sourceAssetId` updates to the caller.
 - CLI `sdoc data-grid apply --asset-policy update|revision --asset-output file` exposes the policy result for developer/reviewer workflows.
+- Browser row review readiness classifies saved-baseline/current assets as ready, no changes, conflict, missing asset, source changed, or format changed without storing review state in `document.json`.
 
 ## Deferred Work
 

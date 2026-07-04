@@ -1,4 +1,4 @@
-import { stableStringify, type SDocMetadata } from "@sdoc/format";
+import { createDataGridRowDiff, stableStringify, type DataGridRowDiffEvent, type SDocMetadata } from "@sdoc/format";
 import {
   getNodeAnchor,
   getNodeHumanId,
@@ -182,6 +182,39 @@ export interface ReviewBatchConflictSummary {
   failures: ReviewBatchConflictItem[];
 }
 
+export type DataGridRowReviewStatus =
+  | "ready"
+  | "no-changes"
+  | "conflict"
+  | "source-changed"
+  | "format-changed"
+  | "missing-baseline-asset"
+  | "missing-current-asset";
+
+export interface DataGridRowReviewItem {
+  gridId: string;
+  title: string;
+  sourceAssetId: string;
+  format: "csv" | "json";
+  status: DataGridRowReviewStatus;
+  label: string;
+  detail: string;
+  eventCount: number;
+  conflictCount: number;
+  keyColumns: string[];
+  events: DataGridRowDiffEvent[];
+}
+
+export interface DataGridRowReviewModel {
+  gridCount: number;
+  readyCount: number;
+  eventCount: number;
+  conflictCount: number;
+  unavailableCount: number;
+  label: string;
+  items: DataGridRowReviewItem[];
+}
+
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
   return stableStringify(current) !== stableStringify(baseline);
 }
@@ -347,6 +380,78 @@ export function createReviewBatchConflictSummary(
     appliedCount: result.appliedCount,
     skippedCount: result.skippedCount,
     failures: result.failures.map(createReviewBatchConflictItem)
+  };
+}
+
+export function createDataGridRowReviewModel(
+  baseline: SDocDocument,
+  current: SDocDocument,
+  baselineAssets: Record<string, Uint8Array>,
+  currentAssets: Record<string, Uint8Array>
+): DataGridRowReviewModel {
+  const baselineGrids = new Map(collectDataGridBlocks(baseline).map((grid) => [grid.gridId, grid]));
+  const items = collectDataGridBlocks(current).map((grid): DataGridRowReviewItem => {
+    const baselineGrid = baselineGrids.get(grid.gridId);
+    if (!baselineGrid) {
+      return createUnavailableDataGridRowReviewItem(grid, "source-changed", "No saved-baseline grid with the same stable block id");
+    }
+
+    if (baselineGrid.sourceAssetId !== grid.sourceAssetId) {
+      return createUnavailableDataGridRowReviewItem(
+        grid,
+        "source-changed",
+        `Source asset changed from ${baselineGrid.sourceAssetId} to ${grid.sourceAssetId}`
+      );
+    }
+
+    if (baselineGrid.format !== grid.format) {
+      return createUnavailableDataGridRowReviewItem(grid, "format-changed", `Format changed from ${baselineGrid.format} to ${grid.format}`);
+    }
+
+    const baselineAsset = baselineAssets[grid.sourceAssetId];
+    if (!baselineAsset) {
+      return createUnavailableDataGridRowReviewItem(grid, "missing-baseline-asset", `Saved baseline asset ${grid.sourceAssetId} is not available`);
+    }
+
+    const currentAsset = currentAssets[grid.sourceAssetId];
+    if (!currentAsset) {
+      return createUnavailableDataGridRowReviewItem(grid, "missing-current-asset", `Current asset ${grid.sourceAssetId} is not available`);
+    }
+
+    const diff = createDataGridRowDiff({
+      gridId: grid.gridId,
+      sourceAssetId: grid.sourceAssetId,
+      format: grid.format,
+      oldSource: decodeAssetText(baselineAsset),
+      newSource: decodeAssetText(currentAsset)
+    });
+    const conflictCount = diff.events.filter((event) => event.kind === "conflict").length;
+    const status: DataGridRowReviewStatus = conflictCount > 0 || !diff.hasReliableKey ? "conflict" : diff.events.length > 0 ? "ready" : "no-changes";
+
+    return {
+      ...grid,
+      status,
+      label: getDataGridRowReviewLabel(status, diff.events.length, conflictCount),
+      detail: getDataGridRowReviewDetail(status, diff.keyColumns, grid.sourceAssetId),
+      eventCount: diff.events.length,
+      conflictCount,
+      keyColumns: diff.keyColumns,
+      events: diff.events
+    };
+  });
+
+  const readyCount = items.filter((item) => item.status === "ready").length;
+  const eventCount = items.reduce((total, item) => total + item.eventCount, 0);
+  const conflictCount = items.reduce((total, item) => total + item.conflictCount, 0);
+  const unavailableCount = items.filter((item) => !["ready", "no-changes", "conflict"].includes(item.status)).length;
+  return {
+    gridCount: items.length,
+    readyCount,
+    eventCount,
+    conflictCount,
+    unavailableCount,
+    label: formatDataGridRowReviewModelLabel(readyCount, eventCount, conflictCount, unavailableCount),
+    items
   };
 }
 
@@ -660,6 +765,111 @@ export function parseLocalHistory(value: string | null): LocalHistoryEntry[] {
 
 function renderSection(title: string, lines: string[]): string {
   return [`${title} (${lines.length})`, ...lines.map((line) => `- ${line}`)].join("\n");
+}
+
+interface DataGridBlockSummary {
+  gridId: string;
+  title: string;
+  sourceAssetId: string;
+  format: "csv" | "json";
+}
+
+function collectDataGridBlocks(document: SDocDocument): DataGridBlockSummary[] {
+  const grids: DataGridBlockSummary[] = [];
+
+  function visit(node: SDocNode): void {
+    if (node.type === "dataGrid") {
+      const gridId = getNodeId(node);
+      const sourceAssetId = typeof node.attrs?.sourceAssetId === "string" ? node.attrs.sourceAssetId : "";
+      const format = node.attrs?.format === "json" ? "json" : "csv";
+      if (gridId && sourceAssetId) {
+        grids.push({
+          gridId,
+          title: typeof node.attrs?.title === "string" && node.attrs.title.trim().length > 0 ? node.attrs.title.trim() : sourceAssetId,
+          sourceAssetId,
+          format
+        });
+      }
+    }
+
+    node.content?.forEach(visit);
+  }
+
+  document.content.forEach(visit);
+  return grids;
+}
+
+function createUnavailableDataGridRowReviewItem(
+  grid: DataGridBlockSummary,
+  status: Exclude<DataGridRowReviewStatus, "ready" | "no-changes" | "conflict">,
+  detail: string
+): DataGridRowReviewItem {
+  return {
+    ...grid,
+    status,
+    label: getDataGridRowReviewLabel(status, 0, 0),
+    detail,
+    eventCount: 0,
+    conflictCount: 0,
+    keyColumns: [],
+    events: []
+  };
+}
+
+function decodeAssetText(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes).replace(/^\uFEFF/, "");
+}
+
+function getDataGridRowReviewLabel(status: DataGridRowReviewStatus, eventCount: number, conflictCount: number): string {
+  switch (status) {
+    case "ready":
+      return `${eventCount} mergeable row ${eventCount === 1 ? "event" : "events"}`;
+    case "no-changes":
+      return "No row changes";
+    case "conflict":
+      return conflictCount > 0 ? `${conflictCount} row ${conflictCount === 1 ? "conflict" : "conflicts"}` : "Row key required";
+    case "source-changed":
+      return "Source changed";
+    case "format-changed":
+      return "Format changed";
+    case "missing-baseline-asset":
+      return "Missing baseline asset";
+    case "missing-current-asset":
+      return "Missing current asset";
+  }
+}
+
+function getDataGridRowReviewDetail(status: DataGridRowReviewStatus, keyColumns: string[], sourceAssetId: string): string {
+  switch (status) {
+    case "ready":
+      return `Ready for guarded asset merge using ${formatDataGridKeyColumns(keyColumns)}.`;
+    case "no-changes":
+      return `No row-level changes detected for ${sourceAssetId}.`;
+    case "conflict":
+      return "Resolve row key conflicts before applying row merge.";
+    default:
+      return `${sourceAssetId} is not ready for row-level review.`;
+  }
+}
+
+function formatDataGridKeyColumns(keyColumns: string[]): string {
+  return keyColumns.length > 0 ? keyColumns.join(", ") : "inferred row keys";
+}
+
+function formatDataGridRowReviewModelLabel(readyCount: number, eventCount: number, conflictCount: number, unavailableCount: number): string {
+  if (readyCount > 0) {
+    return `${eventCount} row ${eventCount === 1 ? "event" : "events"} ready`;
+  }
+
+  if (conflictCount > 0) {
+    return `${conflictCount} row ${conflictCount === 1 ? "conflict" : "conflicts"}`;
+  }
+
+  if (unavailableCount > 0) {
+    return `${unavailableCount} unavailable`;
+  }
+
+  return "No row changes";
 }
 
 function createLocalHistoryId(now: Date): string {

@@ -87,6 +87,7 @@ import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocume
 import {
   addLocalHistoryEntry,
   createChangeReview,
+  createDataGridRowReviewModel,
   createReviewActionPlan,
   createReviewBatchConflictSummary,
   createSideBySideDiffRows,
@@ -115,6 +116,7 @@ import {
   updateCrossReferenceLabel,
   type LocalHistoryEntry,
   type ChangeReviewModel,
+  type DataGridRowReviewModel,
   type ReferenceDiagnosticsModel,
   type ReferenceTargetSummary,
   type RequirementTraceabilityModel,
@@ -182,6 +184,7 @@ export function App() {
   const [metadata, setMetadata] = useState<SDocMetadata>(initialMetadata);
   const [baselineDocument, setBaselineDocument] = useState<SDocDocument>(initialDocument);
   const [baselineMetadata, setBaselineMetadata] = useState<SDocMetadata>(initialMetadata);
+  const [baselineAssets, setBaselineAssets] = useState<SDocAssets>({});
   const [assets, setAssets] = useState<SDocAssets>({});
   const [currentFilename, setCurrentFilename] = useState<string | null>(null);
   const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>(loadStoredRecentFiles);
@@ -262,6 +265,10 @@ export function App() {
   const referenceDiagnostics = createReferenceDiagnostics(document);
   const requirementTraceability = useMemo(() => createRequirementTraceability(document), [document]);
   const dataGridDiagnostics = useMemo(() => createDataGridDiagnostics(document, assets), [assets, document]);
+  const dataGridRowReview = useMemo(
+    () => createDataGridRowReviewModel(baselineDocument, document, baselineAssets, assets),
+    [assets, baselineAssets, baselineDocument, document]
+  );
   const visualDiffOverlayItems = useMemo(() => createVisualDiffOverlayItems(documentDiffEvents), [documentDiffEvents]);
   const visualDiffFilterCounts = useMemo(() => createVisualDiffFilterCounts(visualDiffOverlayItems), [visualDiffOverlayItems]);
   const visibleVisualDiffItems = useMemo(
@@ -311,6 +318,7 @@ export function App() {
       downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), payload.filename);
       setBaselineDocument(document);
       setBaselineMetadata(metadata);
+      setBaselineAssets(assets);
       setSelectedHistoryId(null);
       setCurrentFilename(payload.filename);
       addRecentFile(payload.filename, metadata.title || payload.filename, "saved");
@@ -387,6 +395,7 @@ export function App() {
       setMetadata(nextMetadata);
       setBaselineDocument(appliedDocument);
       setBaselineMetadata(nextMetadata);
+      setBaselineAssets(loaded.assets);
       setSelectedHistoryId(null);
       setCollapsedHeadingIds(new Set());
       setCurrentFilename(file.name);
@@ -414,6 +423,7 @@ export function App() {
 
     setBaselineDocument(document);
     setBaselineMetadata(metadata);
+    setBaselineAssets(assets);
     setSelectedHistoryId(null);
     markSaved("Marked current state as saved");
   }
@@ -542,6 +552,7 @@ export function App() {
     setMetadata(nextMetadata);
     setBaselineDocument(appliedDocument);
     setBaselineMetadata(nextMetadata);
+    setBaselineAssets({});
     setAssets({});
     setSelectedHistoryId(null);
     setCollapsedHeadingIds(new Set());
@@ -1058,6 +1069,7 @@ export function App() {
               filenames={exportFilenames}
               derivedOutputs={derivedOutputs}
               dataGridDiagnostics={dataGridDiagnostics}
+              dataGridRowReview={dataGridRowReview}
               onExportSdoc={downloadSdoc}
               onExportJson={downloadJson}
               onExportMarkdown={downloadMarkdown}
@@ -1489,6 +1501,7 @@ function ExportPanel({
   filenames,
   derivedOutputs,
   dataGridDiagnostics,
+  dataGridRowReview,
   onExportSdoc,
   onExportJson,
   onExportMarkdown,
@@ -1506,6 +1519,7 @@ function ExportPanel({
   };
   derivedOutputs: Record<DerivedOutputName, string>;
   dataGridDiagnostics: DataGridDiagnostics;
+  dataGridRowReview: DataGridRowReviewModel;
   onExportSdoc: () => void;
   onExportJson: () => void;
   onExportMarkdown: () => void;
@@ -1583,6 +1597,28 @@ function ExportPanel({
             ))}
           </ul>
         )}
+        <div className="data-grid-row-review" aria-label="Data grid row review readiness">
+          <div className="data-grid-row-review-heading">
+            <strong>Row review</strong>
+            <span>{dataGridRowReview.label}</span>
+          </div>
+          {dataGridRowReview.items.length === 0 ? (
+            <p className="data-grid-diagnostic-empty">No row-review candidates</p>
+          ) : (
+            <ul className="data-grid-row-review-list">
+              {dataGridRowReview.items.map((item) => (
+                <li key={item.gridId} className={item.status}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.label}</span>
+                    <small>{item.detail}</small>
+                  </div>
+                  <code>{item.sourceAssetId}</code>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
       <section className="export-section" aria-label="PDF publishing boundary">

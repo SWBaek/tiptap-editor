@@ -7,6 +7,7 @@ import {
   createSideBySideDiffRows,
   createVisualDiffFilterCounts,
   createLocalHistoryEntry,
+  createDataGridRowReviewModel,
   createReferenceDiagnostics,
   createRequirementTraceability,
   createSectionFoldRanges,
@@ -37,6 +38,25 @@ const historyDocument: SDocDocument = {
   attrs: { id: "doc_history" },
   content: [{ type: "paragraph", attrs: { id: "blk_history" }, content: [{ type: "text", text: "History" }] }]
 };
+
+function createDataGridDocument(sourceAssetId: string): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_grid" },
+    content: [
+      {
+        type: "dataGrid",
+        attrs: {
+          id: "blk_grid",
+          sourceAssetId,
+          format: "csv",
+          title: "MCU Pinout"
+        }
+      }
+    ]
+  };
+}
 
 describe("document state helpers", () => {
   it("detects metadata changes with stable key ordering", () => {
@@ -234,6 +254,72 @@ describe("document state helpers", () => {
           message: "Cannot reject modified blk_stale: review event is stale or already resolved."
         }
       ]
+    });
+  });
+
+  it("projects dataGrid row review readiness from saved baseline assets without canonical state", () => {
+    const baseline = createDataGridDocument("asset_pinout.csv");
+    const current = createDataGridDocument("asset_pinout.csv");
+    const model = createDataGridRowReviewModel(
+      baseline,
+      current,
+      { "asset_pinout.csv": new TextEncoder().encode("id,signal\n1,VCC\n2,GND\n") },
+      { "asset_pinout.csv": new TextEncoder().encode("id,signal\n1,VCC\n2,GROUND\n3,GPIO\n") }
+    );
+
+    expect(model).toMatchObject({
+      gridCount: 1,
+      readyCount: 1,
+      eventCount: 2,
+      conflictCount: 0,
+      unavailableCount: 0,
+      label: "2 row events ready"
+    });
+    expect(model.items[0]).toMatchObject({
+      gridId: "blk_grid",
+      title: "MCU Pinout",
+      sourceAssetId: "asset_pinout.csv",
+      status: "ready",
+      keyColumns: ["id"],
+      eventCount: 2,
+      conflictCount: 0
+    });
+    expect(JSON.stringify(current)).not.toContain("GROUND");
+  });
+
+  it("marks dataGrid row review as conflict when row keys are not reliable", () => {
+    const document = createDataGridDocument("asset_pinout.csv");
+    const model = createDataGridRowReviewModel(
+      document,
+      document,
+      { "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC\n1,GND\n") },
+      { "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC\n") }
+    );
+
+    expect(model).toMatchObject({
+      readyCount: 0,
+      conflictCount: 1,
+      label: "1 row conflict"
+    });
+    expect(model.items[0]).toMatchObject({
+      status: "conflict",
+      label: "1 row conflict"
+    });
+  });
+
+  it("marks dataGrid row review unavailable when baseline asset bytes are missing", () => {
+    const document = createDataGridDocument("asset_pinout.csv");
+    const model = createDataGridRowReviewModel(document, document, {}, { "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC\n") });
+
+    expect(model).toMatchObject({
+      readyCount: 0,
+      eventCount: 0,
+      unavailableCount: 1,
+      label: "1 unavailable"
+    });
+    expect(model.items[0]).toMatchObject({
+      status: "missing-baseline-asset",
+      label: "Missing baseline asset"
     });
   });
 

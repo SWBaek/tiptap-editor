@@ -22,6 +22,7 @@ describe("document file runtime", () => {
       kind: "browser-download",
       label: "Download .sdoc",
       detail: "Browser runtime saves by downloading a complete .sdoc package.",
+      nativePath: null,
       usesNativeFilesystem: false,
       requiresNativePath: false
     });
@@ -35,6 +36,7 @@ describe("document file runtime", () => {
       kind: "native-save",
       label: "Save .sdoc",
       detail: "Desktop runtime will update C:/docs/spec.sdoc.",
+      nativePath: "C:/docs/spec.sdoc",
       usesNativeFilesystem: true,
       requiresNativePath: true
     });
@@ -84,6 +86,7 @@ describe("document file runtime", () => {
       kind: "native-save-as",
       label: "Save .sdoc As",
       detail: "Desktop runtime must choose a .sdoc destination before saving.",
+      nativePath: null,
       usesNativeFilesystem: true,
       requiresNativePath: false
     });
@@ -104,6 +107,7 @@ describe("document file runtime", () => {
       kind: "unavailable",
       label: "Save unavailable",
       detail: "No browser download or native save capability is available.",
+      nativePath: null,
       usesNativeFilesystem: false,
       requiresNativePath: false
     });

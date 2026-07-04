@@ -18,6 +18,7 @@ export interface SDocSaveRoute {
   kind: SDocSaveRouteKind;
   label: string;
   detail: string;
+  nativePath: string | null;
   usesNativeFilesystem: boolean;
   requiresNativePath: boolean;
 }
@@ -73,6 +74,7 @@ export function resolveSdocSaveRoute(
       kind: "browser-download",
       label: "Download .sdoc",
       detail: "Browser runtime saves by downloading a complete .sdoc package.",
+      nativePath: null,
       usesNativeFilesystem: false,
       requiresNativePath: false
     };
@@ -83,6 +85,7 @@ export function resolveSdocSaveRoute(
       kind: "native-save",
       label: "Save .sdoc",
       detail: `Desktop runtime will update ${path}.`,
+      nativePath: path,
       usesNativeFilesystem: true,
       requiresNativePath: true
     };
@@ -93,6 +96,7 @@ export function resolveSdocSaveRoute(
       kind: "native-save-as",
       label: "Save .sdoc As",
       detail: "Desktop runtime must choose a .sdoc destination before saving.",
+      nativePath: null,
       usesNativeFilesystem: true,
       requiresNativePath: false
     };
@@ -102,6 +106,7 @@ export function resolveSdocSaveRoute(
     kind: "unavailable",
     label: "Save unavailable",
     detail: "No browser download or native save capability is available.",
+    nativePath: null,
     usesNativeFilesystem: false,
     requiresNativePath: false
   };

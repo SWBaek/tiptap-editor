@@ -94,6 +94,7 @@ import {
   type TableCellAlignment
 } from "@sdoc/editor-tiptap";
 import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
+import { runSdocSaveAction } from "./documentFileActions";
 import { detectDocumentFileRuntime, resolveSdocSaveRoute } from "./documentFileRuntime";
 import {
   addLocalHistoryEntry,
@@ -333,16 +334,30 @@ export function App() {
 
     try {
       const payload = await createSdocPayload(document, metadata, new Date(), assets);
-      const blobPart = payload.bytes.buffer.slice(payload.bytes.byteOffset, payload.bytes.byteOffset + payload.bytes.byteLength) as ArrayBuffer;
-      downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), payload.filename);
+      const saveResult = await runSdocSaveAction(sdocSaveRoute, payload, {
+        browser: {
+          download(nextPayload) {
+            const blobPart = nextPayload.bytes.buffer.slice(
+              nextPayload.bytes.byteOffset,
+              nextPayload.bytes.byteOffset + nextPayload.bytes.byteLength
+            ) as ArrayBuffer;
+            downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), nextPayload.filename);
+          }
+        }
+      });
+      if (saveResult.status !== "downloaded" && saveResult.status !== "saved-native") {
+        setStatusMessage(saveResult.message);
+        return;
+      }
+
       setBaselineDocument(document);
       setBaselineMetadata(metadata);
       setBaselineAssets(assets);
       setSelectedHistoryId(null);
       setCurrentFilename(payload.filename);
-      setCurrentNativePath(null);
+      setCurrentNativePath(saveResult.path);
       addRecentFile(payload.filename, metadata.title || payload.filename, "saved");
-      markSaved("Saved .sdoc");
+      markSaved(saveResult.message);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     }

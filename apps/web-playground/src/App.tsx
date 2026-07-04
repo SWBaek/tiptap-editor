@@ -96,6 +96,7 @@ import {
 import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
 import { runSdocSaveAction } from "./documentFileActions";
 import { detectDocumentFileRuntime, resolveSdocSaveRoute } from "./documentFileRuntime";
+import { getWindowSdocNativeSaveAdapter } from "./documentNativeBridge";
 import {
   addLocalHistoryEntry,
   areAssetsDirty,
@@ -309,6 +310,7 @@ export function App() {
   const fileLabel = getFileLabel(currentFilename, metadata);
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
   const documentFileRuntime = useMemo(() => detectDocumentFileRuntime(), []);
+  const nativeSdocSaveAdapter = useMemo(() => getWindowSdocNativeSaveAdapter(), []);
   const sdocSaveRoute = useMemo(() => resolveSdocSaveRoute(documentFileRuntime, currentNativePath), [currentNativePath, documentFileRuntime]);
   const exportBaseName = safeFilename(metadata.title || "document");
   const exportFilenames = {
@@ -343,7 +345,8 @@ export function App() {
             ) as ArrayBuffer;
             downloadBlob(new Blob([blobPart], { type: "application/vnd.sdoc" }), nextPayload.filename);
           }
-        }
+        },
+        native: nativeSdocSaveAdapter
       });
       if (saveResult.status !== "downloaded" && saveResult.status !== "saved-native") {
         setStatusMessage(saveResult.message);

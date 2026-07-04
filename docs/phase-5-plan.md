@@ -17,7 +17,7 @@ Phase 5 turns the accepted MVP slices into product workflows for non-developer a
 
 ## Slice 1: Tauri Desktop Shell Foundation
 
-Status: initial foundation implemented on 2026-07-03; native save-back policy model, workspace writer entrypoint, browser/desktop save-route boundary, Tauri runtime capability detection, native path runtime state, and route-based save action execution added on 2026-07-04.
+Status: initial foundation implemented on 2026-07-03; native save-back policy model, workspace writer entrypoint, browser/desktop save-route boundary, Tauri runtime capability detection, native path runtime state, route-based save action execution, and web-safe native save bridge discovery added on 2026-07-04.
 
 Acceptance criteria:
 
@@ -45,10 +45,12 @@ Acceptance evidence:
 - `apps/desktop/src/nativeSdocSaveBack.ts` connects validated save-back plans to `nativeWorkspaceAdapter.writeSdoc` without exposing broad filesystem mutation helpers to the web runtime.
 - `apps/web-playground/src/documentFileRuntime.ts` keeps browser download saves and future desktop native save/save-as routes explicit, detecting Tauri capability from runtime globals without importing Tauri IPC into the browser playground.
 - `apps/web-playground/src/documentFileActions.ts` executes save routes through injected browser or native adapters, so desktop native routes cannot silently fall back to browser download when no native adapter is wired.
+- `apps/web-playground/src/documentNativeBridge.ts` discovers an optional `window.__SDOC_NATIVE_SAVE_BRIDGE__` save adapter without importing Tauri APIs into the browser bundle.
 - `apps/web-playground/src/App.tsx` keeps the current native path as runtime-only state, clears it for browser open/download/new flows, and uses it only for save-route selection.
 - Root scripts expose `npm run dev:desktop`, `npm run build:desktop`, and `npm run typecheck:desktop`.
 - Node validation passes with `npm run typecheck:desktop`, `npm test`, `npm run build`, and `npm run test:e2e`.
 - Native Tauri build requires Rust/Cargo; this local environment does not currently provide `cargo`.
+- Native save-as still needs a desktop-side bridge installer and path chooser before end-to-end Tauri save testing is meaningful.
 
 ## Slice 2: Native File Explorer And Workspace Adapter
 

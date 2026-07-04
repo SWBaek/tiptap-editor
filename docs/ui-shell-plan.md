@@ -27,7 +27,7 @@ Recommended Activity Bar items:
 
 ## File Explorer Scope
 
-Browser MVP should not pretend to have full filesystem access. In the browser, `Files` should start with recent documents, open/save buttons, and the current `.sdoc` filename. `apps/web-playground/src/documentFileRuntime.ts` keeps the save route explicit: browser runtime downloads a complete `.sdoc`, while Tauri detection switches capability to desktop native save/save-as without importing Tauri IPC into the web playground. `documentFileActions.ts` only performs native writes through an injected native adapter, so browser download remains explicit. Native file paths are runtime state only; they must be cleared for browser open/download flows and never written to `document.json`.
+Browser MVP should not pretend to have full filesystem access. In the browser, `Files` should start with recent documents, open/save buttons, and the current `.sdoc` filename. `apps/web-playground/src/documentFileRuntime.ts` keeps the save route explicit: browser runtime downloads a complete `.sdoc`, while Tauri detection switches capability to desktop native save/save-as without importing Tauri IPC into the web playground. `documentFileActions.ts` only performs native writes through an injected native adapter, and `documentNativeBridge.ts` discovers only an optional `window.__SDOC_NATIVE_SAVE_BRIDGE__` contract, so browser download remains explicit. Native file paths are runtime state only; they must be cleared for browser open/download flows and never written to `document.json`.
 
 Full file and folder exploration belongs to the Tauri desktop phase, where native filesystem APIs can support:
 

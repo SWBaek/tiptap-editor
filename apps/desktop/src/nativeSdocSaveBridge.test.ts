@@ -109,6 +109,45 @@ describe("native sdoc save bridge", () => {
     await expect(bridge.openSdoc()).resolves.toBeNull();
   });
 
+  it("opens a listed workspace .sdoc file by path", async () => {
+    const bridge = createNativeSdocSaveBridge({
+      async readPackage(path: string) {
+        return new Uint8Array(path === "C:/docs/Listed.sdoc" ? [80, 75, 3, 4] : []);
+      }
+    });
+
+    await expect(bridge.openSdocPath("C:/docs/Listed.sdoc")).resolves.toEqual({
+      path: "C:/docs/Listed.sdoc",
+      bytes: new Uint8Array([80, 75, 3, 4])
+    });
+  });
+
+  it("lists workspace entries through injected desktop adapter functions", async () => {
+    const bridge = createNativeSdocSaveBridge({
+      async chooseWorkspaceDirectory() {
+        return "C:/docs";
+      },
+      async listWorkspaceEntries(directoryPath, options) {
+        return [
+          {
+            name: options?.includeUnpackedFolders ? "review-copy" : "Spec.sdoc",
+            path: `${directoryPath}/Spec.sdoc`,
+            kind: "sdoc-file"
+          }
+        ];
+      }
+    });
+
+    await expect(bridge.chooseSdocWorkspaceDirectory()).resolves.toBe("C:/docs");
+    await expect(bridge.listSdocWorkspaceEntries("C:/docs")).resolves.toEqual([
+      {
+        name: "Spec.sdoc",
+        path: "C:/docs/Spec.sdoc",
+        kind: "sdoc-file"
+      }
+    ]);
+  });
+
   it("installs the bridge on an explicit global scope", () => {
     const globalScope: WindowWithSdocNativeSaveBridge = {};
     const bridge = installNativeSdocSaveBridge({

@@ -7,6 +7,9 @@ export interface WindowSdocNativeSaveBridge {
   saveSdoc(path: string, bytes: Uint8Array, filename: string): Promise<void>;
   chooseSdocSavePath?(suggestedFilename: string): Promise<string | null>;
   openSdoc?(): Promise<WindowSdocNativeOpenResult | null>;
+  openSdocPath?(path: string): Promise<WindowSdocNativeOpenResult>;
+  chooseSdocWorkspaceDirectory?(): Promise<string | null>;
+  listSdocWorkspaceEntries?(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<WindowSdocWorkspaceEntry[]>;
 }
 
 export interface WindowSdocNativeOpenResult {
@@ -16,6 +19,24 @@ export interface WindowSdocNativeOpenResult {
 
 export interface NativeSdocOpenAdapter {
   open(): Promise<WindowSdocNativeOpenResult | null>;
+}
+
+export interface WindowSdocWorkspaceEntry {
+  name: string;
+  path: string;
+  kind: "sdoc-file" | "unpacked-sdoc-folder";
+  sizeBytes?: number;
+  modifiedAtMs?: number;
+}
+
+export interface WindowSdocWorkspaceListOptions {
+  includeUnpackedFolders?: boolean;
+}
+
+export interface NativeSdocWorkspaceAdapter {
+  chooseDirectory(): Promise<string | null>;
+  list(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<WindowSdocWorkspaceEntry[]>;
+  openFile(path: string): Promise<WindowSdocNativeOpenResult>;
 }
 
 export type WindowWithSdocNativeSaveBridge = {
@@ -51,6 +72,25 @@ export function getWindowSdocNativeOpenAdapter(globalScope: unknown = globalThis
   };
 }
 
+export function getWindowSdocWorkspaceAdapter(globalScope: unknown = globalThis): NativeSdocWorkspaceAdapter | undefined {
+  const bridge = getWindowSdocNativeSaveBridge(globalScope);
+  if (!bridge?.chooseSdocWorkspaceDirectory || !bridge.listSdocWorkspaceEntries || !bridge.openSdocPath) {
+    return undefined;
+  }
+
+  return {
+    chooseDirectory() {
+      return bridge.chooseSdocWorkspaceDirectory?.() ?? Promise.resolve(null);
+    },
+    list(directoryPath, options = {}) {
+      return bridge.listSdocWorkspaceEntries?.(directoryPath, options) ?? Promise.resolve([]);
+    },
+    openFile(path) {
+      return bridge.openSdocPath?.(path) ?? Promise.reject(new Error("Native workspace open is not available."));
+    }
+  };
+}
+
 function getWindowSdocNativeSaveBridge(globalScope: unknown): WindowSdocNativeSaveBridge | undefined {
   if (!globalScope || typeof globalScope !== "object") {
     return undefined;
@@ -71,6 +111,18 @@ function getWindowSdocNativeSaveBridge(globalScope: unknown): WindowSdocNativeSa
   }
 
   if (candidate.openSdoc !== undefined && typeof candidate.openSdoc !== "function") {
+    return undefined;
+  }
+
+  if (candidate.openSdocPath !== undefined && typeof candidate.openSdocPath !== "function") {
+    return undefined;
+  }
+
+  if (candidate.chooseSdocWorkspaceDirectory !== undefined && typeof candidate.chooseSdocWorkspaceDirectory !== "function") {
+    return undefined;
+  }
+
+  if (candidate.listSdocWorkspaceEntries !== undefined && typeof candidate.listSdocWorkspaceEntries !== "function") {
     return undefined;
   }
 

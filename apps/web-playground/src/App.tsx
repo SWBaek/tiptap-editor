@@ -96,7 +96,12 @@ import {
 import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
 import { runSdocSaveAction } from "./documentFileActions";
 import { detectDocumentFileRuntime, resolveSdocSaveRoute } from "./documentFileRuntime";
-import { getWindowSdocNativeOpenAdapter, getWindowSdocNativeSaveAdapter } from "./documentNativeBridge";
+import {
+  getWindowSdocNativeOpenAdapter,
+  getWindowSdocNativeSaveAdapter,
+  getWindowSdocWorkspaceAdapter,
+  type WindowSdocWorkspaceEntry
+} from "./documentNativeBridge";
 import {
   addLocalHistoryEntry,
   areAssetsDirty,
@@ -206,6 +211,9 @@ export function App() {
   const [currentFilename, setCurrentFilename] = useState<string | null>(null);
   const [currentNativePath, setCurrentNativePath] = useState<string | null>(null);
   const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>(loadStoredRecentFiles);
+  const [workspaceDirectory, setWorkspaceDirectory] = useState<string | null>(null);
+  const [workspaceEntries, setWorkspaceEntries] = useState<WindowSdocWorkspaceEntry[]>([]);
+  const [isWorkspaceLoading, setIsWorkspaceLoading] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>(loadStoredHistory);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
@@ -312,6 +320,7 @@ export function App() {
   const documentFileRuntime = useMemo(() => detectDocumentFileRuntime(), []);
   const nativeSdocSaveAdapter = useMemo(() => getWindowSdocNativeSaveAdapter(), []);
   const nativeSdocOpenAdapter = useMemo(() => getWindowSdocNativeOpenAdapter(), []);
+  const nativeSdocWorkspaceAdapter = useMemo(() => getWindowSdocWorkspaceAdapter(), []);
   const sdocSaveRoute = useMemo(() => resolveSdocSaveRoute(documentFileRuntime, currentNativePath), [currentNativePath, documentFileRuntime]);
   const exportBaseName = safeFilename(metadata.title || "document");
   const exportFilenames = {
@@ -511,6 +520,68 @@ export function App() {
 
   function explainRecentFileAccess(entry: RecentFileEntry) {
     setStatusMessage(`Recent file metadata only: reopen ${entry.name} from disk to load it in the browser`);
+  }
+
+  async function chooseWorkspaceDirectoryAction() {
+    if (documentFileRuntime.kind !== "desktop" || !nativeSdocWorkspaceAdapter) {
+      setStatusMessage("Native workspace browsing is available in the desktop app.");
+      return;
+    }
+
+    try {
+      const directoryPath = await nativeSdocWorkspaceAdapter.chooseDirectory();
+      if (!directoryPath) {
+        setStatusMessage("Workspace folder selection cancelled.");
+        return;
+      }
+
+      await refreshWorkspaceEntries(directoryPath);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function refreshWorkspaceEntries(directoryPath = workspaceDirectory) {
+    if (!directoryPath) {
+      setStatusMessage("Choose a workspace folder first.");
+      return;
+    }
+
+    if (!nativeSdocWorkspaceAdapter) {
+      setStatusMessage("Native workspace adapter is not available.");
+      return;
+    }
+
+    setIsWorkspaceLoading(true);
+    try {
+      const entries = await nativeSdocWorkspaceAdapter.list(directoryPath);
+      setWorkspaceDirectory(directoryPath);
+      setWorkspaceEntries(entries);
+      setStatusMessage(`Loaded ${entries.length} .sdoc workspace entr${entries.length === 1 ? "y" : "ies"}.`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsWorkspaceLoading(false);
+    }
+  }
+
+  async function openWorkspaceEntry(entry: WindowSdocWorkspaceEntry) {
+    if (entry.kind !== "sdoc-file") {
+      setStatusMessage("Unpacked .sdoc folders are a developer/reviewer workflow and are not opened from this panel yet.");
+      return;
+    }
+
+    if (!nativeSdocWorkspaceAdapter) {
+      setStatusMessage("Native workspace adapter is not available.");
+      return;
+    }
+
+    try {
+      const opened = await nativeSdocWorkspaceAdapter.openFile(entry.path);
+      await openDocumentBytes(filenameFromNativePath(opened.path), opened.bytes, opened.path);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
   }
 
   function showDeveloperCommand(command: string) {
@@ -1195,11 +1266,18 @@ export function App() {
               sdocFilename={exportFilenames.sdoc}
               savedLabel={savedLabel}
               recentFiles={recentFiles}
+              isDesktopRuntime={documentFileRuntime.kind === "desktop"}
+              workspaceDirectory={workspaceDirectory}
+              workspaceEntries={workspaceEntries}
+              isWorkspaceLoading={isWorkspaceLoading}
               onNewDocument={createNewDocument}
               onOpenDocument={openDocumentAction}
               onSaveSdoc={downloadSdoc}
               sdocSaveLabel={sdocSaveRoute.label}
               onSelectRecentFile={explainRecentFileAccess}
+              onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
+              onRefreshWorkspace={() => void refreshWorkspaceEntries()}
+              onOpenWorkspaceEntry={openWorkspaceEntry}
               onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
@@ -1619,22 +1697,36 @@ function FilesPanel({
   sdocFilename,
   savedLabel,
   recentFiles,
+  isDesktopRuntime,
+  workspaceDirectory,
+  workspaceEntries,
+  isWorkspaceLoading,
   onNewDocument,
   onOpenDocument,
   onSaveSdoc,
   sdocSaveLabel,
   onSelectRecentFile,
+  onChooseWorkspaceDirectory,
+  onRefreshWorkspace,
+  onOpenWorkspaceEntry,
   onCopyDeveloperCommand
 }: {
   currentFile: string;
   sdocFilename: string;
   savedLabel: string;
   recentFiles: RecentFileEntry[];
+  isDesktopRuntime: boolean;
+  workspaceDirectory: string | null;
+  workspaceEntries: WindowSdocWorkspaceEntry[];
+  isWorkspaceLoading: boolean;
   onNewDocument: () => void;
   onOpenDocument: () => void;
   onSaveSdoc: () => void;
   sdocSaveLabel: string;
   onSelectRecentFile: (entry: RecentFileEntry) => void;
+  onChooseWorkspaceDirectory: () => void;
+  onRefreshWorkspace: () => void;
+  onOpenWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
   onCopyDeveloperCommand: (command: string) => void;
 }) {
   const unpackCommand = `npm run sdoc -- unpack ${quoteCliPath(sdocFilename)} ${quoteCliPath(`${sdocFilename}.d`)}`;
@@ -1680,6 +1772,45 @@ function FilesPanel({
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="workspace-files" aria-label="Workspace files">
+        <h3>Workspace files</h3>
+        {isDesktopRuntime ? (
+          <>
+            <div className="workspace-boundary">
+              <strong title={workspaceDirectory ?? "No workspace folder selected"}>{workspaceDirectory ?? "No workspace folder selected"}</strong>
+              <span>Lists immediate `.sdoc` files from a selected desktop folder. This state is not saved to document.json.</span>
+            </div>
+            <div className="files-actions" aria-label="Workspace actions">
+              <button type="button" onClick={onChooseWorkspaceDirectory}>
+                Choose folder
+              </button>
+              <button type="button" onClick={onRefreshWorkspace} disabled={!workspaceDirectory || isWorkspaceLoading}>
+                {isWorkspaceLoading ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
+            {workspaceEntries.length === 0 ? (
+              <p>{isWorkspaceLoading ? "Loading workspace files" : "No workspace .sdoc files loaded"}</p>
+            ) : (
+              <ul>
+                {workspaceEntries.map((entry) => (
+                  <li key={entry.path}>
+                    <button type="button" onClick={() => onOpenWorkspaceEntry(entry)} disabled={entry.kind !== "sdoc-file"}>
+                      <strong>{entry.name}</strong>
+                      <span>{formatWorkspaceEntryMeta(entry)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : (
+          <div className="workspace-boundary">
+            <strong>Desktop-only browsing</strong>
+            <span>Folder exploration is available through the Tauri app. Browser mode only opens files selected by the user.</span>
+          </div>
         )}
       </section>
 
@@ -2929,6 +3060,33 @@ function formatRecentFileTime(value: string): string {
   }
 
   return date.toLocaleString();
+}
+
+function formatWorkspaceEntryMeta(entry: WindowSdocWorkspaceEntry): string {
+  const parts = [entry.kind === "unpacked-sdoc-folder" ? "unpacked folder" : "single .sdoc"];
+  if (typeof entry.sizeBytes === "number") {
+    parts.push(formatByteSize(entry.sizeBytes));
+  }
+  if (typeof entry.modifiedAtMs === "number") {
+    const modified = new Date(entry.modifiedAtMs);
+    if (!Number.isNaN(modified.getTime())) {
+      parts.push(modified.toLocaleString());
+    }
+  }
+  return parts.join(" - ");
+}
+
+function formatByteSize(value: number): string {
+  if (value < 1024) {
+    return `${value} B`;
+  }
+
+  const kib = value / 1024;
+  if (kib < 1024) {
+    return `${kib.toFixed(1)} KB`;
+  }
+
+  return `${(kib / 1024).toFixed(1)} MB`;
 }
 
 function quoteCliPath(value: string): string {

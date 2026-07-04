@@ -5,6 +5,7 @@ import {
 } from "./nativeSdocSaveBack.js";
 import { nativeWorkspaceAdapter } from "./nativeWorkspaceAdapter.js";
 import type { NativeSdocSaveBackRequest } from "./sdocSaveBackModel.js";
+import type { NativeWorkspaceEntry } from "./workspaceModel.js";
 
 export const SDOC_NATIVE_SAVE_BRIDGE_KEY = "__SDOC_NATIVE_SAVE_BRIDGE__";
 
@@ -12,11 +13,18 @@ export interface WindowSdocNativeSaveBridge {
   saveSdoc(path: string, bytes: Uint8Array, filename: string): Promise<void>;
   chooseSdocSavePath(suggestedFilename: string): Promise<string | null>;
   openSdoc(): Promise<WindowSdocNativeOpenResult | null>;
+  openSdocPath(path: string): Promise<WindowSdocNativeOpenResult>;
+  chooseSdocWorkspaceDirectory(): Promise<string | null>;
+  listSdocWorkspaceEntries(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<NativeWorkspaceEntry[]>;
 }
 
 export interface WindowSdocNativeOpenResult {
   path: string;
   bytes: Uint8Array;
+}
+
+export interface WindowSdocWorkspaceListOptions {
+  includeUnpackedFolders?: boolean;
 }
 
 export type WindowWithSdocNativeSaveBridge = {
@@ -29,6 +37,8 @@ export interface NativeSdocSaveBridgeOptions {
   chooseSavePath?: (suggestedFilename: string) => Promise<string | null>;
   chooseOpenPath?: () => Promise<string | null>;
   readPackage?: (path: string) => Promise<Uint8Array>;
+  chooseWorkspaceDirectory?: () => Promise<string | null>;
+  listWorkspaceEntries?: (directoryPath: string, options?: WindowSdocWorkspaceListOptions) => Promise<NativeWorkspaceEntry[]>;
 }
 
 export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions = {}): WindowSdocNativeSaveBridge {
@@ -36,6 +46,8 @@ export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions 
   const chooseSavePath = options.chooseSavePath ?? chooseSdocSavePathWithDialog;
   const chooseOpenPath = options.chooseOpenPath ?? chooseSdocOpenPathWithDialog;
   const readPackage = options.readPackage ?? nativeWorkspaceAdapter.readSdoc;
+  const chooseWorkspaceDirectory = options.chooseWorkspaceDirectory ?? chooseSdocWorkspaceDirectoryWithDialog;
+  const listWorkspaceEntries = options.listWorkspaceEntries ?? nativeWorkspaceAdapter.list;
 
   return {
     async saveSdoc(path, bytes) {
@@ -60,10 +72,21 @@ export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions 
         return null;
       }
 
-      return {
-        path,
-        bytes: await readPackage(path)
-      };
+      return openSdocPath(path, readPackage);
+    },
+
+    openSdocPath(path) {
+      return openSdocPath(path, readPackage);
+    },
+
+    chooseSdocWorkspaceDirectory() {
+      return chooseWorkspaceDirectory();
+    },
+
+    listSdocWorkspaceEntries(directoryPath, options = {}) {
+      return listWorkspaceEntries(directoryPath, {
+        includeUnpackedFolders: options.includeUnpackedFolders ?? false
+      });
     }
   };
 }
@@ -104,6 +127,23 @@ export async function chooseSdocOpenPathWithDialog(): Promise<string | null> {
   });
 
   return Array.isArray(path) ? null : normalizeDialogPath(path);
+}
+
+export async function chooseSdocWorkspaceDirectoryWithDialog(): Promise<string | null> {
+  const path = await showOpenDialog({
+    title: "Open SDoc workspace folder",
+    multiple: false,
+    directory: true
+  });
+
+  return Array.isArray(path) ? null : normalizeDialogPath(path);
+}
+
+async function openSdocPath(path: string, readPackage: (path: string) => Promise<Uint8Array>): Promise<WindowSdocNativeOpenResult> {
+  return {
+    path,
+    bytes: await readPackage(path)
+  };
 }
 
 function ensureSdocFilename(filename: string): string {

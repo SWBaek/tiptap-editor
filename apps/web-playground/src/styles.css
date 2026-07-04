@@ -567,14 +567,21 @@ button {
   gap: 10px;
 }
 
-.recent-files {
+.recent-files,
+.workspace-files {
   display: grid;
   gap: 10px;
   min-width: 0;
   padding-top: 8px;
 }
 
-.recent-files h3 {
+.workspace-files {
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.recent-files h3,
+.workspace-files h3 {
   margin: 0;
   color: #d9e1e8;
   font-size: 12px;
@@ -582,13 +589,15 @@ button {
   text-transform: uppercase;
 }
 
-.recent-files p {
+.recent-files p,
+.workspace-files p {
   margin: 0;
   color: #aeb8c2;
   font-size: 12px;
 }
 
-.recent-files ul {
+.recent-files ul,
+.workspace-files ul {
   display: grid;
   gap: 8px;
   min-width: 0;
@@ -597,7 +606,8 @@ button {
   list-style: none;
 }
 
-.recent-files button {
+.recent-files button,
+.workspace-files button {
   display: grid;
   gap: 4px;
   width: 100%;
@@ -606,8 +616,15 @@ button {
   text-align: left;
 }
 
+.workspace-files .files-actions button {
+  min-height: 36px;
+  text-align: center;
+}
+
 .recent-files strong,
-.recent-files span {
+.recent-files span,
+.workspace-files strong,
+.workspace-files span {
   display: block;
   min-width: 0;
   overflow: hidden;
@@ -615,12 +632,14 @@ button {
   white-space: nowrap;
 }
 
-.recent-files strong {
+.recent-files strong,
+.workspace-files strong {
   color: #f7f9fb;
   font-size: 13px;
 }
 
-.recent-files span {
+.recent-files span,
+.workspace-files span {
   color: #aeb8c2;
   font-size: 11px;
 }

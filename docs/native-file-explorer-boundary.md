@@ -39,6 +39,17 @@ The first desktop implementation may list only one directory level. Recursive tr
 
 Native commands should stay small and explicit. A command that lists workspace entries is acceptable; broad arbitrary filesystem APIs should not be exposed to the web frontend.
 
+## Current Bridge Slice
+
+The current desktop bridge exposes only the minimum workspace surface needed by the Files panel:
+
+- choose one workspace directory through the native dialog plugin;
+- list immediate `.sdoc` files from that directory through `list_sdoc_workspace_entries`;
+- open a listed `.sdoc` file by path through the existing `read_sdoc_file` command;
+- keep selected directory, listed entries, refresh state, and clicked entry state as runtime UI state.
+
+The browser bundle discovers this bridge through an optional `window.__SDOC_NATIVE_SAVE_BRIDGE__` contract. Browser mode continues to show a boundary message and uses user-selected file inputs rather than local-folder browsing.
+
 ## Deferred Work
 
 - directory picker UI;

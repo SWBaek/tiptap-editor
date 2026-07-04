@@ -210,6 +210,7 @@ test("tracks browser recent files in the Files side panel", async ({ page }) => 
   const filesPanel = page.getByRole("complementary", { name: "Files side panel" });
   await expect(filesPanel).toBeVisible();
   await expect(filesPanel.getByLabel("Recent files")).toContainText("No recent browser activity");
+  await expect(filesPanel.getByLabel("Workspace files")).toContainText("Desktop-only browsing");
   await expect(filesPanel.getByLabel("Unpacked folder workflow")).toContainText("CLI/Tauri-only");
 
   await page.getByRole("button", { name: "Settings panel" }).click();

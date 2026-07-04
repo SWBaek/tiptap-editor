@@ -81,6 +81,37 @@ const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
         path: normalizedPath,
         bytes: new Uint8Array(bytes)
       };
+    },
+    async openSdocPath(path) {
+      const normalizedPath = normalizePath(path);
+      if (!normalizedPath) {
+        throw new Error("Native workspace open requires a .sdoc path.");
+      }
+
+      const bytes = await internals.invoke("read_sdoc_file", {
+        path: normalizedPath
+      });
+
+      return {
+        path: normalizedPath,
+        bytes: new Uint8Array(bytes)
+      };
+    },
+    async chooseSdocWorkspaceDirectory() {
+      const path = await internals.invoke("plugin:dialog|open", {
+        options: {
+          title: "Open SDoc workspace folder",
+          multiple: false,
+          directory: true
+        }
+      });
+      return normalizePath(path);
+    },
+    async listSdocWorkspaceEntries(directoryPath, options = {}) {
+      return await internals.invoke("list_sdoc_workspace_entries", {
+        directoryPath,
+        includeUnpackedFolders: options.includeUnpackedFolders === true
+      });
     }
   };
 })();

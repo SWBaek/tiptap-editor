@@ -68,7 +68,8 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - The web playground Export panel surfaces data grid diagnostic counts and per-grid row/column readiness as runtime-only publishing feedback.
 - Headless `createDataGridRowDiff` reports keyed CSV/JSON row additions, deletions, modified cells, duplicate-key conflicts, and no-key fallback without storing row data in `document.json`.
 - Headless `applyDataGridRowMerge` applies selected row diff events to CSV/JSON source text with stale-source protection and without mutating `document.json`.
-- CLI `sdoc data-grid diff|apply` lets developer/reviewer workflows inspect and apply row-level asset-source changes outside normal authoring UX.
+- Headless `applyDataGridAssetRevision` writes merged source through explicit `update` or `revision` asset policies; revision mode creates a new `.revN` asset and requires a separate canonical `sourceAssetId` update by the caller.
+- CLI `sdoc data-grid diff|apply` lets developer/reviewer workflows inspect and apply row-level asset-source changes outside normal authoring UX, including optional `--asset-policy update|revision` diagnostics.
 
 ## Deferred Work
 

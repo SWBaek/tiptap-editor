@@ -131,7 +131,7 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
-Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, Word template package validation, Word template mapping diagnostics, external Word template body injection, Word template style mapping application, and basic approval/revision metadata placeholder injection implemented.
+Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, row merge asset revision policy, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, Word template package validation, Word template mapping diagnostics, external Word template body injection, Word template style mapping application, and basic approval/revision metadata placeholder injection implemented.
 
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
 
@@ -148,7 +148,8 @@ Acceptance evidence:
 - `docs/data-grid-row-diff-merge-boundary.md` defines row-level grid diff and merge as an asset-level review projection with reliable row keys, stale-event protection, and asset-only merge writes.
 - `createDataGridRowDiff` creates keyed CSV/JSON row diff events for added rows, deleted rows, modified cells, duplicate-key conflicts, and no-key fallback without mutating canonical JSON.
 - `applyDataGridRowMerge` recomputes row diffs, refuses stale current sources and conflicts, and returns updated CSV/JSON source text as an asset-layer change rather than a canonical row patch.
-- `sdoc data-grid diff|apply` exposes row-level CSV/JSON asset source review and guarded apply for developer/reviewer workflows.
+- `applyDataGridAssetRevision` applies merged source through explicit `update` or `revision` policies; revision mode creates a new `.revN` asset and leaves canonical `sourceAssetId` updates to the caller.
+- `sdoc data-grid diff|apply` exposes row-level CSV/JSON asset source review and guarded apply for developer/reviewer workflows, including optional asset-policy output.
 - `exportHtml(..., { template: "controlled" })` renders controlled corporate header/footer/watermark chrome from explicit export metadata.
 - CLI `sdoc export --format html|pdf --template controlled` exposes the controlled template without storing export preferences in `document.json`.
 - `exportDocx(..., { template: "controlled" })` emits a derived OOXML Word document with editable text and controlled metadata without mutating `document.json`.
@@ -163,7 +164,7 @@ Acceptance evidence:
 
 Open work:
 
-- UI wiring and asset revision policy for row-level CSV/JSON merge apply.
+- UI wiring for row-level CSV/JSON merge apply.
 - richer external `.dotx` content-control rendering, strict pagination, approval workflow modeling, multi-row revision history management, and template management UI.
 
 ## Validation Gates

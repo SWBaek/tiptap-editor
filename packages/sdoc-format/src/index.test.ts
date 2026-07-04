@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyDataGridAssetRevision,
   applyDataGridRowMerge,
   createDataGridDiagnostics,
   createDataGridRowDiff,
@@ -490,6 +491,59 @@ describe("applyDataGridRowMerge", () => {
       ok: false,
       reason: "conflict",
       message: "Row merge requires a conflict-free diff with reliable row keys"
+    });
+  });
+});
+
+describe("applyDataGridAssetRevision", () => {
+  it("updates the existing dataGrid source asset by default", () => {
+    const result = applyDataGridAssetRevision({
+      sourceAssetId: "asset_pinout.csv",
+      source: "pin,signal\n1,VCC\n2,GROUND\n",
+      format: "csv",
+      assets: {
+        "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC\n2,GND\n")
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.sourceAssetId : "").toBe("asset_pinout.csv");
+    expect(result.ok ? result.createdRevision : true).toBe(false);
+    expect(new TextDecoder().decode(result.ok ? result.assets["asset_pinout.csv"] : new Uint8Array())).toBe("pin,signal\n1,VCC\n2,GROUND\n");
+  });
+
+  it("creates a new revision asset without mutating the previous asset", () => {
+    const result = applyDataGridAssetRevision({
+      sourceAssetId: "asset_pinout.csv",
+      source: "pin,signal\n1,VCC\n2,GROUND\n",
+      format: "csv",
+      policy: "revision",
+      assets: {
+        "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC\n2,GND\n"),
+        "asset_pinout.rev1.csv": new TextEncoder().encode("pin,signal\n1,VCC\n2,ALT\n")
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.previousSourceAssetId : "").toBe("asset_pinout.csv");
+    expect(result.ok ? result.sourceAssetId : "").toBe("asset_pinout.rev2.csv");
+    expect(result.ok ? result.createdRevision : false).toBe(true);
+    expect(new TextDecoder().decode(result.ok ? result.assets["asset_pinout.csv"] : new Uint8Array())).toBe("pin,signal\n1,VCC\n2,GND\n");
+    expect(new TextDecoder().decode(result.ok ? result.assets["asset_pinout.rev2.csv"] : new Uint8Array())).toBe("pin,signal\n1,VCC\n2,GROUND\n");
+  });
+
+  it("refuses dataGrid asset revision when the referenced source asset is missing", () => {
+    const result = applyDataGridAssetRevision({
+      sourceAssetId: "asset_missing.csv",
+      source: "pin,signal\n1,VCC\n",
+      format: "csv",
+      assets: {}
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "missing-asset",
+      message: "Missing dataGrid source asset asset_missing.csv"
     });
   });
 });

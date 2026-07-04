@@ -15,6 +15,7 @@ import {
   type WordTemplateMappingRequirement
 } from "@sdoc/export";
 import {
+  applyDataGridAssetRevision,
   applyDataGridRowMerge,
   createDataGridRowDiff,
   isLikelyZipContainer,
@@ -129,14 +130,16 @@ async function runDataGridDiff(args: string[]): Promise<void> {
 }
 
 async function runDataGridApply(args: string[]): Promise<void> {
-  const positionals = getPositionals(args, new Set(["--format", "--grid", "--asset", "--key", "--event", "-o"]));
+  const positionals = getPositionals(args, new Set(["--format", "--grid", "--asset", "--key", "--event", "--asset-policy", "--asset-output", "-o"]));
   const [baselineSourcePath, proposedSourcePath, currentSourcePath] = positionals;
   const format = parseDataGridFormat(getOption(args, "--format"));
   const eventIndex = parseEventIndex(getOption(args, "--event"));
   const output = getOption(args, "-o");
+  const assetPolicy = parseDataGridAssetPolicy(getOption(args, "--asset-policy"));
+  const assetOutput = getOption(args, "--asset-output");
   if (!baselineSourcePath || !proposedSourcePath || !currentSourcePath || eventIndex === undefined) {
     throw new Error(
-      "usage: sdoc data-grid apply <baseline.csv|json> <proposed.csv|json> <current.csv|json> --format <csv|json> --event <index> [--grid id] [--asset assetId] [--key col[,col]] [-o output]"
+      "usage: sdoc data-grid apply <baseline.csv|json> <proposed.csv|json> <current.csv|json> --format <csv|json> --event <index> [--grid id] [--asset assetId] [--key col[,col]] [--asset-policy update|revision] [--asset-output output.csv|json] [-o output]"
     );
   }
 
@@ -168,6 +171,30 @@ async function runDataGridApply(args: string[]): Promise<void> {
   });
   if (!result.ok) {
     throw new Error(result.message);
+  }
+
+  if (assetPolicy || assetOutput) {
+    const assetResult = applyDataGridAssetRevision({
+      sourceAssetId: diff.sourceAssetId,
+      source: result.source,
+      format,
+      policy: assetPolicy,
+      assets: {
+        [diff.sourceAssetId]: new TextEncoder().encode(currentSource)
+      }
+    });
+    if (!assetResult.ok) {
+      throw new Error(assetResult.message);
+    }
+
+    if (assetOutput) {
+      await writeFile(assetOutput, assetResult.assets[assetResult.sourceAssetId]);
+    }
+    process.stderr.write(
+      assetResult.createdRevision
+        ? `ASSET_REVISION ${assetResult.previousSourceAssetId} -> ${assetResult.sourceAssetId}\n`
+        : `ASSET_UPDATE ${assetResult.sourceAssetId}\n`
+    );
   }
 
   if (output) {
@@ -524,6 +551,18 @@ function parseDataGridFormat(value: string | undefined): "csv" | "json" {
   throw new Error("data-grid --format must be csv or json");
 }
 
+function parseDataGridAssetPolicy(value: string | undefined): "update" | "revision" | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (value === "update" || value === "revision") {
+    return value;
+  }
+
+  throw new Error("data-grid --asset-policy must be update or revision");
+}
+
 function parseKeyColumns(value: string | undefined): string[] | undefined {
   if (!value) {
     return undefined;
@@ -579,7 +618,7 @@ function printHelp(): void {
 
 Commands:
   sdoc data-grid diff <old.csv|json> <new.csv|json> --format csv|json [--key col[,col]]
-  sdoc data-grid apply <baseline.csv|json> <proposed.csv|json> <current.csv|json> --format csv|json --event <index> [--key col[,col]] [-o output]
+  sdoc data-grid apply <baseline.csv|json> <proposed.csv|json> <current.csv|json> --format csv|json --event <index> [--key col[,col]] [--asset-policy update|revision] [--asset-output output.csv|json] [-o output]
   sdoc diff <old.sdoc|old.document.json> <new.sdoc|new.document.json>
   sdoc export <input.sdoc|document.json> <markdown|html|pdf|chunks|outline|references> [output]
   sdoc export <input.sdoc> --format html|pdf|docx --template controlled [-o output]

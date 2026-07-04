@@ -40,6 +40,15 @@ The guarded merge path must:
 - update `sourceAssetId` only when a new asset revision is created;
 - validate the resulting `.sdoc` pack/unpack path and deterministic serialization.
 
+## Asset Revision Policy
+
+The v1 headless policy supports two explicit save-back modes:
+
+- `update`: replace the existing `sourceAssetId` asset bytes and keep `document.json` unchanged.
+- `revision`: create a new deterministic revision asset such as `asset_pinout.rev1.csv`, preserve the previous asset, and require the caller to update the `dataGrid.attrs.sourceAssetId` reference as a separate canonical edit.
+
+The merge helper never stores selected rows, pending decisions, stale state, or raw row patches in `document.json`. UI and Tauri callers must decide whether revision creation should also update the selected block, then validate/pack the resulting `.sdoc`.
+
 ## UI Boundary
 
 The editor should present row diff as a review tool attached to the `dataGrid` block. Selected row, expanded conflict, preview mode, and pending accept/reject choices are runtime state and must stay outside `document.json`.
@@ -62,11 +71,12 @@ The editor should present row diff as a review tool attached to the `dataGrid` b
 - JSON row diff currently supports object-row arrays. JSON array-row diff is deferred until explicit column/key metadata exists.
 - `applyDataGridRowMerge` recomputes the diff before applying a selected row event, refuses conflicting/no-key diffs, refuses stale current asset sources, and returns updated CSV/JSON source text without mutating `document.json`.
 - CLI `sdoc data-grid diff` and `sdoc data-grid apply` expose this headless workflow for developer/reviewer asset-source review without making Git or raw line diff mandatory.
+- `applyDataGridAssetRevision` applies the merged source through explicit `update` or `revision` asset policies; revision mode creates the next available `.revN` asset ID and leaves canonical `sourceAssetId` updates to the caller.
+- CLI `sdoc data-grid apply --asset-policy update|revision --asset-output file` exposes the policy result for developer/reviewer workflows.
 
 ## Deferred Work
 
 - authored `keyColumns` schema extension;
-- asset revision policy for save-back, including whether a merge updates the current asset ID or creates a new asset ID;
 - UI wiring for selecting and applying row merge events;
 - visual side-by-side cell diff UI;
 - multi-user conflict resolution;

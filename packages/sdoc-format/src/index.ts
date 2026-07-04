@@ -151,6 +151,31 @@ export type ApplyDataGridRowMergeResult =
       diff: DataGridRowDiff;
     };
 
+export type DataGridAssetRevisionPolicy = "update" | "revision";
+
+export interface ApplyDataGridAssetRevisionOptions {
+  sourceAssetId: string;
+  source: string;
+  format: "csv" | "json";
+  assets?: Record<string, Uint8Array>;
+  policy?: DataGridAssetRevisionPolicy;
+}
+
+export type ApplyDataGridAssetRevisionResult =
+  | {
+      ok: true;
+      sourceAssetId: string;
+      previousSourceAssetId: string;
+      assets: Record<string, Uint8Array>;
+      createdRevision: boolean;
+    }
+  | {
+      ok: false;
+      reason: "missing-asset" | "asset-conflict";
+      message: string;
+      sourceAssetId: string;
+    };
+
 export interface DiagramSourceStore {
   collectReferencedAssetIds(node: SDocNode): string[];
 }
@@ -574,6 +599,40 @@ export function applyDataGridRowMerge(options: ApplyDataGridRowMergeOptions): Ap
     source: serializeDataGridRows(mergedRows, columns, options.format),
     diff,
     appliedEvent: matchingEvent
+  };
+}
+
+export function applyDataGridAssetRevision(options: ApplyDataGridAssetRevisionOptions): ApplyDataGridAssetRevisionResult {
+  const policy = options.policy ?? "update";
+  const assets = options.assets ?? {};
+  const currentAsset = assets[options.sourceAssetId];
+  if (!currentAsset) {
+    return {
+      ok: false,
+      reason: "missing-asset",
+      message: `Missing dataGrid source asset ${options.sourceAssetId}`,
+      sourceAssetId: options.sourceAssetId
+    };
+  }
+
+  const encodedSource = new TextEncoder().encode(options.source);
+  if (policy === "update") {
+    return {
+      ok: true,
+      sourceAssetId: options.sourceAssetId,
+      previousSourceAssetId: options.sourceAssetId,
+      assets: { ...assets, [options.sourceAssetId]: encodedSource },
+      createdRevision: false
+    };
+  }
+
+  const revisionAssetId = createDataGridRevisionAssetId(options.sourceAssetId, assets, options.format);
+  return {
+    ok: true,
+    sourceAssetId: revisionAssetId,
+    previousSourceAssetId: options.sourceAssetId,
+    assets: { ...assets, [revisionAssetId]: encodedSource },
+    createdRevision: true
   };
 }
 
@@ -1112,6 +1171,19 @@ function serializeDataGridRows(rows: Array<Record<string, string>>, columns: str
   return `${[columns, ...rows.map((row) => columns.map((column) => row[column] ?? ""))]
     .map((row) => row.map(escapeCsvCell).join(","))
     .join("\n")}\n`;
+}
+
+function createDataGridRevisionAssetId(sourceAssetId: string, assets: Record<string, Uint8Array>, format: "csv" | "json"): string {
+  const extension = sourceAssetId.includes(".") ? sourceAssetId.slice(sourceAssetId.lastIndexOf(".")) : `.${format}`;
+  const base = sourceAssetId.endsWith(extension) ? sourceAssetId.slice(0, -extension.length) : sourceAssetId;
+  let index = 1;
+  let candidate = `${base}.rev${index}${extension}`;
+  while (assets[candidate]) {
+    index += 1;
+    candidate = `${base}.rev${index}${extension}`;
+  }
+
+  return candidate;
 }
 
 function escapeCsvCell(value: string): string {

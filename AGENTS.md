@@ -77,6 +77,7 @@ Use npm workspaces from the repository root.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format pptx -o deck.pptx`: generate a derived native PowerPoint deck.
 - `npm run sdoc -- data-grid diff old.csv new.csv --format csv --key id`: review row-level dataGrid asset changes without storing rows in `document.json`.
 - `npm run sdoc -- data-grid apply baseline.csv proposed.csv current.csv --format csv --key id --event 0 -o merged.csv`: apply one guarded row-level asset change with stale-source protection.
+- `npm run sdoc -- data-grid apply baseline.csv proposed.csv current.csv --format csv --key id --event 0 --asset-policy revision --asset-output asset.rev1.csv`: apply one guarded row-level asset change through the revision asset policy.
 - `npm run clean`: remove TypeScript build artifacts through `tsc -b --clean`.
 
 Desktop development uses the `@sdoc/desktop` workspace and reuses the web playground frontend until a dedicated desktop UI split is justified.

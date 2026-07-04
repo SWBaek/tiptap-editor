@@ -192,6 +192,46 @@ describe("sdoc CLI", () => {
     }
   });
 
+  it("reports dataGrid asset revision policy when applying row merges", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const baselinePath = path.join(tempDir, "baseline.csv");
+    const proposedPath = path.join(tempDir, "proposed.csv");
+    const currentPath = path.join(tempDir, "current.csv");
+    const assetOutputPath = path.join(tempDir, "asset_pinout.rev1.csv");
+
+    try {
+      await writeFile(baselinePath, "pin,signal\n1,VCC\n2,GND", "utf8");
+      await writeFile(proposedPath, "pin,signal\n1,VCC\n2,GROUND", "utf8");
+      await writeFile(currentPath, "pin,signal\n1,VCC\n2,GND", "utf8");
+
+      const result = await runSdoc([
+        "data-grid",
+        "apply",
+        baselinePath,
+        proposedPath,
+        currentPath,
+        "--format",
+        "csv",
+        "--asset",
+        "asset_pinout.csv",
+        "--key",
+        "pin",
+        "--event",
+        "0",
+        "--asset-policy",
+        "revision",
+        "--asset-output",
+        assetOutputPath
+      ]);
+
+      expect(result.stdout).toBe("pin,signal\n1,VCC\n2,GROUND\n");
+      expect(result.stderr).toContain("ASSET_REVISION asset_pinout.csv -> asset_pinout.rev1.csv");
+      expect(await readFile(assetOutputPath, "utf8")).toBe("pin,signal\n1,VCC\n2,GROUND\n");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("rejects stale dataGrid row merge events in the CLI", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const baselinePath = path.join(tempDir, "baseline.csv");

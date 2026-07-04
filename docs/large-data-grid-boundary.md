@@ -73,10 +73,11 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - The browser Export panel shows runtime-only row review readiness against the saved baseline asset snapshot.
 - The browser Export panel can accept one mergeable row change at a time by updating the saved-baseline asset snapshot while leaving the current asset and `document.json` unchanged.
 - The browser Export panel can reject one mergeable row change at a time by writing updated current asset bytes while leaving `document.json` unchanged.
+- The browser Export panel can reject one mergeable row change as a new asset revision, preserving the previous source asset and updating the reviewed `dataGrid.attrs.sourceAssetId` as the only canonical document edit.
 
 ## Deferred Work
 
-- revision-policy save-back following `docs/data-grid-row-diff-merge-boundary.md`;
+- Tauri-native revision save-back following `docs/data-grid-row-diff-merge-boundary.md`;
 - richer CSV/JSON validation rule configuration and authored column typing;
 - full spreadsheet editing;
 - formulas and computed columns;

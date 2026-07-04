@@ -720,6 +720,11 @@ export function removeCrossReference(document: SDocDocument, referenceId: string
   return { ...document, content: nextContent };
 }
 
+export function updateDataGridSourceAssetId(document: SDocDocument, gridId: string, sourceAssetId: string): SDocDocument {
+  const nextContent = document.content.map((node) => updateDataGridSourceAssetIdInNode(node, gridId, sourceAssetId));
+  return { ...document, content: nextContent };
+}
+
 export function createLocalHistoryEntry(
   document: SDocDocument,
   metadata: SDocMetadata,
@@ -804,6 +809,28 @@ function collectDataGridBlocks(document: SDocDocument): DataGridBlockSummary[] {
 
   document.content.forEach(visit);
   return grids;
+}
+
+function updateDataGridSourceAssetIdInNode(node: SDocNode, gridId: string, sourceAssetId: string): SDocNode {
+  const nextContent = node.content?.map((child) => updateDataGridSourceAssetIdInNode(child, gridId, sourceAssetId));
+  const isTarget = node.type === "dataGrid" && getNodeId(node) === gridId;
+  const nextNode = isTarget
+    ? {
+        ...node,
+        attrs: {
+          ...node.attrs,
+          sourceAssetId
+        }
+      }
+    : nextContent
+      ? { ...node, content: nextContent }
+      : node;
+
+  if (isTarget && nextContent) {
+    return { ...nextNode, content: nextContent };
+  }
+
+  return nextNode;
 }
 
 function createUnavailableDataGridRowReviewItem(

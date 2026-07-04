@@ -933,6 +933,8 @@ button {
 
 .data-grid-row-event-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
 }
 
@@ -963,6 +965,16 @@ button {
 
 .data-grid-row-event-actions .reject:hover {
   background: rgba(196, 73, 61, 0.28);
+}
+
+.data-grid-row-event-actions .revision {
+  color: #e7e0ff;
+  background: rgba(118, 96, 180, 0.22);
+  border: 1px solid rgba(139, 116, 214, 0.5);
+}
+
+.data-grid-row-event-actions .revision:hover {
+  background: rgba(118, 96, 180, 0.32);
 }
 
 .export-action {

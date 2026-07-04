@@ -58,6 +58,7 @@ import {
   createDataGridDiagnostics,
   createDataGridRowDiff,
   stableStringify,
+  type DataGridAssetRevisionPolicy,
   type DataGridDiagnostics,
   type DataGridRowDiffEvent,
   type SDocMetadata
@@ -123,6 +124,7 @@ import {
   removeLocalHistoryEntry,
   renameLocalHistoryEntry,
   serializeLocalHistory,
+  updateDataGridSourceAssetId,
   updateCrossReferenceLabel,
   type LocalHistoryEntry,
   type ChangeReviewModel,
@@ -887,14 +889,15 @@ export function App() {
     setStatusMessage(summary.detail);
   }
 
-  function rejectDataGridRowEvent(item: DataGridRowReviewItem, event: DataGridRowDiffEvent) {
+  function rejectDataGridRowEvent(item: DataGridRowReviewItem, event: DataGridRowDiffEvent, assetPolicy: DataGridAssetRevisionPolicy = "update") {
     if (selectedHistoryEntry) {
       setStatusMessage("Use saved baseline before applying data grid row review actions");
       return;
     }
 
-    if (!window.confirm(`Reject row change in ${item.title}: ${event.message}?`)) {
-      setStatusMessage(`Canceled row reject: ${item.title}`);
+    const actionLabel = assetPolicy === "revision" ? "Reject row change as a new asset revision" : "Reject row change";
+    if (!window.confirm(`${actionLabel} in ${item.title}: ${event.message}?`)) {
+      setStatusMessage(`Canceled row ${assetPolicy === "revision" ? "revision reject" : "reject"}: ${item.title}`);
       return;
     }
 
@@ -940,11 +943,22 @@ export function App() {
       sourceAssetId: item.sourceAssetId,
       source: mergeResult.source,
       format: item.format,
-      policy: "update",
+      policy: assetPolicy,
       assets
     });
     if (!assetResult.ok) {
       setStatusMessage(assetResult.message);
+      return;
+    }
+
+    if (assetPolicy === "revision") {
+      const nextDocument = updateDataGridSourceAssetId(document, item.gridId, assetResult.sourceAssetId);
+      editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assetResult.assets)), { emitUpdate: true });
+      repairEditorBlockIds(editor);
+      setDocumentId(nextDocument.attrs.id);
+      setAssets(assetResult.assets);
+      setActiveTab("diff");
+      setStatusMessage(`Rejected row change in ${item.title} as ${assetResult.sourceAssetId}`);
       return;
     }
 
@@ -1198,7 +1212,8 @@ export function App() {
               dataGridDiagnostics={dataGridDiagnostics}
               dataGridRowReview={dataGridRowReview}
               onAcceptDataGridRowEvent={acceptDataGridRowEvent}
-              onRejectDataGridRowEvent={rejectDataGridRowEvent}
+              onRejectDataGridRowEvent={(item, event) => rejectDataGridRowEvent(item, event)}
+              onRejectDataGridRowEventAsRevision={(item, event) => rejectDataGridRowEvent(item, event, "revision")}
               onExportSdoc={downloadSdoc}
               onExportJson={downloadJson}
               onExportMarkdown={downloadMarkdown}
@@ -1633,6 +1648,7 @@ function ExportPanel({
   dataGridRowReview,
   onAcceptDataGridRowEvent,
   onRejectDataGridRowEvent,
+  onRejectDataGridRowEventAsRevision,
   onExportSdoc,
   onExportJson,
   onExportMarkdown,
@@ -1653,6 +1669,7 @@ function ExportPanel({
   dataGridRowReview: DataGridRowReviewModel;
   onAcceptDataGridRowEvent: (item: DataGridRowReviewItem, event: DataGridRowDiffEvent) => void;
   onRejectDataGridRowEvent: (item: DataGridRowReviewItem, event: DataGridRowDiffEvent) => void;
+  onRejectDataGridRowEventAsRevision: (item: DataGridRowReviewItem, event: DataGridRowDiffEvent) => void;
   onExportSdoc: () => void;
   onExportJson: () => void;
   onExportMarkdown: () => void;
@@ -1758,6 +1775,9 @@ function ExportPanel({
                             </button>
                             <button className="reject" type="button" onClick={() => onRejectDataGridRowEvent(item, event)}>
                               Reject
+                            </button>
+                            <button className="revision" type="button" onClick={() => onRejectDataGridRowEventAsRevision(item, event)}>
+                              Revision
                             </button>
                           </div>
                         </li>

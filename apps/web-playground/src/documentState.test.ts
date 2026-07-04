@@ -29,6 +29,7 @@ import {
   renderVisualDiffRuntimeCss,
   retargetCrossReference,
   serializeLocalHistory,
+  updateDataGridSourceAssetId,
   updateCrossReferenceLabel
 } from "./documentState";
 import type { SDocDocument } from "@sdoc/schema";
@@ -345,6 +346,20 @@ describe("document state helpers", () => {
       oldValue: "GROUND",
       newValue: "GND"
     });
+  });
+
+  it("updates a dataGrid source asset reference for revision save-back without embedding rows", () => {
+    const document = createDataGridDocument("asset_pinout.csv");
+    const updated = updateDataGridSourceAssetId(document, "blk_grid", "asset_pinout.rev1.csv");
+
+    expect(updated.content[0].attrs).toMatchObject({
+      id: "blk_grid",
+      sourceAssetId: "asset_pinout.rev1.csv",
+      format: "csv",
+      title: "MCU Pinout"
+    });
+    expect(JSON.stringify(updated)).not.toContain("VCC");
+    expect(JSON.stringify(updated)).not.toContain("GROUND");
   });
 
   it("projects broken reference diagnostics to inline marker css", () => {

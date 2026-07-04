@@ -3,6 +3,7 @@ import {
   saveSdocPackageToNativeFile,
   type NativeSdocSaveBackExecution
 } from "./nativeSdocSaveBack.js";
+import { nativeDrawioExternalEditorBridge, type DrawioExternalEditorBridge } from "./nativeDrawioExternalEditorBridge.js";
 import { nativeWorkspaceAdapter } from "./nativeWorkspaceAdapter.js";
 import type { NativeSdocSaveBackRequest } from "./sdocSaveBackModel.js";
 import type { NativeWorkspaceEntry } from "./workspaceModel.js";
@@ -16,6 +17,10 @@ export interface WindowSdocNativeSaveBridge {
   openSdocPath(path: string): Promise<WindowSdocNativeOpenResult>;
   chooseSdocWorkspaceDirectory(): Promise<string | null>;
   listSdocWorkspaceEntries(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<NativeWorkspaceEntry[]>;
+  checkoutDrawioSource(sourceAssetId: string, sourceBytes: Uint8Array): Promise<WindowDrawioBridgeSession>;
+  openDrawioExternalEditor(sessionId: string, executablePath?: string): Promise<WindowDrawioBridgeStatusEvent>;
+  readDrawioExternalEdit(sessionId: string, latestSourceBytes: Uint8Array): Promise<WindowDrawioSaveBackResult>;
+  closeDrawioExternalEdit(sessionId: string): Promise<WindowDrawioBridgeStatusEvent>;
 }
 
 export interface WindowSdocNativeOpenResult {
@@ -25,6 +30,28 @@ export interface WindowSdocNativeOpenResult {
 
 export interface WindowSdocWorkspaceListOptions {
   includeUnpackedFolders?: boolean;
+}
+
+export type WindowDrawioExternalEditorStatus = "opened" | "saved" | "preview-updated" | "invalid-source" | "conflict" | "closed" | "launch-failed";
+
+export interface WindowDrawioBridgeSession {
+  sessionId: string;
+  sourceAssetId: string;
+  tempPath: string;
+  originalSourceHash: string;
+}
+
+export interface WindowDrawioBridgeStatusEvent {
+  status: WindowDrawioExternalEditorStatus;
+  sessionId?: string;
+  sourceAssetId?: string;
+  tempPath?: string;
+  sourceHash?: string;
+  message?: string;
+}
+
+export interface WindowDrawioSaveBackResult extends WindowDrawioBridgeStatusEvent {
+  sourceBytes?: Uint8Array;
 }
 
 export type WindowWithSdocNativeSaveBridge = {
@@ -39,6 +66,7 @@ export interface NativeSdocSaveBridgeOptions {
   readPackage?: (path: string) => Promise<Uint8Array>;
   chooseWorkspaceDirectory?: () => Promise<string | null>;
   listWorkspaceEntries?: (directoryPath: string, options?: WindowSdocWorkspaceListOptions) => Promise<NativeWorkspaceEntry[]>;
+  drawioBridge?: DrawioExternalEditorBridge;
 }
 
 export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions = {}): WindowSdocNativeSaveBridge {
@@ -48,6 +76,7 @@ export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions 
   const readPackage = options.readPackage ?? nativeWorkspaceAdapter.readSdoc;
   const chooseWorkspaceDirectory = options.chooseWorkspaceDirectory ?? chooseSdocWorkspaceDirectoryWithDialog;
   const listWorkspaceEntries = options.listWorkspaceEntries ?? nativeWorkspaceAdapter.list;
+  const drawioBridge = options.drawioBridge ?? nativeDrawioExternalEditorBridge;
 
   return {
     async saveSdoc(path, bytes) {
@@ -87,6 +116,22 @@ export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions 
       return listWorkspaceEntries(directoryPath, {
         includeUnpackedFolders: options.includeUnpackedFolders ?? false
       });
+    },
+
+    checkoutDrawioSource(sourceAssetId, sourceBytes) {
+      return drawioBridge.checkoutSource(sourceAssetId, sourceBytes);
+    },
+
+    openDrawioExternalEditor(sessionId, executablePath) {
+      return drawioBridge.openExternalEditor(sessionId, executablePath);
+    },
+
+    async readDrawioExternalEdit(sessionId, latestSourceBytes) {
+      return drawioBridge.readEditedSource({ sessionId, sourceAssetId: "", tempPath: "", originalSourceHash: "" }, latestSourceBytes);
+    },
+
+    closeDrawioExternalEdit(sessionId) {
+      return drawioBridge.closeSession(sessionId);
     }
   };
 }

@@ -31,6 +31,19 @@ const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
     return Array.from(new Uint8Array(bytes));
   };
 
+  const hashBytes = (bytes) => {
+    let hash = 0xcbf29ce484222325n;
+    const prime = 0x100000001b3n;
+    const mask = 0xffffffffffffffffn;
+
+    for (const byte of bytes) {
+      hash ^= BigInt(byte);
+      hash = (hash * prime) & mask;
+    }
+
+    return hash.toString(16).padStart(16, "0");
+  };
+
   window[key] = {
     async saveSdoc(path, bytes) {
       await internals.invoke("write_sdoc_file", {
@@ -111,6 +124,35 @@ const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
       return await internals.invoke("list_sdoc_workspace_entries", {
         directoryPath,
         includeUnpackedFolders: options.includeUnpackedFolders === true
+      });
+    },
+    async checkoutDrawioSource(sourceAssetId, sourceBytes) {
+      return await internals.invoke("checkout_drawio_source_asset", {
+        sourceAssetId,
+        sourceBytes: toByteArray(sourceBytes)
+      });
+    },
+    async openDrawioExternalEditor(sessionId, executablePath) {
+      return await internals.invoke("open_drawio_external_editor", {
+        sessionId,
+        executablePath: typeof executablePath === "string" && executablePath.trim().length > 0 ? executablePath.trim() : null
+      });
+    },
+    async readDrawioExternalEdit(sessionId, latestSourceBytes) {
+      const latestBytes = toByteArray(latestSourceBytes);
+      const result = await internals.invoke("read_drawio_external_edit", {
+        sessionId,
+        latestSourceHash: hashBytes(latestBytes)
+      });
+
+      return {
+        ...result,
+        sourceBytes: result.sourceBytes ? new Uint8Array(result.sourceBytes) : undefined
+      };
+    },
+    async closeDrawioExternalEdit(sessionId) {
+      return await internals.invoke("close_drawio_external_edit", {
+        sessionId
       });
     }
   };

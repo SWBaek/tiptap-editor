@@ -85,7 +85,7 @@ Acceptance evidence:
 
 ## Slice 3: Draw.io External Editor Bridge
 
-Status: initial bridge primitive implemented on 2026-07-03; browser-safe Draw.io source import UX added on 2026-07-05.
+Status: initial bridge primitive implemented on 2026-07-03; browser-safe Draw.io source import UX added on 2026-07-05; desktop bridge UI open/read-back wiring added on 2026-07-05.
 
 Implement the bridge described in `docs/drawio-external-editor-bridge.md`. The bridge checks out Draw.io source assets into temporary files, launches the configured external editor, validates save-back, and writes accepted changes through the existing asset-backed diagram source policy.
 
@@ -105,6 +105,9 @@ Acceptance evidence:
 - Unit tests cover Draw.io reference resolution, source validation, conflict classification, and runtime status event shape.
 - The browser toolbar can import `.drawio` or `.drawio.xml` source files, stores the source bytes in `.sdoc/assets/`, and inserts a `diagram` block with only `attrs.kind = "drawio"` and `attrs.sourceAssetId` in `document.json`.
 - Playwright coverage verifies Draw.io source import and `.sdoc` round trip without serializing XML source text into canonical JSON.
+- The web runtime discovers an optional native Draw.io external editor adapter through the existing desktop bridge boundary without importing Tauri APIs into the browser bundle.
+- The editor toolbar can open the selected Draw.io source through the desktop bridge, read valid saved XML back into the asset store, and keep conflicts, temp paths, and session state runtime-only.
+- Desktop bridge tests cover checkout/open/read-back/close routing through the injected Draw.io adapter.
 
 ## Slice 4: Review UX Hardening
 

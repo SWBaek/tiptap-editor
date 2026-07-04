@@ -18,6 +18,7 @@ import {
   Code2,
   Columns3,
   Download,
+  ExternalLink,
   FileJson,
   FilePlus,
   FileText,
@@ -32,6 +33,7 @@ import {
   List,
   ListOrdered,
   Quote,
+  RefreshCw,
   Rows3,
   Save,
   Search,
@@ -100,7 +102,9 @@ import { detectDocumentFileRuntime, resolveSdocSaveRoute } from "./documentFileR
 import {
   getWindowSdocNativeOpenAdapter,
   getWindowSdocNativeSaveAdapter,
+  getWindowDrawioExternalEditorAdapter,
   getWindowSdocWorkspaceAdapter,
+  type WindowDrawioBridgeSession,
   type WindowSdocWorkspaceEntry
 } from "./documentNativeBridge";
 import {
@@ -225,6 +229,7 @@ export function App() {
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
   const [lastReviewBatchSummary, setLastReviewBatchSummary] = useState<ReviewBatchConflictSummary | null>(null);
+  const [drawioBridgeSession, setDrawioBridgeSession] = useState<WindowDrawioBridgeSession | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const dataGridInputRef = useRef<HTMLInputElement>(null);
@@ -323,6 +328,7 @@ export function App() {
   const nativeSdocSaveAdapter = useMemo(() => getWindowSdocNativeSaveAdapter(), []);
   const nativeSdocOpenAdapter = useMemo(() => getWindowSdocNativeOpenAdapter(), []);
   const nativeSdocWorkspaceAdapter = useMemo(() => getWindowSdocWorkspaceAdapter(), []);
+  const nativeDrawioExternalEditorAdapter = useMemo(() => getWindowDrawioExternalEditorAdapter(), []);
   const sdocSaveRoute = useMemo(() => resolveSdocSaveRoute(documentFileRuntime, currentNativePath), [currentNativePath, documentFileRuntime]);
   const exportBaseName = safeFilename(metadata.title || "document");
   const exportFilenames = {
@@ -783,6 +789,99 @@ export function App() {
       if (drawioInputRef.current) {
         drawioInputRef.current.value = "";
       }
+    }
+  }
+
+  async function openSelectedDrawioExternalEditor() {
+    if (!nativeDrawioExternalEditorAdapter) {
+      setStatusMessage("Draw.io external editing is available in the desktop app.");
+      return;
+    }
+
+    const reference = getSelectedDrawioDiagramReference(editor);
+    if (!reference) {
+      setStatusMessage("Select a Draw.io diagram before opening an external editor.");
+      return;
+    }
+
+    const sourceBytes = assets[reference.sourceAssetId];
+    if (!sourceBytes) {
+      setStatusMessage(`Missing Draw.io source asset ${reference.sourceAssetId}.`);
+      return;
+    }
+
+    try {
+      const session = await nativeDrawioExternalEditorAdapter.checkoutSource(reference.sourceAssetId, sourceBytes);
+      const opened = await nativeDrawioExternalEditorAdapter.openExternalEditor(session.sessionId);
+      if (opened.status === "launch-failed") {
+        await nativeDrawioExternalEditorAdapter.closeSession(session.sessionId).catch(() => undefined);
+        setStatusMessage(opened.message ?? "Cannot launch Draw.io external editor.");
+        return;
+      }
+
+      setDrawioBridgeSession(session);
+      setStatusMessage(`Opened Draw.io source ${reference.sourceAssetId}. Save in the external editor, then read the edit back.`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function readDrawioExternalEdit() {
+    if (!nativeDrawioExternalEditorAdapter) {
+      setStatusMessage("Draw.io external editing is available in the desktop app.");
+      return;
+    }
+
+    if (!drawioBridgeSession) {
+      setStatusMessage("Open a Draw.io external editing session first.");
+      return;
+    }
+
+    const latestSourceBytes = assets[drawioBridgeSession.sourceAssetId];
+    if (!latestSourceBytes) {
+      setStatusMessage(`Missing Draw.io source asset ${drawioBridgeSession.sourceAssetId}.`);
+      return;
+    }
+
+    try {
+      const result = await nativeDrawioExternalEditorAdapter.readEditedSource(drawioBridgeSession, latestSourceBytes);
+      if (result.status === "saved" && result.sourceBytes) {
+        setAssets((current) => ({ ...current, [drawioBridgeSession.sourceAssetId]: result.sourceBytes as Uint8Array }));
+        await nativeDrawioExternalEditorAdapter.closeSession(drawioBridgeSession.sessionId).catch(() => undefined);
+        setDrawioBridgeSession(null);
+        setStatusMessage(`Read Draw.io edit back into asset ${drawioBridgeSession.sourceAssetId}.`);
+        return;
+      }
+
+      if (result.status === "conflict") {
+        setStatusMessage(result.message ?? `Draw.io source asset ${drawioBridgeSession.sourceAssetId} changed during external editing.`);
+        return;
+      }
+
+      if (result.status === "invalid-source") {
+        setStatusMessage(result.message ?? "External editor saved invalid Draw.io XML.");
+        return;
+      }
+
+      setStatusMessage(result.message ?? `Draw.io external edit status: ${result.status}.`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function closeDrawioExternalEdit() {
+    if (!nativeDrawioExternalEditorAdapter || !drawioBridgeSession) {
+      setDrawioBridgeSession(null);
+      setStatusMessage("No Draw.io external editing session is open.");
+      return;
+    }
+
+    try {
+      await nativeDrawioExternalEditorAdapter.closeSession(drawioBridgeSession.sessionId);
+      setDrawioBridgeSession(null);
+      setStatusMessage(`Closed Draw.io external editing session for ${drawioBridgeSession.sourceAssetId}.`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -1482,6 +1581,15 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Import Draw.io source" active={editor.isActive("diagram", { kind: "drawio" })} onClick={() => drawioInputRef.current?.click()}>
             <FileJson size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Open Draw.io external editor" active={drawioBridgeSession !== null} onClick={openSelectedDrawioExternalEditor}>
+            <ExternalLink size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Read Draw.io external edit" active={drawioBridgeSession !== null} onClick={readDrawioExternalEdit}>
+            <RefreshCw size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Close Draw.io external edit" active={drawioBridgeSession !== null} onClick={closeDrawioExternalEdit}>
+            <Trash2 size={18} />
           </ToolbarButton>
           <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
             <Info size={18} />
@@ -3209,6 +3317,47 @@ function isDrawioFile(file: File): boolean {
 function isUsableDrawioSource(bytes: Uint8Array): boolean {
   const text = new TextDecoder().decode(bytes).trimStart();
   return text.startsWith("<mxfile") || text.startsWith("<diagram") || text.includes("<mxfile ");
+}
+
+function getSelectedDrawioDiagramReference(editor: Editor | null): { blockId: string; sourceAssetId: string } | null {
+  if (!editor) {
+    return null;
+  }
+
+  const selection = editor.state.selection as typeof editor.state.selection & { node?: { type?: { name?: string }; attrs?: Record<string, unknown> } };
+  const selectedNode = selection.node;
+  const selectedReference = getDrawioDiagramReferenceFromNode(selectedNode);
+  if (selectedReference) {
+    return selectedReference;
+  }
+
+  for (let depth = selection.$from.depth; depth >= 0; depth -= 1) {
+    const reference = getDrawioDiagramReferenceFromNode(selection.$from.node(depth));
+    if (reference) {
+      return reference;
+    }
+  }
+
+  return getDrawioDiagramReferenceFromNode(selection.$from.nodeBefore) ?? getDrawioDiagramReferenceFromNode(selection.$from.nodeAfter);
+}
+
+function getDrawioDiagramReferenceFromNode(node: unknown): { blockId: string; sourceAssetId: string } | null {
+  if (!node || typeof node !== "object") {
+    return null;
+  }
+
+  const candidate = node as { type?: { name?: unknown }; attrs?: Record<string, unknown> };
+  if (candidate.type?.name !== "diagram" || candidate.attrs?.kind !== "drawio") {
+    return null;
+  }
+
+  const blockId = candidate.attrs.id;
+  const sourceAssetId = candidate.attrs.sourceAssetId;
+  if (typeof blockId !== "string" || blockId.length === 0 || typeof sourceAssetId !== "string" || sourceAssetId.length === 0) {
+    return null;
+  }
+
+  return { blockId, sourceAssetId };
 }
 
 function getDataGridExtension(filename: string, mimeType: string): ".csv" | ".json" {

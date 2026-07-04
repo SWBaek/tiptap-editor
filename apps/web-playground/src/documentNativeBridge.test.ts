@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getWindowSdocNativeOpenAdapter, getWindowSdocNativeSaveAdapter, getWindowSdocWorkspaceAdapter, SDOC_NATIVE_SAVE_BRIDGE_KEY } from "./documentNativeBridge";
+import {
+  getWindowDrawioExternalEditorAdapter,
+  getWindowSdocNativeOpenAdapter,
+  getWindowSdocNativeSaveAdapter,
+  getWindowSdocWorkspaceAdapter,
+  SDOC_NATIVE_SAVE_BRIDGE_KEY
+} from "./documentNativeBridge";
 
 const payload = {
   filename: "Spec.sdoc",
@@ -94,5 +100,53 @@ describe("document native bridge", () => {
       path: "C:/docs/Spec.sdoc",
       bytes: new Uint8Array([80, 75, 3, 4])
     });
+  });
+
+  it("adapts an optional native Draw.io external editor bridge", async () => {
+    const calls: string[] = [];
+    const adapter = getWindowDrawioExternalEditorAdapter({
+      [SDOC_NATIVE_SAVE_BRIDGE_KEY]: {
+        async saveSdoc() {
+          return undefined;
+        },
+        async checkoutDrawioSource(sourceAssetId: string, sourceBytes: Uint8Array) {
+          calls.push(`checkout:${sourceAssetId}:${sourceBytes.byteLength}`);
+          return {
+            sessionId: "drawio-1",
+            sourceAssetId,
+            tempPath: "C:/Temp/asset.drawio",
+            originalSourceHash: "hash-a"
+          };
+        },
+        async openDrawioExternalEditor(sessionId: string) {
+          calls.push(`open:${sessionId}`);
+          return { status: "opened" as const, sessionId };
+        },
+        async readDrawioExternalEdit(sessionId: string, latestSourceBytes: Uint8Array) {
+          calls.push(`read:${sessionId}:${latestSourceBytes.byteLength}`);
+          return {
+            status: "saved" as const,
+            sessionId,
+            sourceAssetId: "asset.drawio",
+            sourceBytes: new Uint8Array([60, 109, 120])
+          };
+        },
+        async closeDrawioExternalEdit(sessionId: string) {
+          calls.push(`close:${sessionId}`);
+          return { status: "closed" as const, sessionId };
+        }
+      }
+    });
+
+    const session = await adapter?.checkoutSource("asset.drawio", new Uint8Array([1, 2]));
+    await expect(adapter?.openExternalEditor("drawio-1")).resolves.toEqual({ status: "opened", sessionId: "drawio-1" });
+    await expect(adapter?.readEditedSource(session!, new Uint8Array([3]))).resolves.toEqual({
+      status: "saved",
+      sessionId: "drawio-1",
+      sourceAssetId: "asset.drawio",
+      sourceBytes: new Uint8Array([60, 109, 120])
+    });
+    await expect(adapter?.closeSession("drawio-1")).resolves.toEqual({ status: "closed", sessionId: "drawio-1" });
+    expect(calls).toEqual(["checkout:asset.drawio:2", "open:drawio-1", "read:drawio-1:1", "close:drawio-1"]);
   });
 });

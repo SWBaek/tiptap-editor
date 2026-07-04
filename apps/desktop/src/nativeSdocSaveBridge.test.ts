@@ -148,6 +148,56 @@ describe("native sdoc save bridge", () => {
     ]);
   });
 
+  it("routes Draw.io external editor calls through the injected bridge", async () => {
+    const calls: string[] = [];
+    const bridge = createNativeSdocSaveBridge({
+      drawioBridge: {
+        async checkoutSource(sourceAssetId, sourceBytes) {
+          calls.push(`checkout:${sourceAssetId}:${sourceBytes.byteLength}`);
+          return {
+            sessionId: "drawio-1",
+            sourceAssetId,
+            tempPath: "C:/Temp/asset.drawio",
+            originalSourceHash: "hash-a"
+          };
+        },
+        async openExternalEditor(sessionId) {
+          calls.push(`open:${sessionId}`);
+          return { status: "opened", sessionId };
+        },
+        async readEditedSource(session, latestSourceBytes) {
+          calls.push(`read:${session.sessionId}:${latestSourceBytes.byteLength}`);
+          return {
+            status: "saved",
+            sessionId: session.sessionId,
+            sourceAssetId: "asset.drawio",
+            sourceBytes: new Uint8Array([60, 109, 120])
+          };
+        },
+        async closeSession(sessionId) {
+          calls.push(`close:${sessionId}`);
+          return { status: "closed", sessionId };
+        }
+      }
+    });
+
+    await expect(bridge.checkoutDrawioSource("asset.drawio", new Uint8Array([1, 2]))).resolves.toEqual({
+      sessionId: "drawio-1",
+      sourceAssetId: "asset.drawio",
+      tempPath: "C:/Temp/asset.drawio",
+      originalSourceHash: "hash-a"
+    });
+    await expect(bridge.openDrawioExternalEditor("drawio-1")).resolves.toEqual({ status: "opened", sessionId: "drawio-1" });
+    await expect(bridge.readDrawioExternalEdit("drawio-1", new Uint8Array([3]))).resolves.toEqual({
+      status: "saved",
+      sessionId: "drawio-1",
+      sourceAssetId: "asset.drawio",
+      sourceBytes: new Uint8Array([60, 109, 120])
+    });
+    await expect(bridge.closeDrawioExternalEdit("drawio-1")).resolves.toEqual({ status: "closed", sessionId: "drawio-1" });
+    expect(calls).toEqual(["checkout:asset.drawio:2", "open:drawio-1", "read:drawio-1:1", "close:drawio-1"]);
+  });
+
   it("installs the bridge on an explicit global scope", () => {
     const globalScope: WindowWithSdocNativeSaveBridge = {};
     const bridge = installNativeSdocSaveBridge({

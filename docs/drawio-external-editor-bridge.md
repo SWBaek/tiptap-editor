@@ -60,4 +60,6 @@ The Phase 5 initial bridge adds runtime-only Tauri sessions:
 
 The companion TypeScript adapter lives in `apps/desktop/src/nativeDrawioExternalEditorBridge.ts`. `apps/desktop/src/drawioBridgeModel.ts` keeps bridge status events, Draw.io source validation, and conflict classification testable without a native runtime.
 
-This slice does not implement file watching, preview regeneration, executable discovery UI, or save-back UI. It provides the native bridge primitive for those product workflows.
+The web runtime discovers this adapter through the same desktop-injected bridge used for native `.sdoc` file handling. The toolbar can open the selected Draw.io source in the desktop app, read valid saved XML back into the asset store, and close the runtime session. Conflicts, temp paths, and session state remain runtime-only and are not written to `document.json`.
+
+This slice does not implement file watching, preview regeneration, executable discovery UI, or conflict-resolution UI. It provides the native bridge primitive and a minimal explicit read-back workflow for those later product flows.

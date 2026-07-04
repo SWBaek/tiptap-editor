@@ -13,6 +13,7 @@ This repository is an early-stage AI/Diff-friendly technical document editor. Th
 Before implementation, read `docs/development-plan.md`. Current implementation layout:
 
 - `apps/web-playground/`: browser-first prototype for schema, serialization, diff, and editor shell.
+- `apps/desktop/`: Tauri desktop shell that reuses the web playground frontend and owns native `.sdoc` file dialogs, save-back, and workspace adapters.
 - `packages/sdoc-schema/`: canonical document types and validation.
 - `packages/sdoc-format/`: `.sdoc` pack/unpack, deterministic serialization.
 - `packages/sdoc-diff/`: semantic diff engine.
@@ -30,10 +31,6 @@ Key design documents:
 - `docs/word-template-injection-boundary.md`: external `.dotx/.docx` template injection policy.
 - `docs/ui-shell-plan.md`: VS Code-like Activity Bar and toggle sidebar direction.
 - `docs/mvp-roadmap.md`: phased scope and exclusions.
-
-Planned later layout:
-
-- `apps/desktop/`: later Tauri wrapper.
 
 ## Mandatory Architecture Rules
 

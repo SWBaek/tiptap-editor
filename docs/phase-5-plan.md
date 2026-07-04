@@ -54,7 +54,8 @@ Acceptance evidence:
 - `apps/desktop/src-tauri/Cargo.lock` locks the desktop Rust dependency graph for reproducible Tauri builds.
 - `apps/desktop/src-tauri/icons/icon.ico` provides the required Windows resource icon for Tauri packaging.
 - Native Tauri build passes locally with Rust/Cargo installed; `npm run build:desktop` emits `apps/desktop/src-tauri/target/release/sdoc-desktop.exe`.
-- End-to-end Tauri save/open smoke testing now requires launching `npm run dev:desktop` and exercising the native dialogs.
+- `npm run dev:desktop` launches the Vite dev server on `127.0.0.1:6280` and starts `target/debug/sdoc-desktop.exe` with WebView2.
+- Manual native dialog UX smoke is still required for `.sdoc` open, save, save-as, and workspace folder selection.
 
 ## Slice 2: Native File Explorer And Workspace Adapter
 

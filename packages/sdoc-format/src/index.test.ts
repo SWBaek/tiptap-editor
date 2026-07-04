@@ -319,8 +319,8 @@ describe("createDataGridRowDiff", () => {
     });
     expect(diff.events).toEqual([
       expect.objectContaining({ kind: "cell-modified", rowKey: "2", column: "signal", oldValue: "GND", newValue: "GROUND" }),
-      expect.objectContaining({ kind: "row-deleted", rowKey: "3" }),
-      expect.objectContaining({ kind: "row-added", rowKey: "4" })
+      expect.objectContaining({ kind: "row-deleted", rowKey: "3", oldRow: { bank: "B", pin: "3", signal: "GPIO" } }),
+      expect.objectContaining({ kind: "row-added", rowKey: "4", newRow: { bank: "C", pin: "4", signal: "UART" } })
     ]);
   });
 
@@ -342,8 +342,8 @@ describe("createDataGridRowDiff", () => {
     expect(diff.keyColumns).toEqual(["id"]);
     expect(diff.events).toEqual([
       expect.objectContaining({ kind: "cell-modified", rowKey: "REQ-1", column: "status" }),
-      expect.objectContaining({ kind: "row-deleted", rowKey: "REQ-2" }),
-      expect.objectContaining({ kind: "row-added", rowKey: "REQ-3" })
+      expect.objectContaining({ kind: "row-deleted", rowKey: "REQ-2", oldRow: { id: "REQ-2", status: "approved" } }),
+      expect.objectContaining({ kind: "row-added", rowKey: "REQ-3", newRow: { id: "REQ-3", status: "draft" } })
     ]);
   });
 

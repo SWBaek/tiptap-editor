@@ -1020,6 +1020,36 @@ button {
   font-size: 0.72rem;
 }
 
+.data-grid-row-payload-preview {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.data-grid-row-payload-preview div {
+  display: grid;
+  grid-template-columns: minmax(58px, 0.42fr) minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+
+.data-grid-row-payload-preview dt,
+.data-grid-row-payload-preview dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.68rem;
+}
+
+.data-grid-row-payload-preview dt {
+  color: #aebdca;
+  font-weight: 700;
+}
+
+.data-grid-row-payload-preview dd {
+  color: #eef5fa;
+}
+
 .data-grid-row-event-toggle button {
   min-height: 26px;
   padding: 0 8px;

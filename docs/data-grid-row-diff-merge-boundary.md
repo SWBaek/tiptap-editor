@@ -25,7 +25,7 @@ Reliable row identity is required for semantic row diff and merge.
 
 Row-level events should be a separate `DataGridDiffEvent` view-model linked to the parent `dataGrid.attrs.id` and `sourceAssetId`. They are not normal `SDocDiffEvent` block events until a stable public event contract is documented.
 
-Each event should include the grid block ID, source asset ID, row key, column name when applicable, old/new values or summaries, and severity. Raw CSV/JSON text should be available only as debug/export detail, not as canonical diff data.
+Each event should include the grid block ID, source asset ID, row key, column name when applicable, old/new values or summaries, row payload snapshots for added/deleted rows, and severity. Raw CSV/JSON text should be available only as debug/export detail, not as canonical diff data.
 
 ## Merge Semantics
 
@@ -82,12 +82,13 @@ The first browser slices project saved-baseline/current assets into row review r
 - Browser row review can expand each ready grid from the first three row events to the full event list as runtime-only UI state.
 - Browser row review can filter row events by title, source asset, event kind, row key, column, message, and old/new values without serializing filter state.
 - Browser row review renders compact side-by-side before/after cell values for row events from the runtime diff event data.
+- Browser row review renders added/deleted row payload previews from runtime `oldRow`/`newRow` diff event fields without storing row data in `document.json`.
 
 ## Deferred Work
 
 - authored `keyColumns` schema extension;
 - Tauri-native revision save-back workflow;
-- richer row payload preview for added/deleted rows;
+- richer multi-column cell diff layout for very wide rows;
 - multi-user conflict resolution;
 - formula-aware spreadsheet merge;
 - PLM, requirements database, or external spreadsheet connectors.

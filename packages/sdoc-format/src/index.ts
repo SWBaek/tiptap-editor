@@ -103,6 +103,8 @@ export interface DataGridRowDiffEvent {
   column?: string;
   oldValue?: string;
   newValue?: string;
+  oldRow?: Record<string, string>;
+  newRow?: Record<string, string>;
   message: string;
 }
 
@@ -463,6 +465,7 @@ export function createDataGridRowDiff(options: CreateDataGridRowDiffOptions): Da
         gridId: options.gridId,
         sourceAssetId: options.sourceAssetId,
         rowKey,
+        newRow: copyDataGridRowForEvent(newRow),
         message: `Row ${rowKey} was added`
       });
       continue;
@@ -475,6 +478,7 @@ export function createDataGridRowDiff(options: CreateDataGridRowDiffOptions): Da
         gridId: options.gridId,
         sourceAssetId: options.sourceAssetId,
         rowKey,
+        oldRow: copyDataGridRowForEvent(oldRow),
         message: `Row ${rowKey} was deleted`
       });
       continue;
@@ -1141,6 +1145,16 @@ function copyDataGridRow(row: Record<string, string>, columns: string[]): Record
   columns.forEach((column) => {
     copied[column] = row[column] ?? "";
   });
+  return copied;
+}
+
+function copyDataGridRowForEvent(row: Record<string, string>): Record<string, string> {
+  const copied: Record<string, string> = {};
+  Object.keys(row)
+    .sort((a, b) => a.localeCompare(b))
+    .forEach((column) => {
+      copied[column] = row[column] ?? "";
+    });
   return copied;
 }
 

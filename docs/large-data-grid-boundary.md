@@ -77,11 +77,12 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - The browser Export panel can expand ready grids from the first three row events to the full runtime event list without serializing selection or panel state.
 - The browser Export panel can filter ready row events by row key, column, kind, source asset, message, and changed values without storing filter state in `document.json`.
 - The browser Export panel shows compact side-by-side before/after cell values for row events using runtime diff event data.
+- The browser Export panel shows added/deleted row payload previews from runtime `oldRow`/`newRow` diff event fields without embedding rows in canonical JSON.
 
 ## Deferred Work
 
 - Tauri-native revision save-back following `docs/data-grid-row-diff-merge-boundary.md`;
-- richer added/deleted row payload preview;
+- richer multi-column cell review for very wide data grids;
 - richer CSV/JSON validation rule configuration and authored column typing;
 - full spreadsheet editing;
 - formulas and computed columns;

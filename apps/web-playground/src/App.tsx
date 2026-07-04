@@ -1826,6 +1826,16 @@ function ExportPanel({
                                       <code>{formatDataGridRowEventValue(event.newValue, event.kind === "row-deleted" ? "(deleted row)" : "(empty)")}</code>
                                     </div>
                                   </div>
+                                  {getDataGridRowEventPayloadEntries(event).length > 0 && (
+                                    <dl className="data-grid-row-payload-preview" aria-label="Row payload preview">
+                                      {getDataGridRowEventPayloadEntries(event).map(([column, value]) => (
+                                        <div key={column}>
+                                          <dt>{column}</dt>
+                                          <dd>{formatDataGridRowEventValue(value, "(empty)")}</dd>
+                                        </div>
+                                      ))}
+                                    </dl>
+                                  )}
                                 </div>
                                 <div className="data-grid-row-event-actions">
                                   <button className="accept" type="button" onClick={() => onAcceptDataGridRowEvent(item, event)}>
@@ -2946,7 +2956,8 @@ function dataGridRowEventMatchesQuery(event: DataGridRowDiffEvent, item: DataGri
     event.rowKey ?? "",
     event.column ?? "",
     event.oldValue ?? "",
-    event.newValue ?? ""
+    event.newValue ?? "",
+    ...getDataGridRowEventPayloadEntries(event).flat()
   ]
     .join(" ")
     .toLowerCase()
@@ -2955,6 +2966,11 @@ function dataGridRowEventMatchesQuery(event: DataGridRowDiffEvent, item: DataGri
 
 function formatDataGridRowEventValue(value: string | undefined, fallback: string): string {
   return value === undefined || value.length === 0 ? fallback : value;
+}
+
+function getDataGridRowEventPayloadEntries(event: DataGridRowDiffEvent): Array<[string, string]> {
+  const row = event.kind === "row-added" ? event.newRow : event.kind === "row-deleted" ? event.oldRow : undefined;
+  return row ? Object.entries(row) : [];
 }
 
 function getImageExtension(filename: string, mimeType: string): string {

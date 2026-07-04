@@ -11,6 +11,8 @@ interface JsonNode {
     latex?: unknown;
     level?: unknown;
     source?: unknown;
+    sourceAssetId?: unknown;
+    previewAssetId?: unknown;
     targetId?: unknown;
   };
   content?: JsonNode[];
@@ -810,6 +812,52 @@ test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page },
   const reopenedDiagram = findFirstNodeByType(reopenedDocument, "diagram");
   expect(reopenedDiagram.attrs?.source).toBe("flowchart TD\nA[Start] --> B[Done]");
   expect(JSON.stringify(reopenedDocument)).not.toContain("<svg");
+  expectUniqueIds(collectBlockIds(reopenedDocument));
+});
+
+test("imports a Draw.io source asset and round-trips through .sdoc", async ({ page }, testInfo) => {
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+
+  const sourcePath = testInfo.outputPath("architecture.drawio");
+  await writeFile(sourcePath, '<mxfile><diagram id="d1" name="Page-1">diagram-source</diagram></mxfile>', "utf8");
+
+  await page.getByLabel("Import Draw.io source file").setInputFiles(sourcePath);
+  await expect(page.locator(".status-note")).toContainText("Inserted Draw.io diagram architecture.drawio");
+  await expect(page.locator(".editor-surface .sdoc-diagram pre")).toContainText("Draw.io diagram source:");
+
+  const insertedDocument = await readPreviewDocument(page);
+  const insertedDiagram = findFirstNodeByType(insertedDocument, "diagram");
+  expect(insertedDiagram.attrs?.kind).toBe("drawio");
+  expect(String(insertedDiagram.attrs?.sourceAssetId)).toMatch(/^asset_[a-z0-9_]+\.drawio$/);
+  expect(insertedDiagram.attrs?.previewAssetId).toBeUndefined();
+  expect(JSON.stringify(insertedDocument)).not.toContain("diagram-source");
+  expectUniqueIds(collectBlockIds(insertedDocument));
+  await expect(page.getByText("Valid")).toBeVisible();
+
+  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await expect(page.locator(".preview-output")).toContainText("Draw.io diagram: source asset");
+
+  const sdocDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  const sdocDownload = await sdocDownloadPromise;
+  const sdocPath = testInfo.outputPath("Drawio Round Trip.sdoc");
+  await sdocDownload.saveAs(sdocPath);
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.getByLabel("Open document file").setInputFiles(sdocPath);
+  await expect(page.locator(".status-note")).toContainText("Opened Drawio Round Trip.sdoc");
+  await expect(page.locator(".editor-surface .sdoc-diagram pre")).toContainText("Draw.io diagram source:");
+
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const reopenedDocument = await readPreviewDocument(page);
+  const reopenedDiagram = findFirstNodeByType(reopenedDocument, "diagram");
+  expect(reopenedDiagram.attrs?.kind).toBe("drawio");
+  expect(reopenedDiagram.attrs?.sourceAssetId).toBe(insertedDiagram.attrs?.sourceAssetId);
+  expect(JSON.stringify(reopenedDocument)).not.toContain("diagram-source");
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 

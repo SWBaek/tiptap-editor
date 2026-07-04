@@ -78,6 +78,7 @@ import {
   initialContent,
   insertEquationBlock,
   insertDataGrid,
+  insertDrawioDiagram,
   getSelectedBlockHumanIdTarget,
   insertInlineEquation,
   insertMermaidDiagram,
@@ -227,6 +228,7 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const dataGridInputRef = useRef<HTMLInputElement>(null);
+  const drawioInputRef = useRef<HTMLInputElement>(null);
   const editorPaneRef = useRef<HTMLElement>(null);
   const highlightTimeoutRef = useRef<number | null>(null);
 
@@ -748,6 +750,38 @@ export function App() {
     } finally {
       if (dataGridInputRef.current) {
         dataGridInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function insertDrawioFile(file: File) {
+    try {
+      if (!isDrawioFile(file)) {
+        setStatusMessage(`Unsupported Draw.io source type: ${file.type || file.name}`);
+        return;
+      }
+
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (!isUsableDrawioSource(bytes)) {
+        setStatusMessage(`Invalid Draw.io source: ${file.name}`);
+        return;
+      }
+
+      const assetId = createDrawioAssetId(file.name);
+      const inserted = insertDrawioDiagram(editor, assetId);
+      if (!inserted) {
+        setStatusMessage(`Cannot insert Draw.io diagram: ${file.name}`);
+        return;
+      }
+
+      setAssets((current) => ({ ...current, [assetId]: bytes }));
+      setActiveTab("json");
+      setStatusMessage(`Inserted Draw.io diagram ${file.name}`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (drawioInputRef.current) {
+        drawioInputRef.current.value = "";
       }
     }
   }
@@ -1446,6 +1480,9 @@ export function App() {
           <ToolbarButton title="Insert Mermaid diagram" active={editor.isActive("diagram")} onClick={insertMermaidDiagramFromPrompt}>
             <Workflow size={18} />
           </ToolbarButton>
+          <ToolbarButton title="Import Draw.io source" active={editor.isActive("diagram", { kind: "drawio" })} onClick={() => drawioInputRef.current?.click()}>
+            <FileJson size={18} />
+          </ToolbarButton>
           <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
             <Info size={18} />
           </ToolbarButton>
@@ -1495,6 +1532,19 @@ export function App() {
               const file = event.target.files?.[0];
               if (file) {
                 void insertDataGridFile(file);
+              }
+            }}
+          />
+          <input
+            ref={drawioInputRef}
+            className="file-input"
+            type="file"
+            aria-label="Import Draw.io source file"
+            accept=".drawio,.drawio.xml,application/xml,text/xml"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                void insertDrawioFile(file);
               }
             }}
           />
@@ -3142,6 +3192,23 @@ function createImageAssetId(filename: string, mimeType: string): string {
 
 function createDataGridAssetId(filename: string, mimeType: string): string {
   return `${createAssetId()}${getDataGridExtension(filename, mimeType)}`;
+}
+
+function createDrawioAssetId(filename: string): string {
+  return `${createAssetId()}${getDrawioExtension(filename)}`;
+}
+
+function getDrawioExtension(filename: string): ".drawio" | ".drawio.xml" {
+  return /\.drawio\.xml$/i.test(filename) ? ".drawio.xml" : ".drawio";
+}
+
+function isDrawioFile(file: File): boolean {
+  return /\.(drawio|drawio\.xml)$/i.test(file.name) || file.type === "application/xml" || file.type === "text/xml";
+}
+
+function isUsableDrawioSource(bytes: Uint8Array): boolean {
+  const text = new TextDecoder().decode(bytes).trimStart();
+  return text.startsWith("<mxfile") || text.startsWith("<diagram") || text.includes("<mxfile ");
 }
 
 function getDataGridExtension(filename: string, mimeType: string): ".csv" | ".json" {

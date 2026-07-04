@@ -20,6 +20,8 @@ The desktop layer should expose a narrow workspace adapter with these responsibi
 
 The adapter must not write paths, folder expansion state, recent-file lists, Git status, or explorer selection into `document.json`.
 
+Native save-back is limited to concrete user-facing `.sdoc` files. The desktop policy layer must reject missing paths, non-`.sdoc` paths, unpacked folders, and empty package bytes before calling the Tauri write command. Save-as may choose a new `.sdoc` path, but once selected it follows the same validation and writes a complete single-container package, not partial asset files.
+
 ## User Workflow
 
 Normal authors should see:

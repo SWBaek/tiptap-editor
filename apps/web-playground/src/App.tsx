@@ -952,6 +952,57 @@ export function App() {
     setStatusMessage(`Rejected row change in ${item.title}`);
   }
 
+  function acceptDataGridRowEvent(item: DataGridRowReviewItem, event: DataGridRowDiffEvent) {
+    if (selectedHistoryEntry) {
+      setStatusMessage("Use saved baseline before applying data grid row review actions");
+      return;
+    }
+
+    if (!window.confirm(`Accept row change in ${item.title}: ${event.message}?`)) {
+      setStatusMessage(`Canceled row accept: ${item.title}`);
+      return;
+    }
+
+    const baselineAsset = baselineAssets[item.sourceAssetId];
+    const currentAsset = assets[item.sourceAssetId];
+    if (!baselineAsset || !currentAsset) {
+      setStatusMessage(`Cannot accept row change: missing asset ${item.sourceAssetId}`);
+      return;
+    }
+
+    const baselineSource = decodeTextAsset(baselineAsset);
+    const currentSource = decodeTextAsset(currentAsset);
+    const mergeResult = applyDataGridRowMerge({
+      gridId: item.gridId,
+      sourceAssetId: item.sourceAssetId,
+      format: item.format,
+      baselineSource,
+      proposedSource: currentSource,
+      currentSource: baselineSource,
+      event,
+      keyColumns: item.keyColumns
+    });
+    if (!mergeResult.ok) {
+      setStatusMessage(mergeResult.message);
+      return;
+    }
+
+    const assetResult = applyDataGridAssetRevision({
+      sourceAssetId: item.sourceAssetId,
+      source: mergeResult.source,
+      format: item.format,
+      policy: "update",
+      assets: baselineAssets
+    });
+    if (!assetResult.ok) {
+      setStatusMessage(assetResult.message);
+      return;
+    }
+
+    setBaselineAssets(assetResult.assets);
+    setStatusMessage(`Accepted row change in ${item.title}`);
+  }
+
   function insertInlineEquationFromPrompt() {
     const latex = window.prompt("Inline equation", "E=mc^2")?.trim();
     if (!latex) {
@@ -1146,6 +1197,7 @@ export function App() {
               derivedOutputs={derivedOutputs}
               dataGridDiagnostics={dataGridDiagnostics}
               dataGridRowReview={dataGridRowReview}
+              onAcceptDataGridRowEvent={acceptDataGridRowEvent}
               onRejectDataGridRowEvent={rejectDataGridRowEvent}
               onExportSdoc={downloadSdoc}
               onExportJson={downloadJson}
@@ -1579,6 +1631,7 @@ function ExportPanel({
   derivedOutputs,
   dataGridDiagnostics,
   dataGridRowReview,
+  onAcceptDataGridRowEvent,
   onRejectDataGridRowEvent,
   onExportSdoc,
   onExportJson,
@@ -1598,6 +1651,7 @@ function ExportPanel({
   derivedOutputs: Record<DerivedOutputName, string>;
   dataGridDiagnostics: DataGridDiagnostics;
   dataGridRowReview: DataGridRowReviewModel;
+  onAcceptDataGridRowEvent: (item: DataGridRowReviewItem, event: DataGridRowDiffEvent) => void;
   onRejectDataGridRowEvent: (item: DataGridRowReviewItem, event: DataGridRowDiffEvent) => void;
   onExportSdoc: () => void;
   onExportJson: () => void;
@@ -1698,9 +1752,14 @@ function ExportPanel({
                       {item.events.slice(0, 3).map((event, index) => (
                         <li key={`${item.gridId}-${index}-${event.kind}-${event.rowKey ?? "row"}`}>
                           <span>{event.message}</span>
-                          <button type="button" onClick={() => onRejectDataGridRowEvent(item, event)}>
-                            Reject
-                          </button>
+                          <div className="data-grid-row-event-actions">
+                            <button className="accept" type="button" onClick={() => onAcceptDataGridRowEvent(item, event)}>
+                              Accept
+                            </button>
+                            <button className="reject" type="button" onClick={() => onRejectDataGridRowEvent(item, event)}>
+                              Reject
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>

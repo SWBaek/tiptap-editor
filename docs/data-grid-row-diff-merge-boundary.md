@@ -29,7 +29,7 @@ Each event should include the grid block ID, source asset ID, row key, column na
 
 ## Merge Semantics
 
-Accepting row changes writes updated CSV/JSON bytes through the asset layer. It does not store row patches, conflict state, selected rows, or merge decisions in `document.json`.
+Headless row merge writes updated CSV/JSON bytes through the asset layer. It does not store row patches, conflict state, selected rows, or merge decisions in `document.json`.
 
 The guarded merge path must:
 
@@ -53,7 +53,7 @@ The merge helper never stores selected rows, pending decisions, stale state, or 
 
 The editor should present row diff as a review tool attached to the `dataGrid` block. Selected row, expanded conflict, preview mode, and pending accept/reject choices are runtime state and must stay outside `document.json`.
 
-The first browser slices project saved-baseline/current assets into row review readiness in the Export panel and allow rejecting individual mergeable row changes back to the saved-baseline value. This writes only asset bytes through the `update` policy. Because history snapshots do not yet carry asset snapshots, row review readiness and row reject actions are limited to the saved baseline.
+The first browser slices project saved-baseline/current assets into row review readiness in the Export panel and allow accepting or rejecting individual mergeable row changes. Accept updates the saved-baseline asset snapshot so the current asset remains unchanged and the accepted event disappears from review. Reject writes the current asset back toward the saved-baseline row value through the `update` policy. Both actions leave `document.json` unchanged. Because history snapshots do not yet carry asset snapshots, row review readiness and row actions are limited to the saved baseline.
 
 ## Acceptance Criteria
 
@@ -76,12 +76,13 @@ The first browser slices project saved-baseline/current assets into row review r
 - `applyDataGridAssetRevision` applies the merged source through explicit `update` or `revision` asset policies; revision mode creates the next available `.revN` asset ID and leaves canonical `sourceAssetId` updates to the caller.
 - CLI `sdoc data-grid apply --asset-policy update|revision --asset-output file` exposes the policy result for developer/reviewer workflows.
 - Browser row review readiness classifies saved-baseline/current assets as ready, no changes, conflict, missing asset, source changed, or format changed without storing review state in `document.json`.
+- Browser row review accept actions apply one selected row event to the saved-baseline asset snapshot, preserving the current asset and leaving `document.json` unchanged.
 - Browser row review reject actions reverse one selected row event through `applyDataGridRowMerge` and `applyDataGridAssetRevision({ policy: "update" })`, preserving unrelated row changes and leaving `document.json` unchanged.
 
 ## Deferred Work
 
 - authored `keyColumns` schema extension;
-- UI row accept actions and revision-policy save-back for browser/Tauri workflows;
+- revision-policy save-back for browser/Tauri workflows;
 - visual side-by-side cell diff UI;
 - multi-user conflict resolution;
 - formula-aware spreadsheet merge;

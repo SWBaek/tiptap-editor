@@ -70,12 +70,13 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - Headless `applyDataGridRowMerge` applies selected row diff events to CSV/JSON source text with stale-source protection and without mutating `document.json`.
 - Headless `applyDataGridAssetRevision` writes merged source through explicit `update` or `revision` asset policies; revision mode creates a new `.revN` asset and requires a separate canonical `sourceAssetId` update by the caller.
 - CLI `sdoc data-grid diff|apply` lets developer/reviewer workflows inspect and apply row-level asset-source changes outside normal authoring UX, including optional `--asset-policy update|revision` diagnostics.
-- The browser Export panel shows runtime-only row review readiness against the saved baseline asset snapshot before any future UI apply action writes assets.
-- The browser Export panel can reject one mergeable row change at a time by writing updated asset bytes while leaving `document.json` unchanged.
+- The browser Export panel shows runtime-only row review readiness against the saved baseline asset snapshot.
+- The browser Export panel can accept one mergeable row change at a time by updating the saved-baseline asset snapshot while leaving the current asset and `document.json` unchanged.
+- The browser Export panel can reject one mergeable row change at a time by writing updated current asset bytes while leaving `document.json` unchanged.
 
 ## Deferred Work
 
-- UI row-level accept actions and revision-policy save-back following `docs/data-grid-row-diff-merge-boundary.md`;
+- revision-policy save-back following `docs/data-grid-row-diff-merge-boundary.md`;
 - richer CSV/JSON validation rule configuration and authored column typing;
 - full spreadsheet editing;
 - formulas and computed columns;

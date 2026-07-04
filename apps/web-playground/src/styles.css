@@ -931,19 +931,37 @@ button {
   font-size: 0.72rem;
 }
 
-.data-grid-row-event-list button {
+.data-grid-row-event-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.data-grid-row-event-actions button {
   min-height: 26px;
   padding: 0 8px;
-  color: #ffe2dc;
-  background: rgba(196, 73, 61, 0.18);
-  border: 1px solid rgba(196, 73, 61, 0.45);
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.72rem;
   font-weight: 700;
 }
 
-.data-grid-row-event-list button:hover {
+.data-grid-row-event-actions .accept {
+  color: #d9f4e6;
+  background: rgba(64, 145, 108, 0.2);
+  border: 1px solid rgba(64, 145, 108, 0.5);
+}
+
+.data-grid-row-event-actions .accept:hover {
+  background: rgba(64, 145, 108, 0.3);
+}
+
+.data-grid-row-event-actions .reject {
+  color: #ffe2dc;
+  background: rgba(196, 73, 61, 0.18);
+  border: 1px solid rgba(196, 73, 61, 0.45);
+}
+
+.data-grid-row-event-actions .reject:hover {
   background: rgba(196, 73, 61, 0.28);
 }
 

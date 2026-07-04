@@ -68,14 +68,15 @@ npm run sdoc -- export document.sdoc --format pdf --template controlled -o docum
 - `validateWordTemplateMapping` and CLI `sdoc template validate-mapping` verify required Word style IDs and content-control placeholders before future template rendering work.
 - CLI `sdoc export --format docx --template-file company.dotx -o output.docx` validates an external template and injects SDoc body content into the `sdoc-body` content control.
 - CLI `--template-style nodeType=StyleId` applies validated company Word styles to matching rendered SDoc blocks.
+- External Word templates may include optional `sdoc-approval-table` and `sdoc-revision-history` content controls, which are filled from export metadata as derived Word output.
 - Template selection is an explicit export option and is not stored in `document.json`.
 - Strict enterprise pagination remains deferred.
 
 ## Deferred Work
 
-- external `.dotx`/`.docx` template injection and company-specific style/content-control rendering following `docs/word-template-injection-boundary.md`;
+- richer company-specific `.dotx`/`.docx` content-control rendering following `docs/word-template-injection-boundary.md`;
 - strict page header/footer support;
-- approval table and revision history rendering;
+- approval workflow modeling and multi-row revision history management;
 - watermark and classification markings;
 - corporate theme management UI;
 - PDF visual regression tests.

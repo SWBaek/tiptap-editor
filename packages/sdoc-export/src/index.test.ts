@@ -548,6 +548,44 @@ describe("exportDocx", () => {
     expect(documentXml).toContain("Read the overview.");
   });
 
+  it("injects optional approval and revision metadata placeholders in external Word templates", async () => {
+    const before = JSON.stringify(document);
+    const templateBytes = await createTemplatePackage({
+      stylesXml: createStylesXml(["Normal"]),
+      documentXml: createDocumentXml(["sdoc-body", "sdoc-approval-table", "sdoc-revision-history"], {
+        placeholderText: "Template placeholder"
+      })
+    });
+
+    const bytes = await exportDocx(document, {
+      externalTemplate: {
+        bytes: templateBytes,
+        fileName: "company.dotx",
+        requiredPlaceholders: ["sdoc-body", "sdoc-approval-table", "sdoc-revision-history"]
+      },
+      metadata: {
+        documentNumber: "DOC-OBC-001",
+        version: "B",
+        author: "Power Electronics",
+        classification: "Internal",
+        approvalStatus: "Approved",
+        effectiveDate: "2026-07-04"
+      }
+    });
+    const zip = await JSZip.loadAsync(bytes);
+    const documentXml = await zip.file("word/document.xml")?.async("string");
+
+    expect(documentXml).toContain("Overview");
+    expect(documentXml).toContain("DOC-OBC-001");
+    expect(documentXml).toContain("Power Electronics");
+    expect(documentXml).toContain("Approved");
+    expect(documentXml).toContain("2026-07-04");
+    expect(documentXml).toContain("Version");
+    expect(documentXml).not.toContain("Template placeholder");
+    expect(JSON.stringify(document)).toBe(before);
+    expect(JSON.stringify(document)).not.toContain("DOC-OBC-001");
+  });
+
   it("rejects external Word templates with missing mapping requirements", async () => {
     const templateBytes = await createTemplatePackage({
       stylesXml: createStylesXml(["Normal"]),

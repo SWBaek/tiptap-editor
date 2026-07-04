@@ -321,6 +321,62 @@ describe("sdoc CLI", () => {
     }
   });
 
+  it("exports external DOCX templates with approval and revision metadata placeholders", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
+    const unpackedPath = path.join(tempDir, "controlled.sdoc.d");
+    const templatePath = path.join(tempDir, "company.dotx");
+    const docxPath = path.join(tempDir, "external-template-metadata.docx");
+
+    try {
+      await createUnpackedFixture(unpackedPath, validDocumentPath, "Controlled Spec", {
+        documentNumber: "DOC-OBC-001",
+        version: "C",
+        author: "Power Electronics",
+        classification: "Internal",
+        approvalStatus: "Approved",
+        effectiveDate: "2026-07-04"
+      });
+      await writeFile(
+        templatePath,
+        await createWordTemplateBuffer({
+          styles: ["Normal"],
+          placeholders: ["sdoc-body", "sdoc-approval-table", "sdoc-revision-history"],
+          placeholderText: "Template placeholder"
+        })
+      );
+
+      const result = await runSdoc([
+        "export",
+        unpackedPath,
+        "--format",
+        "docx",
+        "--template-file",
+        templatePath,
+        "--template-placeholder",
+        "sdoc-body",
+        "--template-placeholder",
+        "sdoc-approval-table",
+        "--template-placeholder",
+        "sdoc-revision-history",
+        "-o",
+        docxPath
+      ]);
+      const zip = await JSZip.loadAsync(await readFile(docxPath));
+      const documentXml = await zip.file("word/document.xml")?.async("string");
+
+      expect(result.stdout).toBe("");
+      expect(documentXml).toContain("System Overview");
+      expect(documentXml).toContain("DOC-OBC-001");
+      expect(documentXml).toContain("Power Electronics");
+      expect(documentXml).toContain("Approved");
+      expect(documentXml).toContain("2026-07-04");
+      expect(documentXml).toContain("Version");
+      expect(documentXml).not.toContain("Template placeholder");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("rejects DOCX export when the external Word template lacks the body placeholder", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const templatePath = path.join(tempDir, "company.dotx");

@@ -288,7 +288,7 @@ export async function exportDocx(document: SDocDocument, options: DocxExportOpti
   ].join("");
 
   if (externalTemplate) {
-    return exportDocxWithExternalTemplate(body, title, options.metadata, externalTemplate);
+    return exportDocxWithExternalTemplate(document, body, title, options.metadata, externalTemplate);
   }
 
   const zip = new JSZip();
@@ -319,6 +319,7 @@ async function prepareExternalWordTemplate(options: ExternalWordTemplateOptions)
 }
 
 async function exportDocxWithExternalTemplate(
+  document: SDocDocument,
   body: string,
   title: string,
   metadata: CorporateTemplateMetadata | undefined,
@@ -329,7 +330,17 @@ async function exportDocxWithExternalTemplate(
     throw new Error("invalid external Word template: missing word/document.xml");
   }
 
-  const injectedDocumentXml = injectWordContentControlBody(templateDocumentXml, "sdoc-body", body);
+  let injectedDocumentXml = injectRequiredWordContentControlBody(templateDocumentXml, "sdoc-body", body);
+  injectedDocumentXml = injectOptionalWordContentControlBody(
+    injectedDocumentXml,
+    "sdoc-approval-table",
+    renderDocxApprovalTable(document, metadata)
+  );
+  injectedDocumentXml = injectOptionalWordContentControlBody(
+    injectedDocumentXml,
+    "sdoc-revision-history",
+    renderDocxRevisionHistory(document, metadata)
+  );
   template.zip.file("word/document.xml", injectedDocumentXml);
   template.zip.folder("docProps")?.file("core.xml", renderDocxCoreProperties(title, metadata, template.fileName));
 
@@ -513,6 +524,32 @@ function renderDocxCorporateTemplate(document: SDocDocument, title: string, opti
   ];
 }
 
+function renderDocxApprovalTable(document: SDocDocument, metadata: CorporateTemplateMetadata | undefined): string {
+  return renderDocxTable(
+    [
+      ["Document No.", getCorporateMetadataValue(metadata, "documentNumber", document.attrs.id), "Revision", getCorporateMetadataValue(metadata, "version", "Draft")],
+      ["Owner", getCorporateMetadataValue(metadata, "author", "Unassigned"), "Status", getCorporateMetadataValue(metadata, "approvalStatus", "Review required")],
+      ["Effective Date", getCorporateMetadataValue(metadata, "effectiveDate", "Not assigned"), "Classification", getCorporateMetadataValue(metadata, "classification", "CONTROLLED")]
+    ],
+    true
+  );
+}
+
+function renderDocxRevisionHistory(document: SDocDocument, metadata: CorporateTemplateMetadata | undefined): string {
+  return renderDocxTable(
+    [
+      ["Version", "Date", "Author", "Status"],
+      [
+        getCorporateMetadataValue(metadata, "version", "Draft"),
+        getCorporateMetadataValue(metadata, "effectiveDate", "Not assigned"),
+        getCorporateMetadataValue(metadata, "author", "Unassigned"),
+        getCorporateMetadataValue(metadata, "approvalStatus", `Generated from ${document.attrs.id}`)
+      ]
+    ],
+    false
+  );
+}
+
 function renderDocxBlock(node: SDocNode, context: DocxRenderContext): string[] {
   switch (node.type) {
     case "heading": {
@@ -585,7 +622,20 @@ function renderDocxDocument(body: string): string {
 </w:document>`;
 }
 
-function injectWordContentControlBody(documentXml: string, placeholder: string, body: string): string {
+function injectRequiredWordContentControlBody(documentXml: string, placeholder: string, body: string): string {
+  const result = injectWordContentControlBody(documentXml, placeholder, body);
+  if (!result.found) {
+    throw new Error(`invalid external Word template: content-control placeholder "${placeholder}" was not found`);
+  }
+
+  return result.xml;
+}
+
+function injectOptionalWordContentControlBody(documentXml: string, placeholder: string, body: string): string {
+  return injectWordContentControlBody(documentXml, placeholder, body).xml;
+}
+
+function injectWordContentControlBody(documentXml: string, placeholder: string, body: string): { xml: string; found: boolean } {
   const sdtPattern = /<w:sdt\b[\s\S]*?<\/w:sdt>/g;
   let found = false;
   const injected = documentXml.replace(sdtPattern, (sdtXml) => {
@@ -597,11 +647,7 @@ function injectWordContentControlBody(documentXml: string, placeholder: string, 
     return sdtXml.replace(/<w:sdtContent\b[^>]*>[\s\S]*?<\/w:sdtContent>/, `<w:sdtContent>${body}</w:sdtContent>`);
   });
 
-  if (!found) {
-    throw new Error(`invalid external Word template: content-control placeholder "${placeholder}" was not found`);
-  }
-
-  return injected;
+  return { xml: injected, found };
 }
 
 function wordContentControlHasTag(sdtXml: string, placeholder: string): boolean {

@@ -131,7 +131,7 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
-Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, Word template package validation, Word template mapping diagnostics, external Word template body injection, and Word template style mapping application implemented.
+Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, Word template package validation, Word template mapping diagnostics, external Word template body injection, Word template style mapping application, and basic approval/revision metadata placeholder injection implemented.
 
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
 
@@ -159,11 +159,12 @@ Acceptance evidence:
 - `sdoc template validate-mapping <template.docx|template.dotx> --style nodeType=StyleId --placeholder tag` exposes mapping diagnostics for developer/reviewer workflows.
 - `exportDocx(..., { externalTemplate })` and `sdoc export --format docx --template-file company.dotx -o output.docx` validate an external template and replace the `sdoc-body` content-control body with editable Word XML derived from SDoc blocks.
 - `--template-style nodeType=StyleId` applies validated Word style IDs to matching rendered SDoc block types during DOCX export.
+- External Word template content controls named `sdoc-approval-table` and `sdoc-revision-history` are filled from export metadata when present, without storing template state in `document.json`.
 
 Open work:
 
 - UI wiring and asset revision policy for row-level CSV/JSON merge apply.
-- richer external `.dotx` content-control rendering beyond `sdoc-body`, strict pagination, approval table workflows, and template management UI.
+- richer external `.dotx` content-control rendering, strict pagination, approval workflow modeling, multi-row revision history management, and template management UI.
 
 ## Validation Gates
 

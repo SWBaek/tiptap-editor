@@ -76,11 +76,12 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - The browser Export panel can reject one mergeable row change as a new asset revision, preserving the previous source asset and updating the reviewed `dataGrid.attrs.sourceAssetId` as the only canonical document edit.
 - The browser Export panel can expand ready grids from the first three row events to the full runtime event list without serializing selection or panel state.
 - The browser Export panel can filter ready row events by row key, column, kind, source asset, message, and changed values without storing filter state in `document.json`.
+- The browser Export panel shows compact side-by-side before/after cell values for row events using runtime diff event data.
 
 ## Deferred Work
 
 - Tauri-native revision save-back following `docs/data-grid-row-diff-merge-boundary.md`;
-- side-by-side cell review;
+- richer added/deleted row payload preview;
 - richer CSV/JSON validation rule configuration and authored column typing;
 - full spreadsheet editing;
 - formulas and computed columns;

@@ -131,7 +131,7 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
-Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, row merge asset revision policy, browser row review readiness view-model, browser row accept/reject actions, browser row revision save-back, browser row event expansion/filtering, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, Word template package validation, Word template mapping diagnostics, external Word template body injection, Word template style mapping application, and basic approval/revision metadata placeholder injection implemented.
+Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, row merge asset revision policy, browser row review readiness view-model, browser row accept/reject actions, browser row revision save-back, browser row event expansion/filtering, browser side-by-side cell review, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, Word template package validation, Word template mapping diagnostics, external Word template body injection, Word template style mapping application, and basic approval/revision metadata placeholder injection implemented.
 
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
 
@@ -156,6 +156,7 @@ Acceptance evidence:
 - The browser Export panel can reject individual ready row events as new revision assets, preserving previous asset bytes and updating only the reviewed `dataGrid.attrs.sourceAssetId` as a canonical document edit.
 - The browser Export panel can expand each ready grid from a compact first-three row event view to the full runtime event list without storing panel state in `document.json`.
 - The browser Export panel can filter row events by row key, column, kind, source asset, message, and old/new values without storing filter state in `document.json`.
+- The browser Export panel shows compact side-by-side before/after cell values for row events from runtime diff data.
 - `exportHtml(..., { template: "controlled" })` renders controlled corporate header/footer/watermark chrome from explicit export metadata.
 - CLI `sdoc export --format html|pdf --template controlled` exposes the controlled template without storing export preferences in `document.json`.
 - `exportDocx(..., { template: "controlled" })` emits a derived OOXML Word document with editable text and controlled metadata without mutating `document.json`.
@@ -170,7 +171,7 @@ Acceptance evidence:
 
 Open work:
 
-- Tauri-native revision save-back and side-by-side cell review for CSV/JSON merge workflows.
+- Tauri-native revision save-back and richer added/deleted row payload preview for CSV/JSON merge workflows.
 - richer external `.dotx` content-control rendering, strict pagination, approval workflow modeling, multi-row revision history management, and template management UI.
 
 ## Validation Gates

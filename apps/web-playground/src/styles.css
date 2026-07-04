@@ -970,6 +970,56 @@ button {
   font-size: 0.72rem;
 }
 
+.data-grid-row-event-detail {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.data-grid-row-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.data-grid-row-event-meta small {
+  padding: 2px 5px;
+  color: #b9d6ee;
+  background: rgba(83, 133, 179, 0.16);
+  border: 1px solid rgba(83, 133, 179, 0.24);
+  border-radius: 4px;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.data-grid-row-cell-review {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
+.data-grid-row-cell-review div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.data-grid-row-cell-review strong {
+  color: #aebdca;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+}
+
+.data-grid-row-cell-review code {
+  overflow-wrap: anywhere;
+  color: #eef5fa;
+  font-size: 0.72rem;
+}
+
 .data-grid-row-event-toggle button {
   min-height: 26px;
   padding: 0 8px;

@@ -1809,7 +1809,24 @@ function ExportPanel({
                           <ul className="data-grid-row-event-list">
                             {visibleEvents.map((event, index) => (
                               <li key={`${item.gridId}-${index}-${event.kind}-${event.rowKey ?? "row"}`}>
-                                <span>{event.message}</span>
+                                <div className="data-grid-row-event-detail">
+                                  <span>{event.message}</span>
+                                  <div className="data-grid-row-event-meta">
+                                    <small>{event.kind}</small>
+                                    {event.rowKey && <small>Row {event.rowKey}</small>}
+                                    {event.column && <small>{event.column}</small>}
+                                  </div>
+                                  <div className="data-grid-row-cell-review" aria-label="Row event cell review">
+                                    <div>
+                                      <strong>Before</strong>
+                                      <code>{formatDataGridRowEventValue(event.oldValue, event.kind === "row-added" ? "(new row)" : "(empty)")}</code>
+                                    </div>
+                                    <div>
+                                      <strong>After</strong>
+                                      <code>{formatDataGridRowEventValue(event.newValue, event.kind === "row-deleted" ? "(deleted row)" : "(empty)")}</code>
+                                    </div>
+                                  </div>
+                                </div>
                                 <div className="data-grid-row-event-actions">
                                   <button className="accept" type="button" onClick={() => onAcceptDataGridRowEvent(item, event)}>
                                     Accept
@@ -2934,6 +2951,10 @@ function dataGridRowEventMatchesQuery(event: DataGridRowDiffEvent, item: DataGri
     .join(" ")
     .toLowerCase()
     .includes(query);
+}
+
+function formatDataGridRowEventValue(value: string | undefined, fallback: string): string {
+  return value === undefined || value.length === 0 ? fallback : value;
 }
 
 function getImageExtension(filename: string, mimeType: string): string {

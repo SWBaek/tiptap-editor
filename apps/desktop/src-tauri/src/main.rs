@@ -5,6 +5,58 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
+(() => {
+  const key = "__SDOC_NATIVE_SAVE_BRIDGE__";
+  const internals = window.__TAURI_INTERNALS__;
+
+  if (!internals || window[key]) {
+    return;
+  }
+
+  const ensureSdocFilename = (filename) => {
+    const value = typeof filename === "string" ? filename.trim() : "";
+    const fallback = value.length > 0 ? value : "document.sdoc";
+    return /\.sdoc$/i.test(fallback) ? fallback : `${fallback}.sdoc`;
+  };
+
+  const normalizePath = (path) => {
+    return typeof path === "string" && path.trim().length > 0 ? path : null;
+  };
+
+  const toByteArray = (bytes) => {
+    if (bytes instanceof Uint8Array) {
+      return Array.from(bytes);
+    }
+    return Array.from(new Uint8Array(bytes));
+  };
+
+  window[key] = {
+    async saveSdoc(path, bytes) {
+      await internals.invoke("write_sdoc_file", {
+        path,
+        bytes: toByteArray(bytes)
+      });
+    },
+    async chooseSdocSavePath(suggestedFilename) {
+      const path = await internals.invoke("plugin:dialog|save", {
+        options: {
+          title: "Save SDoc document",
+          defaultPath: ensureSdocFilename(suggestedFilename),
+          filters: [
+            {
+              name: "SDoc document",
+              extensions: ["sdoc"]
+            }
+          ]
+        }
+      });
+      return normalizePath(path);
+    }
+  };
+})();
+"#;
+
 struct AppState {
     drawio_sessions: Mutex<HashMap<String, DrawioSession>>,
 }
@@ -71,6 +123,10 @@ fn read_sdoc_file(path: String) -> Result<Vec<u8>, String> {
 
 #[tauri::command]
 fn write_sdoc_file(path: String, bytes: Vec<u8>) -> Result<(), String> {
+    if bytes.is_empty() {
+        return Err("Cannot write an empty .sdoc payload.".to_string());
+    }
+
     fs::write(resolve_sdoc_path(path)?, bytes).map_err(|error| error.to_string())
 }
 
@@ -398,6 +454,20 @@ fn drawio_read_back_response(
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            let window_config = app
+                .config()
+                .app
+                .windows
+                .first()
+                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "Missing main window configuration."))?;
+
+            tauri::WebviewWindowBuilder::from_config(app, window_config)?
+                .initialization_script(SDOC_NATIVE_SAVE_BRIDGE_SCRIPT)
+                .build()?;
+
+            Ok(())
+        })
         .manage(AppState {
             drawio_sessions: Mutex::new(HashMap::new()),
         })

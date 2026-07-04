@@ -17,7 +17,7 @@ Phase 5 turns the accepted MVP slices into product workflows for non-developer a
 
 ## Slice 1: Tauri Desktop Shell Foundation
 
-Status: initial foundation implemented on 2026-07-03; native save-back policy model, workspace writer entrypoint, browser/desktop save-route boundary, Tauri runtime capability detection, native path runtime state, route-based save action execution, web-safe native save bridge discovery, and desktop-side native save bridge installer added on 2026-07-04.
+Status: initial foundation implemented on 2026-07-03; native save-back policy model, workspace writer entrypoint, browser/desktop save-route boundary, Tauri runtime capability detection, native path runtime state, route-based save action execution, web-safe native save bridge discovery, desktop-side native save bridge installer, and Rust initialization bootstrap hook added on 2026-07-04.
 
 Acceptance criteria:
 
@@ -48,11 +48,11 @@ Acceptance evidence:
 - `apps/web-playground/src/documentNativeBridge.ts` discovers an optional `window.__SDOC_NATIVE_SAVE_BRIDGE__` save adapter without importing Tauri APIs into the browser bundle.
 - `apps/desktop/src/nativeSdocSaveBridge.ts` installs that window bridge from the desktop layer, writes through the validated native save-back model, and uses the Tauri dialog plugin for `.sdoc` save-as path selection.
 - `apps/web-playground/src/App.tsx` keeps the current native path as runtime-only state, clears it for browser open/download/new flows, and uses it only for save-route selection.
-- `apps/desktop/src-tauri` registers `tauri-plugin-dialog` and grants dialog permissions for native save-as.
+- `apps/desktop/src-tauri` registers `tauri-plugin-dialog`, grants dialog permissions for native save-as, disables automatic window creation, and creates the main window with a Rust `initialization_script` that installs `window.__SDOC_NATIVE_SAVE_BRIDGE__` before the web app scripts run.
 - Root scripts expose `npm run dev:desktop`, `npm run build:desktop`, and `npm run typecheck:desktop`.
 - Node validation passes with `npm run typecheck:desktop`, `npm test`, `npm run build`, and `npm run test:e2e`.
 - Native Tauri build requires Rust/Cargo; this local environment does not currently provide `cargo`.
-- Native save-as still needs an app bootstrap hook that invokes `installNativeSdocSaveBridge()` before end-to-end Tauri save testing is meaningful.
+- End-to-end Tauri save testing still requires installing Rust/Cargo so `npm run dev:desktop` or `npm run build:desktop` can run.
 
 ## Slice 2: Native File Explorer And Workspace Adapter
 

@@ -80,12 +80,13 @@ The first browser slices project saved-baseline/current assets into row review r
 - Browser row review reject actions reverse one selected row event through `applyDataGridRowMerge` and `applyDataGridAssetRevision({ policy: "update" })`, preserving unrelated row changes and leaving `document.json` unchanged.
 - Browser row review reject-as-revision actions use `applyDataGridAssetRevision({ policy: "revision" })`, preserve the previous source asset, and update only the reviewed `dataGrid.attrs.sourceAssetId` in `document.json`.
 - Browser row review can expand each ready grid from the first three row events to the full event list as runtime-only UI state.
+- Browser row review can filter row events by title, source asset, event kind, row key, column, message, and old/new values without serializing filter state.
 
 ## Deferred Work
 
 - authored `keyColumns` schema extension;
 - Tauri-native revision save-back workflow;
-- row event filtering/search and visual side-by-side cell diff UI;
+- visual side-by-side cell diff UI;
 - multi-user conflict resolution;
 - formula-aware spreadsheet merge;
 - PLM, requirements database, or external spreadsheet connectors.

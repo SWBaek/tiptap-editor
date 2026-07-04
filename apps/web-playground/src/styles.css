@@ -906,6 +906,40 @@ button {
   font-size: 0.72rem;
 }
 
+.data-grid-row-event-search {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.data-grid-row-event-search span {
+  color: #aebdca;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.data-grid-row-event-search input {
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px;
+  color: #f2f6f8;
+  background: rgba(12, 19, 26, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+
+.data-grid-row-event-search input:focus {
+  border-color: rgba(107, 160, 255, 0.68);
+  outline: none;
+}
+
+.data-grid-row-event-empty {
+  margin: 6px 0 0;
+  color: #aebdca;
+  font-size: 0.74rem;
+}
+
 .data-grid-row-event-list {
   display: grid;
   gap: 6px;

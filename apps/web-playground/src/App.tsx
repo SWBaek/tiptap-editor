@@ -1680,6 +1680,8 @@ function ExportPanel({
   const pdfCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pdf -o ${quoteCliPath(filenames.pdf)}`;
   const pptxCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pptx -o ${quoteCliPath(filenames.pptx)}`;
   const [expandedRowReviewGrids, setExpandedRowReviewGrids] = useState<Set<string>>(new Set());
+  const [rowReviewQuery, setRowReviewQuery] = useState("");
+  const normalizedRowReviewQuery = rowReviewQuery.trim().toLowerCase();
 
   function toggleRowReviewGrid(gridId: string) {
     setExpandedRowReviewGrids((current) => {
@@ -1765,52 +1767,81 @@ function ExportPanel({
             <strong>Row review</strong>
             <span>{dataGridRowReview.label}</span>
           </div>
+          {dataGridRowReview.eventCount > 0 && (
+            <label className="data-grid-row-event-search">
+              <span>Filter row events</span>
+              <input
+                type="search"
+                value={rowReviewQuery}
+                placeholder="row, column, kind, message"
+                onChange={(event) => setRowReviewQuery(event.currentTarget.value)}
+              />
+            </label>
+          )}
           {dataGridRowReview.items.length === 0 ? (
             <p className="data-grid-diagnostic-empty">No row-review candidates</p>
           ) : (
             <ul className="data-grid-row-review-list">
-              {dataGridRowReview.items.map((item) => (
-                <li key={item.gridId} className={item.status}>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span>{item.label}</span>
-                    <small>{item.detail}</small>
-                  </div>
-                  <code>{item.sourceAssetId}</code>
-                  {item.status === "ready" && item.events.length > 0 && (
-                    <ul className="data-grid-row-event-list">
-                      {(expandedRowReviewGrids.has(item.gridId) ? item.events : item.events.slice(0, 3)).map((event, index) => (
-                        <li key={`${item.gridId}-${index}-${event.kind}-${event.rowKey ?? "row"}`}>
-                          <span>{event.message}</span>
-                          <div className="data-grid-row-event-actions">
-                            <button className="accept" type="button" onClick={() => onAcceptDataGridRowEvent(item, event)}>
-                              Accept
-                            </button>
-                            <button className="reject" type="button" onClick={() => onRejectDataGridRowEvent(item, event)}>
-                              Reject
-                            </button>
-                            <button className="revision" type="button" onClick={() => onRejectDataGridRowEventAsRevision(item, event)}>
-                              Revision
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                      {item.events.length > 3 && (
-                        <li className="data-grid-row-event-toggle">
-                          <span>
-                            {expandedRowReviewGrids.has(item.gridId)
-                              ? `Showing all ${item.events.length} row events`
-                              : `${item.events.length - 3} more row event${item.events.length - 3 === 1 ? "" : "s"} hidden`}
-                          </span>
-                          <button type="button" onClick={() => toggleRowReviewGrid(item.gridId)}>
-                            {expandedRowReviewGrids.has(item.gridId) ? "Show less" : "Show all"}
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                  )}
-                </li>
-              ))}
+              {dataGridRowReview.items.map((item) => {
+                const filteredEvents =
+                  item.status === "ready" && normalizedRowReviewQuery
+                    ? item.events.filter((event) => dataGridRowEventMatchesQuery(event, item, normalizedRowReviewQuery))
+                    : item.events;
+                const visibleEvents = expandedRowReviewGrids.has(item.gridId) ? filteredEvents : filteredEvents.slice(0, 3);
+
+                return (
+                  <li key={item.gridId} className={item.status}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>
+                        {normalizedRowReviewQuery && item.status === "ready"
+                          ? `${filteredEvents.length} of ${item.events.length} row event${item.events.length === 1 ? "" : "s"} matched`
+                          : item.label}
+                      </span>
+                      <small>{item.detail}</small>
+                    </div>
+                    <code>{item.sourceAssetId}</code>
+                    {item.status === "ready" && item.events.length > 0 && (
+                      <>
+                        {filteredEvents.length === 0 ? (
+                          <p className="data-grid-row-event-empty">No row events match this filter</p>
+                        ) : (
+                          <ul className="data-grid-row-event-list">
+                            {visibleEvents.map((event, index) => (
+                              <li key={`${item.gridId}-${index}-${event.kind}-${event.rowKey ?? "row"}`}>
+                                <span>{event.message}</span>
+                                <div className="data-grid-row-event-actions">
+                                  <button className="accept" type="button" onClick={() => onAcceptDataGridRowEvent(item, event)}>
+                                    Accept
+                                  </button>
+                                  <button className="reject" type="button" onClick={() => onRejectDataGridRowEvent(item, event)}>
+                                    Reject
+                                  </button>
+                                  <button className="revision" type="button" onClick={() => onRejectDataGridRowEventAsRevision(item, event)}>
+                                    Revision
+                                  </button>
+                                </div>
+                              </li>
+                            ))}
+                            {filteredEvents.length > 3 && (
+                              <li className="data-grid-row-event-toggle">
+                                <span>
+                                  {expandedRowReviewGrids.has(item.gridId)
+                                    ? `Showing all ${filteredEvents.length} row events`
+                                    : `${filteredEvents.length - 3} more row event${filteredEvents.length - 3 === 1 ? "" : "s"} hidden`}
+                                </span>
+                                <button type="button" onClick={() => toggleRowReviewGrid(item.gridId)}>
+                                  {expandedRowReviewGrids.has(item.gridId) ? "Show less" : "Show all"}
+                                </button>
+                              </li>
+                            )}
+                          </ul>
+                        )}
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -2887,6 +2918,22 @@ function getDataGridFormatFromFile(file: File): "csv" | "json" | null {
 
 function decodeTextAsset(bytes: Uint8Array): string {
   return new TextDecoder().decode(bytes).replace(/^\uFEFF/, "");
+}
+
+function dataGridRowEventMatchesQuery(event: DataGridRowDiffEvent, item: DataGridRowReviewItem, query: string): boolean {
+  return [
+    item.title,
+    item.sourceAssetId,
+    event.kind,
+    event.message,
+    event.rowKey ?? "",
+    event.column ?? "",
+    event.oldValue ?? "",
+    event.newValue ?? ""
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(query);
 }
 
 function getImageExtension(filename: string, mimeType: string): string {

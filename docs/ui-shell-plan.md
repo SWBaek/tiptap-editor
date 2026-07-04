@@ -27,7 +27,7 @@ Recommended Activity Bar items:
 
 ## File Explorer Scope
 
-Browser MVP should not pretend to have full filesystem access. In the browser, `Files` should start with recent documents, open/save buttons, and the current `.sdoc` filename.
+Browser MVP should not pretend to have full filesystem access. In the browser, `Files` should start with recent documents, open/save buttons, and the current `.sdoc` filename. `apps/web-playground/src/documentFileRuntime.ts` keeps the save route explicit: browser runtime downloads a complete `.sdoc`, while desktop runtime can later route the same action to native save or save-as.
 
 Full file and folder exploration belongs to the Tauri desktop phase, where native filesystem APIs can support:
 

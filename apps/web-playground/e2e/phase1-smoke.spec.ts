@@ -219,7 +219,7 @@ test("tracks browser recent files in the Files side panel", async ({ page }) => 
   await expect(page.locator(".status-note")).toContainText('npm run sdoc -- unpack "Files Panel Spec.sdoc" "Files Panel Spec.sdoc.d"');
 
   const sdocDownload = page.waitForEvent("download");
-  await filesPanel.getByRole("button", { name: "Save .sdoc" }).click();
+  await filesPanel.getByRole("button", { name: "Download .sdoc" }).click();
   expect((await sdocDownload).suggestedFilename()).toBe("Files Panel Spec.sdoc");
   await expect(filesPanel.getByLabel("Recent files")).toContainText("Files Panel Spec.sdoc");
   await expect(filesPanel.getByLabel("Recent files")).toContainText("saved Files Panel Spec");

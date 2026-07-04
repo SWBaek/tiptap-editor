@@ -94,6 +94,7 @@ import {
   type TableCellAlignment
 } from "@sdoc/editor-tiptap";
 import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
+import { createDocumentFileRuntime, resolveSdocSaveRoute } from "./documentFileRuntime";
 import {
   addLocalHistoryEntry,
   areAssetsDirty,
@@ -305,6 +306,8 @@ export function App() {
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges || hasAssetChanges;
   const fileLabel = getFileLabel(currentFilename, metadata);
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
+  const documentFileRuntime = useMemo(() => createDocumentFileRuntime("browser"), []);
+  const sdocSaveRoute = useMemo(() => resolveSdocSaveRoute(documentFileRuntime, null), [documentFileRuntime]);
   const exportBaseName = safeFilename(metadata.title || "document");
   const exportFilenames = {
     sdoc: `${exportBaseName}.sdoc`,
@@ -1144,6 +1147,7 @@ export function App() {
               onNewDocument={createNewDocument}
               onOpenDocument={() => fileInputRef.current?.click()}
               onSaveSdoc={downloadSdoc}
+              sdocSaveLabel={sdocSaveRoute.label}
               onSelectRecentFile={explainRecentFileAccess}
               onCopyDeveloperCommand={showDeveloperCommand}
             />
@@ -1377,7 +1381,7 @@ export function App() {
           <ToolbarButton title="Download Markdown" onClick={downloadMarkdown}>
             <FileText size={18} />
           </ToolbarButton>
-          <ToolbarButton title="Download .sdoc" onClick={downloadSdoc}>
+          <ToolbarButton title={sdocSaveRoute.label} onClick={downloadSdoc}>
             <Download size={18} />
           </ToolbarButton>
           <ToolbarButton title="Mark saved" onClick={markCurrentAsBaseline}>
@@ -1567,6 +1571,7 @@ function FilesPanel({
   onNewDocument,
   onOpenDocument,
   onSaveSdoc,
+  sdocSaveLabel,
   onSelectRecentFile,
   onCopyDeveloperCommand
 }: {
@@ -1577,6 +1582,7 @@ function FilesPanel({
   onNewDocument: () => void;
   onOpenDocument: () => void;
   onSaveSdoc: () => void;
+  sdocSaveLabel: string;
   onSelectRecentFile: (entry: RecentFileEntry) => void;
   onCopyDeveloperCommand: (command: string) => void;
 }) {
@@ -1602,7 +1608,7 @@ function FilesPanel({
           Open .sdoc or JSON
         </button>
         <button type="button" onClick={onSaveSdoc}>
-          Save .sdoc
+          {sdocSaveLabel}
         </button>
       </div>
 

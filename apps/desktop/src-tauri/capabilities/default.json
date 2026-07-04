@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Default desktop window permissions for the SDoc editor shell.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "dialog:default"]
 }

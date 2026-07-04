@@ -397,6 +397,7 @@ fn drawio_read_back_response(
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState {
             drawio_sessions: Mutex::new(HashMap::new()),
         })

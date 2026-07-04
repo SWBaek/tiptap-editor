@@ -139,6 +139,7 @@ import {
   renameLocalHistoryEntry,
   serializeLocalHistory,
   updateDataGridSourceAssetId,
+  updateDrawioSourceAssetId,
   updateCrossReferenceLabel,
   type LocalHistoryEntry,
   type ChangeReviewModel,
@@ -175,6 +176,13 @@ interface EditorHighlightOverlay {
   left: number;
   width: number;
   height: number;
+}
+interface DrawioExternalEditConflict {
+  blockId: string;
+  sourceAssetId: string;
+  sourceBytes: Uint8Array;
+  sourceHash?: string;
+  message: string;
 }
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
@@ -230,6 +238,8 @@ export function App() {
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
   const [lastReviewBatchSummary, setLastReviewBatchSummary] = useState<ReviewBatchConflictSummary | null>(null);
   const [drawioBridgeSession, setDrawioBridgeSession] = useState<WindowDrawioBridgeSession | null>(null);
+  const [drawioBridgeTargetId, setDrawioBridgeTargetId] = useState<string | null>(null);
+  const [drawioExternalEditConflict, setDrawioExternalEditConflict] = useState<DrawioExternalEditConflict | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const dataGridInputRef = useRef<HTMLInputElement>(null);
@@ -453,6 +463,9 @@ export function App() {
     setBaselineAssets(loaded.assets);
     setSelectedHistoryId(null);
     setCollapsedHeadingIds(new Set());
+    setDrawioBridgeSession(null);
+    setDrawioBridgeTargetId(null);
+    setDrawioExternalEditConflict(null);
     setCurrentFilename(name);
     setCurrentNativePath(nativePath);
     addRecentFile(name, nextMetadata.title || name, "opened");
@@ -703,6 +716,9 @@ export function App() {
     setAssets({});
     setSelectedHistoryId(null);
     setCollapsedHeadingIds(new Set());
+    setDrawioBridgeSession(null);
+    setDrawioBridgeTargetId(null);
+    setDrawioExternalEditConflict(null);
     setCurrentFilename(null);
     setCurrentNativePath(null);
     setActiveTab("json");
@@ -820,6 +836,8 @@ export function App() {
       }
 
       setDrawioBridgeSession(session);
+      setDrawioBridgeTargetId(reference.blockId);
+      setDrawioExternalEditConflict(null);
       setStatusMessage(`Opened Draw.io source ${reference.sourceAssetId}. Save in the external editor, then read the edit back.`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
@@ -849,11 +867,25 @@ export function App() {
         setAssets((current) => ({ ...current, [drawioBridgeSession.sourceAssetId]: result.sourceBytes as Uint8Array }));
         await nativeDrawioExternalEditorAdapter.closeSession(drawioBridgeSession.sessionId).catch(() => undefined);
         setDrawioBridgeSession(null);
+        setDrawioBridgeTargetId(null);
+        setDrawioExternalEditConflict(null);
         setStatusMessage(`Read Draw.io edit back into asset ${drawioBridgeSession.sourceAssetId}.`);
         return;
       }
 
       if (result.status === "conflict") {
+        if (result.sourceBytes) {
+          const blockId = drawioBridgeTargetId ?? getDrawioDiagramBlockIdBySourceAssetId(document, drawioBridgeSession.sourceAssetId);
+          if (blockId) {
+            setDrawioExternalEditConflict({
+              blockId,
+              sourceAssetId: drawioBridgeSession.sourceAssetId,
+              sourceBytes: result.sourceBytes,
+              sourceHash: result.sourceHash,
+              message: result.message ?? `Draw.io source asset ${drawioBridgeSession.sourceAssetId} changed during external editing.`
+            });
+          }
+        }
         setStatusMessage(result.message ?? `Draw.io source asset ${drawioBridgeSession.sourceAssetId} changed during external editing.`);
         return;
       }
@@ -872,6 +904,8 @@ export function App() {
   async function closeDrawioExternalEdit() {
     if (!nativeDrawioExternalEditorAdapter || !drawioBridgeSession) {
       setDrawioBridgeSession(null);
+      setDrawioBridgeTargetId(null);
+      setDrawioExternalEditConflict(null);
       setStatusMessage("No Draw.io external editing session is open.");
       return;
     }
@@ -879,10 +913,61 @@ export function App() {
     try {
       await nativeDrawioExternalEditorAdapter.closeSession(drawioBridgeSession.sessionId);
       setDrawioBridgeSession(null);
+      setDrawioBridgeTargetId(null);
+      setDrawioExternalEditConflict(null);
       setStatusMessage(`Closed Draw.io external editing session for ${drawioBridgeSession.sourceAssetId}.`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     }
+  }
+
+  function keepCurrentDrawioSource() {
+    if (!drawioExternalEditConflict) {
+      setStatusMessage("No Draw.io external edit conflict is pending.");
+      return;
+    }
+
+    setDrawioExternalEditConflict(null);
+    setStatusMessage(`Kept current Draw.io source asset ${drawioExternalEditConflict.sourceAssetId}.`);
+  }
+
+  function replaceCurrentDrawioSource() {
+    if (!drawioExternalEditConflict) {
+      setStatusMessage("No Draw.io external edit conflict is pending.");
+      return;
+    }
+
+    if (!window.confirm(`Replace current Draw.io source asset ${drawioExternalEditConflict.sourceAssetId} with the external edit?`)) {
+      setStatusMessage(`Canceled Draw.io replace for ${drawioExternalEditConflict.sourceAssetId}.`);
+      return;
+    }
+
+    setAssets((current) => ({ ...current, [drawioExternalEditConflict.sourceAssetId]: drawioExternalEditConflict.sourceBytes }));
+    setDrawioExternalEditConflict(null);
+    setStatusMessage(`Replaced Draw.io source asset ${drawioExternalEditConflict.sourceAssetId}.`);
+  }
+
+  function saveDrawioExternalEditAsRevision() {
+    if (!drawioExternalEditConflict) {
+      setStatusMessage("No Draw.io external edit conflict is pending.");
+      return;
+    }
+
+    const revisionAssetId = createDrawioRevisionAssetId(drawioExternalEditConflict.sourceAssetId, assets);
+    if (!window.confirm(`Save external Draw.io edit as ${revisionAssetId}?`)) {
+      setStatusMessage(`Canceled Draw.io revision save for ${drawioExternalEditConflict.sourceAssetId}.`);
+      return;
+    }
+
+    const nextAssets = { ...assets, [revisionAssetId]: drawioExternalEditConflict.sourceBytes };
+    const nextDocument = updateDrawioSourceAssetId(document, drawioExternalEditConflict.blockId, revisionAssetId);
+    editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(nextAssets)), { emitUpdate: true });
+    repairEditorBlockIds(editor);
+    setDocumentId(nextDocument.attrs.id);
+    setAssets(nextAssets);
+    setDrawioExternalEditConflict(null);
+    setActiveTab("diff");
+    setStatusMessage(`Saved Draw.io external edit as ${revisionAssetId}.`);
   }
 
   function runTableCommand(command: AdvancedTableCommand, successMessage: string) {
@@ -1388,6 +1473,26 @@ export function App() {
           </div>
 
           <div className="status-note">{statusMessage}</div>
+          {drawioExternalEditConflict && (
+            <section className="workspace-boundary" aria-label="Draw.io external edit conflict">
+              <strong>Draw.io external edit conflict</strong>
+              <span>
+                External edit is available for <code>{drawioExternalEditConflict.sourceAssetId}</code>. Choose how to resolve it; this runtime
+                choice is not stored in document.json.
+              </span>
+              <div className="workspace-actions">
+                <button type="button" onClick={keepCurrentDrawioSource}>
+                  Keep current
+                </button>
+                <button type="button" onClick={replaceCurrentDrawioSource}>
+                  Replace source
+                </button>
+                <button type="button" onClick={saveDrawioExternalEditAsRevision}>
+                  Save as revision
+                </button>
+              </div>
+            </section>
+          )}
 
           {activePanel === "settings" && (
             <SettingsPanel metadata={metadata} validation={validation} document={document} assetCount={Object.keys(assets).length} onMetadataChange={setMetadata} />
@@ -3358,6 +3463,38 @@ function getDrawioDiagramReferenceFromNode(node: unknown): { blockId: string; so
   }
 
   return { blockId, sourceAssetId };
+}
+
+function getDrawioDiagramBlockIdBySourceAssetId(document: SDocDocument, sourceAssetId: string): string | null {
+  let match: string | null = null;
+
+  function visit(node: SDocDocument["content"][number]): void {
+    if (match) {
+      return;
+    }
+
+    if (node.type === "diagram" && node.attrs?.kind === "drawio" && node.attrs.sourceAssetId === sourceAssetId && typeof node.attrs.id === "string") {
+      match = node.attrs.id;
+      return;
+    }
+
+    node.content?.forEach(visit);
+  }
+
+  document.content.forEach(visit);
+  return match;
+}
+
+function createDrawioRevisionAssetId(sourceAssetId: string, assets: SDocAssets): string {
+  const extension = sourceAssetId.toLowerCase().endsWith(".drawio.xml") ? ".drawio.xml" : sourceAssetId.includes(".") ? sourceAssetId.slice(sourceAssetId.lastIndexOf(".")) : ".drawio";
+  const base = sourceAssetId.endsWith(extension) ? sourceAssetId.slice(0, -extension.length) : sourceAssetId;
+  let index = 1;
+  let candidate = `${base}.rev${index}${extension}`;
+  while (assets[candidate]) {
+    index += 1;
+    candidate = `${base}.rev${index}${extension}`;
+  }
+  return candidate;
 }
 
 function getDataGridExtension(filename: string, mimeType: string): ".csv" | ".json" {

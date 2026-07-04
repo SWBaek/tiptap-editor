@@ -62,4 +62,6 @@ The companion TypeScript adapter lives in `apps/desktop/src/nativeDrawioExternal
 
 The web runtime discovers this adapter through the same desktop-injected bridge used for native `.sdoc` file handling. The toolbar can open the selected Draw.io source in the desktop app, read valid saved XML back into the asset store, and close the runtime session. Conflicts, temp paths, and session state remain runtime-only and are not written to `document.json`.
 
-This slice does not implement file watching, preview regeneration, executable discovery UI, or conflict-resolution UI. It provides the native bridge primitive and a minimal explicit read-back workflow for those later product flows.
+Conflict read-back keeps the external edit bytes as a runtime candidate and asks the author to keep the current asset, replace the current asset, or save the external edit as a new revision asset. Revision mode updates only the selected Draw.io diagram `sourceAssetId`; raw Draw.io XML remains in `.sdoc/assets/`.
+
+This slice does not implement file watching, preview regeneration, executable discovery UI, or multi-version visual comparison. It provides the native bridge primitive, minimal explicit read-back workflow, and conflict-resolution actions for those later product flows.

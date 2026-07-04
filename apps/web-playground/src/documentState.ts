@@ -746,6 +746,11 @@ export function updateDataGridSourceAssetId(document: SDocDocument, gridId: stri
   return { ...document, content: nextContent };
 }
 
+export function updateDrawioSourceAssetId(document: SDocDocument, diagramId: string, sourceAssetId: string): SDocDocument {
+  const nextContent = document.content.map((node) => updateDrawioSourceAssetIdInNode(node, diagramId, sourceAssetId));
+  return { ...document, content: nextContent };
+}
+
 export function createLocalHistoryEntry(
   document: SDocDocument,
   metadata: SDocMetadata,
@@ -849,6 +854,28 @@ function collectDataGridBlocks(document: SDocDocument): DataGridBlockSummary[] {
 function updateDataGridSourceAssetIdInNode(node: SDocNode, gridId: string, sourceAssetId: string): SDocNode {
   const nextContent = node.content?.map((child) => updateDataGridSourceAssetIdInNode(child, gridId, sourceAssetId));
   const isTarget = node.type === "dataGrid" && getNodeId(node) === gridId;
+  const nextNode = isTarget
+    ? {
+        ...node,
+        attrs: {
+          ...node.attrs,
+          sourceAssetId
+        }
+      }
+    : nextContent
+      ? { ...node, content: nextContent }
+      : node;
+
+  if (isTarget && nextContent) {
+    return { ...nextNode, content: nextContent };
+  }
+
+  return nextNode;
+}
+
+function updateDrawioSourceAssetIdInNode(node: SDocNode, diagramId: string, sourceAssetId: string): SDocNode {
+  const nextContent = node.content?.map((child) => updateDrawioSourceAssetIdInNode(child, diagramId, sourceAssetId));
+  const isTarget = node.type === "diagram" && node.attrs?.kind === "drawio" && getNodeId(node) === diagramId;
   const nextNode = isTarget
     ? {
         ...node,

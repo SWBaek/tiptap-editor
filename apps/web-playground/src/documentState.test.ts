@@ -31,6 +31,7 @@ import {
   retargetCrossReference,
   serializeLocalHistory,
   updateDataGridSourceAssetId,
+  updateDrawioSourceAssetId,
   updateCrossReferenceLabel
 } from "./documentState";
 import type { SDocDocument } from "@sdoc/schema";
@@ -55,6 +56,24 @@ function createDataGridDocument(sourceAssetId: string): SDocDocument {
           sourceAssetId,
           format: "csv",
           title: "MCU Pinout"
+        }
+      }
+    ]
+  };
+}
+
+function createDrawioDocument(sourceAssetId: string): SDocDocument {
+  return {
+    schemaVersion: 1,
+    type: "doc",
+    attrs: { id: "doc_drawio" },
+    content: [
+      {
+        type: "diagram",
+        attrs: {
+          id: "blk_drawio",
+          kind: "drawio",
+          sourceAssetId
         }
       }
     ]
@@ -108,6 +127,17 @@ describe("document state helpers", () => {
         "export Markdown"
       )
     ).toBe("Cannot export Markdown: $.content[0].type: unsupported node type: drawioDiagram");
+  });
+
+  it("updates Draw.io source asset references without embedding source XML", () => {
+    const updated = updateDrawioSourceAssetId(createDrawioDocument("asset_architecture.drawio"), "blk_drawio", "asset_architecture.rev1.drawio");
+
+    expect(updated.content[0]?.attrs).toEqual({
+      id: "blk_drawio",
+      kind: "drawio",
+      sourceAssetId: "asset_architecture.rev1.drawio"
+    });
+    expect(JSON.stringify(updated)).not.toContain("<mxfile");
   });
 
   it("renders metadata changes by field", () => {

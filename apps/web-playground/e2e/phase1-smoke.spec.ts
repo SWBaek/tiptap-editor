@@ -861,6 +861,76 @@ test("imports a Draw.io source asset and round-trips through .sdoc", async ({ pa
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 
+test("resolves a Draw.io external edit conflict as a revision asset", async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    const editedSource = new TextEncoder().encode("<mxfile><diagram id=\"d1\">external-edit</diagram></mxfile>");
+    (window as typeof window & { __SDOC_NATIVE_SAVE_BRIDGE__?: unknown }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
+      async saveSdoc() {
+        return undefined;
+      },
+      async checkoutDrawioSource(sourceAssetId: string) {
+        return {
+          sessionId: "drawio-test-session",
+          sourceAssetId,
+          tempPath: "C:/Temp/asset.drawio",
+          originalSourceHash: "hash-original"
+        };
+      },
+      async openDrawioExternalEditor(sessionId: string) {
+        return { status: "opened", sessionId };
+      },
+      async readDrawioExternalEdit(sessionId: string) {
+        return {
+          status: "conflict",
+          sessionId,
+          sourceAssetId: "asset.drawio",
+          sourceHash: "hash-edited",
+          sourceBytes: editedSource,
+          message: "Draw.io source changed during external editing."
+        };
+      },
+      async closeDrawioExternalEdit(sessionId: string) {
+        return { status: "closed", sessionId };
+      }
+    };
+  });
+
+  await page.goto("/");
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+
+  const sourcePath = testInfo.outputPath("architecture.drawio");
+  await writeFile(sourcePath, '<mxfile><diagram id="d1">current-source</diagram></mxfile>', "utf8");
+  await page.getByLabel("Import Draw.io source file").setInputFiles(sourcePath);
+  await expect(page.locator(".status-note")).toContainText("Inserted Draw.io diagram architecture.drawio");
+  await page.locator(".editor-surface .sdoc-diagram").click();
+
+  await page.getByRole("button", { name: "Open Draw.io external editor" }).click();
+  await expect(page.locator(".status-note")).toContainText("Opened Draw.io source");
+  await page.getByRole("button", { name: "Read Draw.io external edit" }).click();
+  await expect(page.getByLabel("Draw.io external edit conflict")).toContainText("Draw.io external edit conflict");
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Save as revision" }).click();
+  await expect(page.locator(".status-note")).toContainText("Saved Draw.io external edit as");
+
+  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  const revisedDocument = await readPreviewDocument(page);
+  const revisedDiagram = findFirstNodeByType(revisedDocument, "diagram");
+  expect(revisedDiagram.attrs?.kind).toBe("drawio");
+  expect(String(revisedDiagram.attrs?.sourceAssetId)).toMatch(/^asset_[a-z0-9_]+\.rev1\.drawio$/);
+  expect(JSON.stringify(revisedDocument)).not.toContain("external-edit");
+  expect(JSON.stringify(revisedDocument)).not.toContain("current-source");
+  expectUniqueIds(collectBlockIds(revisedDocument));
+  await expect(page.getByLabel("Draw.io external edit conflict")).toHaveCount(0);
+
+  const sdocDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  const sdocDownload = await sdocDownloadPromise;
+  await sdocDownload.saveAs(testInfo.outputPath("Drawio Conflict Revision.sdoc"));
+});
+
 test("reports unsupported files without replacing the current document", async ({ page }, testInfo) => {
   await page.goto("/");
 

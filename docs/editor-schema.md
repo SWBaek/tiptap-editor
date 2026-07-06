@@ -124,12 +124,13 @@ Large engineering datasets use `dataGrid` instead of expanding into canonical sp
     "sourceAssetId": "asset_pinout.csv",
     "format": "csv",
     "title": "MCU Pinout",
-    "caption": "Connector J1 signal assignment"
+    "caption": "Connector J1 signal assignment",
+    "keyColumns": ["pin"]
   }
 }
 ```
 
-`format` must be `csv` or `json`. `title` and `caption` are optional but must be non-empty when present. Grid rows, active cell, scroll position, sort/filter UI state, computed caches, and column layout state must not be stored in `document.json`.
+`format` must be `csv` or `json`. `title` and `caption` are optional but must be non-empty when present. `keyColumns` is optional authored semantic metadata for row identity in asset-level review; each entry must be a non-empty string and must match a referenced asset column for diagnostics to pass. Grid rows, active cell, scroll position, sort/filter UI state, computed caches, and column layout state must not be stored in `document.json`.
 
 ## Phase 2 Table Shape
 

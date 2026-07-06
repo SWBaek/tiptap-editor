@@ -384,6 +384,14 @@ export const DataGridNode = Node.create({
         default: null,
         parseHTML: (element) => element.getAttribute("data-caption"),
         renderHTML: (attributes) => (attributes.caption ? { "data-caption": attributes.caption } : {})
+      },
+      keyColumns: {
+        default: null,
+        parseHTML: (element) => parseDataGridKeyColumnsAttribute(element.getAttribute("data-key-columns")),
+        renderHTML: (attributes) => {
+          const keyColumns = normalizeDataGridKeyColumns(attributes.keyColumns);
+          return keyColumns.length > 0 ? { "data-key-columns": keyColumns.join(",") } : {};
+        }
       }
     };
   },
@@ -397,16 +405,19 @@ export const DataGridNode = Node.create({
     const format = String(node.attrs.format ?? "csv");
     const title = typeof node.attrs.title === "string" && node.attrs.title.length > 0 ? node.attrs.title : "Data grid";
     const caption = typeof node.attrs.caption === "string" && node.attrs.caption.length > 0 ? node.attrs.caption : "";
+    const keyColumns = normalizeDataGridKeyColumns(node.attrs.keyColumns);
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
         "data-type": "dataGrid",
         "data-source-asset-id": sourceAssetId,
         "data-format": format,
+        ...(keyColumns.length > 0 ? { "data-key-columns": keyColumns.join(",") } : {}),
         class: "sdoc-data-grid"
       }),
       ["strong", title],
       ["span", `Source: ${sourceAssetId} (${format})`],
+      ...(keyColumns.length > 0 ? [["span", `Key: ${keyColumns.join(", ")}`]] : []),
       ...(caption ? [["em", caption]] : [])
     ];
   },
@@ -603,14 +614,15 @@ export function insertDataGrid(
   format: "csv" | "json",
   title?: string,
   caption?: string,
-  id = createBlockId()
+  id = createBlockId(),
+  keyColumns: string[] = []
 ): boolean {
   const cleanSourceAssetId = sourceAssetId.trim();
   if (cleanSourceAssetId.length === 0) {
     return false;
   }
 
-  const attrs: Record<string, string> = { id, sourceAssetId: cleanSourceAssetId, format };
+  const attrs: Record<string, JsonValue> = { id, sourceAssetId: cleanSourceAssetId, format };
   const cleanTitle = title?.trim();
   if (cleanTitle) {
     attrs.title = cleanTitle;
@@ -618,6 +630,10 @@ export function insertDataGrid(
   const cleanCaption = caption?.trim();
   if (cleanCaption) {
     attrs.caption = cleanCaption;
+  }
+  const cleanKeyColumns = normalizeDataGridKeyColumns(keyColumns);
+  if (cleanKeyColumns.length > 0) {
+    attrs.keyColumns = cleanKeyColumns;
   }
 
   const before = fingerprintEditorJson(editor);
@@ -628,6 +644,36 @@ export function insertDataGrid(
 
 function fingerprintEditorJson(editor: EquationInsertTarget): string {
   return editor.getJSON ? JSON.stringify(editor.getJSON()) : "";
+}
+
+function parseDataGridKeyColumnsAttribute(value: string | null): string[] | null {
+  const keyColumns = normalizeDataGridKeyColumns(value?.split(",") ?? []);
+  return keyColumns.length > 0 ? keyColumns : null;
+}
+
+function normalizeDataGridKeyColumns(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const keyColumns: string[] = [];
+  for (const column of value) {
+    if (typeof column !== "string") {
+      continue;
+    }
+
+    const trimmed = column.trim();
+    const normalized = trimmed.toLowerCase();
+    if (!trimmed || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    keyColumns.push(trimmed);
+  }
+
+  return keyColumns;
 }
 
 function createEquationNodeView(tagName: "span" | "div", nodeType: "equation" | "equationBlock", displayMode: boolean) {
@@ -759,14 +805,22 @@ function createDataGridNodeView() {
           ? currentNode.attrs.title.trim()
           : "Data grid";
       const caption = typeof currentNode.attrs.caption === "string" ? currentNode.attrs.caption.trim() : "";
+      const keyColumns = normalizeDataGridKeyColumns(currentNode.attrs.keyColumns);
 
       dom.className = "sdoc-data-grid";
       dom.setAttribute("data-type", "dataGrid");
       dom.setAttribute("data-source-asset-id", sourceAssetId);
       dom.setAttribute("data-format", format);
+      if (keyColumns.length > 0) {
+        dom.setAttribute("data-key-columns", keyColumns.join(","));
+      } else {
+        dom.removeAttribute("data-key-columns");
+      }
       dom.innerHTML = `<div class="sdoc-data-grid-title">${escapeHtml(title)}</div><div class="sdoc-data-grid-meta">${escapeHtml(
         format.toUpperCase()
-      )} source: ${escapeHtml(sourceAssetId)}</div>${caption ? `<div class="sdoc-data-grid-caption">${escapeHtml(caption)}</div>` : ""}`;
+      )} source: ${escapeHtml(sourceAssetId)}${keyColumns.length > 0 ? ` · key: ${escapeHtml(keyColumns.join(", "))}` : ""}</div>${
+        caption ? `<div class="sdoc-data-grid-caption">${escapeHtml(caption)}</div>` : ""
+      }`;
     }
 
     render(node);

@@ -429,6 +429,14 @@ export function createDataGridRowReviewModel(
       return createUnavailableDataGridRowReviewItem(grid, "format-changed", `Format changed from ${baselineGrid.format} to ${grid.format}`);
     }
 
+    if (!stringArraysAreEqual(baselineGrid.keyColumns, grid.keyColumns)) {
+      return createUnavailableDataGridRowReviewItem(
+        grid,
+        "source-changed",
+        `Key columns changed from ${formatDataGridKeyColumns(baselineGrid.keyColumns)} to ${formatDataGridKeyColumns(grid.keyColumns)}`
+      );
+    }
+
     const baselineAsset = baselineAssets[grid.sourceAssetId];
     if (!baselineAsset) {
       return createUnavailableDataGridRowReviewItem(grid, "missing-baseline-asset", `Saved baseline asset ${grid.sourceAssetId} is not available`);
@@ -444,7 +452,8 @@ export function createDataGridRowReviewModel(
       sourceAssetId: grid.sourceAssetId,
       format: grid.format,
       oldSource: decodeAssetText(baselineAsset),
-      newSource: decodeAssetText(currentAsset)
+      newSource: decodeAssetText(currentAsset),
+      keyColumns: grid.keyColumns
     });
     const conflictCount = diff.events.filter((event) => event.kind === "conflict").length;
     const status: DataGridRowReviewStatus = conflictCount > 0 || !diff.hasReliableKey ? "conflict" : diff.events.length > 0 ? "ready" : "no-changes";
@@ -824,6 +833,7 @@ interface DataGridBlockSummary {
   title: string;
   sourceAssetId: string;
   format: "csv" | "json";
+  keyColumns: string[];
 }
 
 function collectDataGridBlocks(document: SDocDocument): DataGridBlockSummary[] {
@@ -839,7 +849,8 @@ function collectDataGridBlocks(document: SDocDocument): DataGridBlockSummary[] {
           gridId,
           title: typeof node.attrs?.title === "string" && node.attrs.title.trim().length > 0 ? node.attrs.title.trim() : sourceAssetId,
           sourceAssetId,
-          format
+          format,
+          keyColumns: getAuthoredDataGridKeyColumns(node)
         });
       }
     }
@@ -849,6 +860,15 @@ function collectDataGridBlocks(document: SDocDocument): DataGridBlockSummary[] {
 
   document.content.forEach(visit);
   return grids;
+}
+
+function getAuthoredDataGridKeyColumns(node: SDocNode): string[] {
+  const keyColumns = node.attrs?.keyColumns;
+  if (!Array.isArray(keyColumns)) {
+    return [];
+  }
+
+  return keyColumns.filter((column): column is string => typeof column === "string" && column.trim().length > 0).map((column) => column.trim());
 }
 
 function updateDataGridSourceAssetIdInNode(node: SDocNode, gridId: string, sourceAssetId: string): SDocNode {
@@ -950,6 +970,10 @@ function getDataGridRowReviewDetail(status: DataGridRowReviewStatus, keyColumns:
 
 function formatDataGridKeyColumns(keyColumns: string[]): string {
   return keyColumns.length > 0 ? keyColumns.join(", ") : "inferred row keys";
+}
+
+function stringArraysAreEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function formatDataGridRowReviewModelLabel(readyCount: number, eventCount: number, conflictCount: number, unavailableCount: number): string {

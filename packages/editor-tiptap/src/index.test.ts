@@ -767,7 +767,7 @@ describe("BlockIdExtension", () => {
       }
     });
 
-    const inserted = insertDataGrid(editor, "asset_pinout.csv", "csv", "MCU Pinout", "Connector J1", "blk_grid");
+    const inserted = insertDataGrid(editor, "asset_pinout.csv", "csv", "MCU Pinout", "Connector J1", "blk_grid", ["pin"]);
     const document = toSdocDocument(editor.getJSON(), "doc_grid");
     editor.destroy();
 
@@ -777,7 +777,8 @@ describe("BlockIdExtension", () => {
       sourceAssetId: "asset_pinout.csv",
       format: "csv",
       title: "MCU Pinout",
-      caption: "Connector J1"
+      caption: "Connector J1",
+      keyColumns: ["pin"]
     });
     expect(JSON.stringify(document)).not.toContain("pin,signal");
     expect(validateDocument(document).ok).toBe(true);

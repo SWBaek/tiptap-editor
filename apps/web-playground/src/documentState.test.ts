@@ -43,7 +43,7 @@ const historyDocument: SDocDocument = {
   content: [{ type: "paragraph", attrs: { id: "blk_history" }, content: [{ type: "text", text: "History" }] }]
 };
 
-function createDataGridDocument(sourceAssetId: string): SDocDocument {
+function createDataGridDocument(sourceAssetId: string, keyColumns: string[] = []): SDocDocument {
   return {
     schemaVersion: 1,
     type: "doc",
@@ -55,7 +55,8 @@ function createDataGridDocument(sourceAssetId: string): SDocDocument {
           id: "blk_grid",
           sourceAssetId,
           format: "csv",
-          title: "MCU Pinout"
+          title: "MCU Pinout",
+          ...(keyColumns.length > 0 ? { keyColumns } : {})
         }
       }
     ]
@@ -340,6 +341,29 @@ describe("document state helpers", () => {
       conflictCount: 0
     });
     expect(JSON.stringify(current)).not.toContain("GROUND");
+  });
+
+  it("uses authored dataGrid keyColumns for row review when no inferred key exists", () => {
+    const baseline = createDataGridDocument("asset_pinout.csv", ["pin"]);
+    const current = createDataGridDocument("asset_pinout.csv", ["pin"]);
+    const model = createDataGridRowReviewModel(
+      baseline,
+      current,
+      { "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC\n2,GND\n") },
+      { "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC\n2,GROUND\n") }
+    );
+
+    expect(model.readyCount).toBe(1);
+    expect(model.items[0]).toMatchObject({
+      status: "ready",
+      keyColumns: ["pin"],
+      eventCount: 1
+    });
+    expect(model.items[0].events[0]).toMatchObject({
+      kind: "cell-modified",
+      rowKey: "2",
+      column: "signal"
+    });
   });
 
   it("marks dataGrid row review as conflict when row keys are not reliable", () => {

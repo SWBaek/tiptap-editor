@@ -163,6 +163,7 @@ describe("exportMarkdown", () => {
 
     expect(markdown).toContain("> Data grid: MCU Pinout");
     expect(markdown).toContain("> Source: assets/asset_pinout.csv");
+    expect(markdown).toContain("> Key columns: pin");
     expect(markdown).not.toContain("pin,signal");
   });
 });
@@ -217,6 +218,8 @@ describe("exportHtml", () => {
 
     expect(html).toContain('class="sdoc-data-grid"');
     expect(html).toContain('data-source-asset-id="asset_pinout.csv"');
+    expect(html).toContain('data-key-columns="pin"');
+    expect(html).toContain("Key columns: pin");
     expect(html).toContain("MCU Pinout");
     expect(html).not.toContain("pin,signal");
   });
@@ -870,7 +873,8 @@ function createDataGridDocument(): SDocDocument {
           sourceAssetId: "asset_pinout.csv",
           format: "csv",
           title: "MCU Pinout",
-          caption: "Connector J1 signal assignment"
+          caption: "Connector J1 signal assignment",
+          keyColumns: ["pin"]
         }
       }
     ]

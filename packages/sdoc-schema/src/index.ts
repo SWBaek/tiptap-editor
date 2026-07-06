@@ -285,6 +285,8 @@ function validateNode(
       issues.push({ path: `${path}.attrs.caption`, message: "dataGrid caption must be a non-empty string when present" });
     }
 
+    validateDataGridKeyColumns(typedNode.attrs?.keyColumns, `${path}.attrs.keyColumns`, issues);
+
     if (Array.isArray(typedNode.content) && typedNode.content.length > 0) {
       issues.push({ path: `${path}.content`, message: "dataGrid content must not store grid rows" });
     }
@@ -358,6 +360,37 @@ function validateRequiredChildTypes(
         path: `${path}.content[${index}].type`,
         message: `${parentType} child must be ${allowedChildTypes.join(" or ")}`
       });
+    }
+  });
+}
+
+function validateDataGridKeyColumns(value: JsonValue | undefined, path: string, issues: ValidationIssue[]): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(value)) {
+    issues.push({ path, message: "dataGrid keyColumns must be an array of non-empty strings when present" });
+    return;
+  }
+
+  if (value.length === 0) {
+    issues.push({ path, message: "dataGrid keyColumns must not be empty when present" });
+    return;
+  }
+
+  const seen = new Set<string>();
+  value.forEach((column, index) => {
+    if (typeof column !== "string" || column.trim().length === 0) {
+      issues.push({ path: `${path}[${index}]`, message: "dataGrid keyColumns entries must be non-empty strings" });
+      return;
+    }
+
+    const normalized = column.trim().toLowerCase();
+    if (seen.has(normalized)) {
+      issues.push({ path: `${path}[${index}]`, message: `dataGrid keyColumns duplicates ${column.trim()}` });
+    } else {
+      seen.add(normalized);
     }
   });
 }

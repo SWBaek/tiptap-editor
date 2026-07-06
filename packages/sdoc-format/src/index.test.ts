@@ -295,6 +295,22 @@ describe("createDataGridDiagnostics", () => {
     expect(malformed.errorCount).toBe(1);
     expect(malformed.summaries[0].issues[0].message).toContain("Invalid JSON data grid");
   });
+
+  it("validates authored dataGrid keyColumns against referenced asset columns", () => {
+    const diagnostics = createDataGridDiagnostics(createDataGridDocument("asset_pinout.csv", "csv", ["pin", "missing"]), {
+      "asset_pinout.csv": new TextEncoder().encode("pin,signal\n1,VCC\n")
+    });
+
+    expect(diagnostics.errorCount).toBe(1);
+    expect(diagnostics.summaries[0]).toMatchObject({
+      keyColumns: ["pin", "missing"],
+      rowCount: 1,
+      columnCount: 2
+    });
+    expect(diagnostics.summaries[0].issues).toEqual([
+      expect.objectContaining({ severity: "error", message: "dataGrid keyColumn missing is missing from source columns" })
+    ]);
+  });
 });
 
 describe("createDataGridRowDiff", () => {
@@ -562,7 +578,7 @@ describe("tryUnpackSdoc", () => {
   });
 });
 
-function createDataGridDocument(sourceAssetId: string, format: "csv" | "json"): SDocDocument {
+function createDataGridDocument(sourceAssetId: string, format: "csv" | "json", keyColumns: string[] = []): SDocDocument {
   return {
     schemaVersion: 1,
     type: "doc",
@@ -574,7 +590,8 @@ function createDataGridDocument(sourceAssetId: string, format: "csv" | "json"): 
           id: "blk_grid",
           sourceAssetId,
           format,
-          title: "MCU Pinout"
+          title: "MCU Pinout",
+          ...(keyColumns.length > 0 ? { keyColumns } : {})
         }
       }
     ]

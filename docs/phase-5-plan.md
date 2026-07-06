@@ -159,7 +159,7 @@ Open work:
 
 ## Slice 5: Enterprise Authoring And Publishing
 
-Status: large data grid minimal asset model, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, row merge asset revision policy, browser row review readiness view-model, browser row accept/reject actions, browser row revision save-back, browser row event expansion/filtering, browser side-by-side cell review, browser added/deleted row payload preview, asset-only dirty-state tracking, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, Word template package validation, Word template mapping diagnostics, external Word template body injection, Word template style mapping application, and basic approval/revision metadata placeholder injection implemented.
+Status: large data grid minimal asset model, authored `keyColumns` row identity metadata, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, row merge asset revision policy, browser row review readiness view-model, browser row accept/reject actions, browser row revision save-back, browser row event expansion/filtering, browser side-by-side cell review, browser added/deleted row payload preview, asset-only dirty-state tracking, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, Word template package validation, Word template mapping diagnostics, external Word template body injection, Word template style mapping application, and basic approval/revision metadata placeholder injection implemented.
 
 Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
 
@@ -183,6 +183,7 @@ Acceptance evidence:
 - The browser Export panel can reject individual ready row events back to the saved-baseline asset value using update-policy asset writes without mutating `document.json`.
 - The browser Export panel can reject individual ready row events as new revision assets, preserving previous asset bytes and updating only the reviewed `dataGrid.attrs.sourceAssetId` as a canonical document edit.
 - Browser save state treats asset-only row review writes as unsaved changes until the `.sdoc` package is saved.
+- `dataGrid.attrs.keyColumns` is accepted as authored semantic row identity metadata, validated against source columns by diagnostics, preserved through editor conversion, and used by browser row review before inferred keys.
 - The browser Export panel can expand each ready grid from a compact first-three row event view to the full runtime event list without storing panel state in `document.json`.
 - The browser Export panel can filter row events by row key, column, kind, source asset, message, and old/new values without storing filter state in `document.json`.
 - The browser Export panel shows compact side-by-side before/after cell values for row events from runtime diff data.

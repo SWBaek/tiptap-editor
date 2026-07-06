@@ -16,8 +16,8 @@ The implementation should reuse the existing data grid parsing and diagnostics p
 
 Reliable row identity is required for semantic row diff and merge.
 
-- If future schema adds `dataGrid.attrs.keyColumns`, those column names are authored semantic metadata and must validate against the referenced asset.
-- Until explicit key columns exist, v1 may infer a review-only key from common columns such as `id`, `key`, or `name`, but automatic merge must require user confirmation.
+- `dataGrid.attrs.keyColumns` stores authored semantic row identity metadata and must validate against the referenced asset columns.
+- If explicit key columns are absent, v1 may infer a review-only key from common columns such as `id`, `key`, or `name`, but automatic merge must require user confirmation.
 - If no reliable key exists, the product should show row count, column, and parse diagnostics only. It must not approximate row merge by raw line numbers.
 - Duplicate or empty row keys are conflicts, not mergeable changes.
 
@@ -84,10 +84,10 @@ The first browser slices project saved-baseline/current assets into row review r
 - Browser row review can filter row events by title, source asset, event kind, row key, column, message, and old/new values without serializing filter state.
 - Browser row review renders compact side-by-side before/after cell values for row events from the runtime diff event data.
 - Browser row review renders added/deleted row payload previews from runtime `oldRow`/`newRow` diff event fields without storing row data in `document.json`.
+- Authored `dataGrid.attrs.keyColumns` is validated by schema/diagnostics and passed into row diff/merge projection as the preferred row identity source.
 
 ## Deferred Work
 
-- authored `keyColumns` schema extension;
 - Tauri-native revision save-back workflow;
 - richer multi-column cell diff layout for very wide rows;
 - multi-user conflict resolution;

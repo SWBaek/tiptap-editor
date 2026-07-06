@@ -1614,7 +1614,11 @@ function renderMarkdownDataGrid(node: SDocNode): string {
   const caption = getDataGridCaption(node);
   const sourceAssetId = getDataGridSourceAssetId(node);
   const format = getDataGridFormat(node);
+  const keyColumns = getDataGridKeyColumns(node);
   const lines = [`> Data grid: ${title}`, `> Source: assets/${sourceAssetId}`, `> Format: ${format}`];
+  if (keyColumns.length > 0) {
+    lines.push(`> Key columns: ${keyColumns.join(", ")}`);
+  }
   if (caption) {
     lines.push(`> Caption: ${caption}`);
   }
@@ -1627,13 +1631,17 @@ function renderHtmlDataGrid(node: SDocNode, options: HtmlExportOptions): string 
   const caption = getDataGridCaption(node);
   const sourceAssetId = getDataGridSourceAssetId(node);
   const format = getDataGridFormat(node);
+  const keyColumns = getDataGridKeyColumns(node);
   const source = sourceAssetId ? options.dataGridSourceResolver?.(sourceAssetId) : undefined;
   const preview = source ? createDataGridPreview(source, format, { maxRows: options.dataGridPreviewRows }) : undefined;
   const previewHtml = preview ? `\n${indentHtml(renderHtmlDataGridPreview(preview), 2)}` : "";
   const captionHtml = caption ? `\n  <figcaption>${escapeHtml(caption)}</figcaption>` : "";
-  return `<figure id="${escapeHtmlAttribute(id)}" class="sdoc-data-grid" data-source-asset-id="${escapeHtmlAttribute(sourceAssetId)}" data-format="${escapeHtmlAttribute(format)}">
+  const keyColumnsAttribute = keyColumns.length > 0 ? ` data-key-columns="${escapeHtmlAttribute(keyColumns.join(","))}"` : "";
+  const keyColumnsHtml =
+    keyColumns.length > 0 ? `\n  <div class="sdoc-data-grid-keys">Key columns: ${escapeHtml(keyColumns.join(", "))}</div>` : "";
+  return `<figure id="${escapeHtmlAttribute(id)}" class="sdoc-data-grid" data-source-asset-id="${escapeHtmlAttribute(sourceAssetId)}" data-format="${escapeHtmlAttribute(format)}"${keyColumnsAttribute}>
   <div class="sdoc-data-grid-title">${escapeHtml(title)}</div>
-  <div class="sdoc-data-grid-source">Source: assets/${escapeHtml(sourceAssetId)}</div>${previewHtml}${captionHtml}
+  <div class="sdoc-data-grid-source">Source: assets/${escapeHtml(sourceAssetId)}</div>${keyColumnsHtml}${previewHtml}${captionHtml}
 </figure>`;
 }
 
@@ -1657,6 +1665,10 @@ ${body}
 
 function formatDataGridLabel(node: SDocNode): string {
   const lines = [`Data grid: ${getDataGridTitle(node)}`, `Source: ${getDataGridSourceAssetId(node)}`, `Format: ${getDataGridFormat(node)}`];
+  const keyColumns = getDataGridKeyColumns(node);
+  if (keyColumns.length > 0) {
+    lines.push(`Key columns: ${keyColumns.join(", ")}`);
+  }
   const caption = getDataGridCaption(node);
   if (caption) {
     lines.push(caption);
@@ -1678,6 +1690,11 @@ function getDataGridSourceAssetId(node: SDocNode): string {
 
 function getDataGridFormat(node: SDocNode): string {
   return node.attrs?.format === "json" ? "json" : "csv";
+}
+
+function getDataGridKeyColumns(node: SDocNode): string[] {
+  const keyColumns = node.attrs?.keyColumns;
+  return Array.isArray(keyColumns) ? keyColumns.filter((column): column is string => typeof column === "string" && column.trim().length > 0).map((column) => column.trim()) : [];
 }
 
 export function createDataGridPreview(source: string, format: string, options: DataGridPreviewOptions = {}): DataGridPreview | undefined {

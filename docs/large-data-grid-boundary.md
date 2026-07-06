@@ -32,6 +32,7 @@ Allowed canonical attributes should be semantic:
 - source asset reference;
 - source format such as `csv` or `json`;
 - title, caption, and optional column intent;
+- optional authored `keyColumns` that define row identity for semantic asset review;
 - future optional display hints that affect publishing, such as visible columns or max preview rows.
 
 The following must not be stored in `document.json`:
@@ -59,7 +60,7 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 
 - `dataGrid` is a block-level node with stable `attrs.id`.
 - Required attrs: `sourceAssetId`, `format`.
-- Optional attrs: `title`, `caption`.
+- Optional attrs: `title`, `caption`, `keyColumns`.
 - `.sdoc` pack/unpack validates referenced source assets.
 - Markdown, HTML, PDF, slide, AI/RAG, and semantic diff treat the grid as an asset-backed dataset block.
 - Browser playground import stores CSV/JSON bytes in `.sdoc/assets/` and keeps raw rows out of `document.json`.
@@ -78,12 +79,13 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - The browser Export panel can filter ready row events by row key, column, kind, source asset, message, and changed values without storing filter state in `document.json`.
 - The browser Export panel shows compact side-by-side before/after cell values for row events using runtime diff event data.
 - The browser Export panel shows added/deleted row payload previews from runtime `oldRow`/`newRow` diff event fields without embedding rows in canonical JSON.
+- Authored `dataGrid.attrs.keyColumns` is supported as semantic row identity metadata. Validation rejects malformed entries, diagnostics report missing source columns, and row review uses those columns instead of relying only on inferred `id`/`key`/`name` columns.
 
 ## Deferred Work
 
 - Tauri-native revision save-back following `docs/data-grid-row-diff-merge-boundary.md`;
 - richer multi-column cell review for very wide data grids;
-- richer CSV/JSON validation rule configuration and authored column typing;
+- richer CSV/JSON validation rule configuration and authored column typing beyond row identity;
 - full spreadsheet editing;
 - formulas and computed columns;
 - external PLM/requirements database connectors.

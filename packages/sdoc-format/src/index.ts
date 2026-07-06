@@ -79,6 +79,7 @@ export interface DataGridDiagnosticSummary {
   title: string;
   sourceAssetId: string;
   format: "csv" | "json";
+  keyColumns: string[];
   rowCount: number;
   columnCount: number;
   issues: DataGridDiagnosticIssue[];
@@ -803,6 +804,7 @@ function createDataGridDiagnosticSummary(node: SDocNode, assets: Record<string, 
   const sourceAssetId = typeof node.attrs?.sourceAssetId === "string" ? node.attrs.sourceAssetId : "";
   const format = node.attrs?.format === "json" ? "json" : "csv";
   const title = typeof node.attrs?.title === "string" && node.attrs.title.trim().length > 0 ? node.attrs.title.trim() : sourceAssetId || gridId;
+  const keyColumns = getDataGridKeyColumns(node);
   const issueBase = { gridId, sourceAssetId };
   const asset = assets[sourceAssetId];
 
@@ -812,6 +814,7 @@ function createDataGridDiagnosticSummary(node: SDocNode, assets: Record<string, 
       title,
       sourceAssetId,
       format,
+      keyColumns,
       rowCount: 0,
       columnCount: 0,
       issues: [{ ...issueBase, severity: "error", message: `Missing dataGrid source asset ${sourceAssetId || "(empty)"}` }]
@@ -820,17 +823,18 @@ function createDataGridDiagnosticSummary(node: SDocNode, assets: Record<string, 
 
   const source = decodeUtf8Asset(asset);
   if (format === "json") {
-    return createJsonDataGridDiagnosticSummary(gridId, title, sourceAssetId, source);
+    return createJsonDataGridDiagnosticSummary(gridId, title, sourceAssetId, source, keyColumns);
   }
 
-  return createCsvDataGridDiagnosticSummary(gridId, title, sourceAssetId, source);
+  return createCsvDataGridDiagnosticSummary(gridId, title, sourceAssetId, source, keyColumns);
 }
 
 function createCsvDataGridDiagnosticSummary(
   gridId: string,
   title: string,
   sourceAssetId: string,
-  source: string
+  source: string,
+  keyColumns: string[]
 ): DataGridDiagnosticSummary {
   const issues: DataGridDiagnosticIssue[] = [];
   const parsed = parseCsvRecordsWithDiagnostics(source);
@@ -839,7 +843,7 @@ function createCsvDataGridDiagnosticSummary(
 
   if (records.length === 0) {
     issues.push({ severity: "error", gridId, sourceAssetId, message: "CSV data grid is empty" });
-    return { gridId, title, sourceAssetId, format: "csv", rowCount: 0, columnCount: 0, issues };
+    return { gridId, title, sourceAssetId, format: "csv", keyColumns, rowCount: 0, columnCount: 0, issues };
   }
 
   const [header, ...body] = records;
@@ -866,6 +870,7 @@ function createCsvDataGridDiagnosticSummary(
       seenHeaders.set(normalized, index + 1);
     }
   });
+  addMissingDataGridKeyColumnIssues(issues, gridId, sourceAssetId, header, keyColumns);
 
   records.forEach((row, index) => {
     if (row.length !== columnCount) {
@@ -879,14 +884,15 @@ function createCsvDataGridDiagnosticSummary(
     }
   });
 
-  return { gridId, title, sourceAssetId, format: "csv", rowCount: body.length, columnCount, issues };
+  return { gridId, title, sourceAssetId, format: "csv", keyColumns, rowCount: body.length, columnCount, issues };
 }
 
 function createJsonDataGridDiagnosticSummary(
   gridId: string,
   title: string,
   sourceAssetId: string,
-  source: string
+  source: string,
+  keyColumns: string[]
 ): DataGridDiagnosticSummary {
   const issues: DataGridDiagnosticIssue[] = [];
   let value: unknown;
@@ -898,6 +904,7 @@ function createJsonDataGridDiagnosticSummary(
       title,
       sourceAssetId,
       format: "json",
+      keyColumns,
       rowCount: 0,
       columnCount: 0,
       issues: [
@@ -917,6 +924,7 @@ function createJsonDataGridDiagnosticSummary(
       title,
       sourceAssetId,
       format: "json",
+      keyColumns,
       rowCount: 0,
       columnCount: 0,
       issues: [{ severity: "error", gridId, sourceAssetId, message: "JSON data grid root must be an array" }]
@@ -929,6 +937,7 @@ function createJsonDataGridDiagnosticSummary(
       title,
       sourceAssetId,
       format: "json",
+      keyColumns,
       rowCount: 0,
       columnCount: 0,
       issues: [{ severity: "error", gridId, sourceAssetId, message: "JSON data grid array is empty" }]
@@ -949,7 +958,8 @@ function createJsonDataGridDiagnosticSummary(
         });
       }
     });
-    return { gridId, title, sourceAssetId, format: "json", rowCount: rows.length, columnCount, issues };
+    addMissingDataGridKeyColumnIssues(issues, gridId, sourceAssetId, [], keyColumns);
+    return { gridId, title, sourceAssetId, format: "json", keyColumns, rowCount: rows.length, columnCount, issues };
   }
 
   if (value.every((row) => isPlainObject(row))) {
@@ -971,7 +981,8 @@ function createJsonDataGridDiagnosticSummary(
         });
       }
     });
-    return { gridId, title, sourceAssetId, format: "json", rowCount: rows.length, columnCount: columns.length, issues };
+    addMissingDataGridKeyColumnIssues(issues, gridId, sourceAssetId, columns, keyColumns);
+    return { gridId, title, sourceAssetId, format: "json", keyColumns, rowCount: rows.length, columnCount: columns.length, issues };
   }
 
   return {
@@ -979,10 +990,44 @@ function createJsonDataGridDiagnosticSummary(
     title,
     sourceAssetId,
     format: "json",
+    keyColumns,
     rowCount: value.length,
     columnCount: 0,
     issues: [{ severity: "error", gridId, sourceAssetId, message: "JSON data grid rows must be all arrays or all objects" }]
   };
+}
+
+function getDataGridKeyColumns(node: SDocNode): string[] {
+  const keyColumns = node.attrs?.keyColumns;
+  if (!Array.isArray(keyColumns)) {
+    return [];
+  }
+
+  return keyColumns.filter((column): column is string => typeof column === "string" && column.trim().length > 0).map((column) => column.trim());
+}
+
+function addMissingDataGridKeyColumnIssues(
+  issues: DataGridDiagnosticIssue[],
+  gridId: string,
+  sourceAssetId: string,
+  columns: string[],
+  keyColumns: string[]
+): void {
+  if (keyColumns.length === 0) {
+    return;
+  }
+
+  const availableColumns = new Set(columns.map((column) => column.trim().toLowerCase()).filter(Boolean));
+  for (const keyColumn of keyColumns) {
+    if (!availableColumns.has(keyColumn.trim().toLowerCase())) {
+      issues.push({
+        severity: "error",
+        gridId,
+        sourceAssetId,
+        message: `dataGrid keyColumn ${keyColumn} is missing from source columns`
+      });
+    }
+  }
 }
 
 function parseDataGridRows(

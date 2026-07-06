@@ -371,7 +371,8 @@ describe("validateDocument", () => {
             sourceAssetId: "asset_pinout.csv",
             format: "csv",
             title: "MCU Pinout",
-            caption: "Connector J1 signal assignment"
+            caption: "Connector J1 signal assignment",
+            keyColumns: ["pin"]
           }
         }
       ]
@@ -381,6 +382,30 @@ describe("validateDocument", () => {
     expect(result.ok).toBe(true);
     expect(getPlainText(document.content[0])).toContain("MCU Pinout");
     expect(getPlainText(document.content[0])).toContain("asset_pinout.csv");
+  });
+
+  it("rejects invalid dataGrid keyColumns metadata", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_test" },
+      content: [
+        {
+          type: "dataGrid",
+          attrs: {
+            id: "blk_grid",
+            sourceAssetId: "asset_pinout.csv",
+            format: "csv",
+            keyColumns: ["pin", "PIN", ""]
+          }
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("dataGrid keyColumns duplicates PIN"))).toBe(true);
+    expect(result.issues.some((issue) => issue.message.includes("dataGrid keyColumns entries must be non-empty strings"))).toBe(true);
   });
 
   it("rejects dataGrid nodes that embed raw rows in document.json", () => {

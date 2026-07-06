@@ -55,7 +55,7 @@ Acceptance evidence:
 
 ## Priority Slice 2: Explorer-First Files Panel
 
-Status: planned next.
+Status: implemented on 2026-07-06; manual Tauri smoke still recommended before the next user review.
 
 Turn Files into a simple VS Code-like explorer instead of a mixed action/status panel.
 
@@ -67,9 +67,18 @@ Acceptance criteria:
 - Keep developer-only unpack/pack commands out of the default author path.
 - Do not expose broad filesystem APIs to browser code; continue using the Tauri adapter boundary.
 
+Acceptance evidence:
+
+- Files panel now presents a compact current-file header with saved/unsaved state.
+- File actions are reduced to New, Open, and Save/Save As.
+- Desktop workspace entries render as an explorer tree under the selected folder.
+- Browser mode continues to show a desktop-only browsing boundary instead of claiming folder access.
+- Developer unpack/pack commands remain available only behind a collapsed Developer workspace disclosure.
+- Playwright covers browser Files panel behavior and the desktop workspace listing path.
+
 ## Priority Slice 3: Information Architecture Cleanup
 
-Status: planned before more feature depth.
+Status: planned next.
 
 Reduce panel overload and make authoring the obvious main workflow.
 

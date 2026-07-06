@@ -43,6 +43,7 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
 2. Workspace Explorer
    - Choose a workspace folder containing multiple `.sdoc` files.
    - Confirm the Files panel reads as a simple explorer and lists immediate `.sdoc` files.
+   - Confirm the current document and saved/unsaved state are visible in the compact Files header.
    - Confirm developer-only unpacked folder commands are not part of the default author path.
 
 3. Open `.sdoc`

@@ -562,69 +562,35 @@ button {
   align-content: start;
 }
 
-.files-actions {
-  display: grid;
-  gap: 10px;
+.explorer-panel {
+  gap: 12px;
 }
 
-.recent-files,
-.workspace-files {
+.explorer-current {
   display: grid;
-  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
   min-width: 0;
-  padding-top: 8px;
+  padding: 9px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.workspace-files {
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+.file-state-dot {
+  width: 9px;
+  height: 9px;
+  background: #8fd0a0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(143, 208, 160, 0.12);
 }
 
-.recent-files h3,
-.workspace-files h3 {
-  margin: 0;
-  color: #d9e1e8;
-  font-size: 12px;
-  font-weight: 650;
-  text-transform: uppercase;
+.file-state-dot.unsaved {
+  background: #ffd28a;
+  box-shadow: 0 0 0 3px rgba(255, 210, 138, 0.14);
 }
 
-.recent-files p,
-.workspace-files p {
-  margin: 0;
-  color: #aeb8c2;
-  font-size: 12px;
-}
-
-.recent-files ul,
-.workspace-files ul {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.recent-files button,
-.workspace-files button {
-  display: grid;
-  gap: 4px;
-  width: 100%;
-  min-height: 54px;
-  padding: 9px 10px;
-  text-align: left;
-}
-
-.workspace-files .files-actions button {
-  min-height: 36px;
-  text-align: center;
-}
-
-.recent-files strong,
-.recent-files span,
-.workspace-files strong,
-.workspace-files span {
+.explorer-current strong,
+.explorer-current span {
   display: block;
   min-width: 0;
   overflow: hidden;
@@ -632,14 +598,167 @@ button {
   white-space: nowrap;
 }
 
-.recent-files strong,
-.workspace-files strong {
+.explorer-current strong {
   color: #f7f9fb;
   font-size: 13px;
 }
 
+.explorer-current span {
+  margin-top: 2px;
+  color: #aeb8c2;
+  font-size: 11px;
+}
+
+.explorer-actions,
+.explorer-folder-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.explorer-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.explorer-actions button,
+.explorer-folder-actions button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.explorer-actions span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.explorer-section-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.explorer-section h3,
+.explorer-section-header h3 {
+  margin: 0;
+  color: #d9e1e8;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.explorer-section-header button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+}
+
+.explorer-root {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 7px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.explorer-root svg {
+  grid-row: 1 / span 2;
+  color: #9bc5d0;
+}
+
+.explorer-root strong,
+.explorer-root span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-root strong {
+  color: #f7f9fb;
+  font-size: 13px;
+}
+
+.explorer-root span {
+  color: #8796a2;
+  font-size: 11px;
+}
+
+.explorer-empty,
+.recent-files p {
+  margin: 0;
+  color: #aeb8c2;
+  font-size: 12px;
+}
+
+.recent-files ul,
+.explorer-tree {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.explorer-tree button,
+.recent-files button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 7px;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.explorer-tree li.active button {
+  background: rgba(111, 179, 193, 0.2);
+  border-color: rgba(111, 179, 193, 0.56);
+}
+
+.explorer-tree span,
+.explorer-tree small,
+.recent-files strong,
+.recent-files span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-tree span,
+.recent-files strong {
+  color: #f7f9fb;
+  font-size: 13px;
+}
+
+.explorer-tree small {
+  grid-column: 2;
+  color: #8796a2;
+  font-size: 10px;
+}
+
 .recent-files span,
-.workspace-files span {
+.recent-files small {
+  grid-column: 2;
   color: #aeb8c2;
   font-size: 11px;
 }
@@ -652,12 +771,25 @@ button {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.developer-workspace h3 {
-  margin: 0;
+.developer-workspace details {
+  display: grid;
+  gap: 10px;
+}
+
+.developer-workspace summary {
   color: #d9e1e8;
   font-size: 12px;
   font-weight: 650;
   text-transform: uppercase;
+  cursor: pointer;
+}
+
+.developer-workspace details[open] {
+  gap: 10px;
+}
+
+.developer-workspace details[open] > * + * {
+  margin-top: 10px;
 }
 
 .workspace-boundary {

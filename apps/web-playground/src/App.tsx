@@ -2180,32 +2180,81 @@ function FilesPanel({
 }) {
   const unpackCommand = `npm run sdoc -- unpack ${quoteCliPath(sdocFilename)} ${quoteCliPath(`${sdocFilename}.d`)}`;
   const packCommand = `npm run sdoc -- pack ${quoteCliPath(`${sdocFilename}.d`)} ${quoteCliPath(sdocFilename)}`;
+  const isCurrentUnsaved = savedLabel.toLowerCase().includes("unsaved") || savedLabel === "Not saved";
+  const currentWorkspaceEntries = workspaceEntries.filter((entry) => entry.name === currentFile || entry.path === currentFile);
 
   return (
-    <div className="side-panel-section files-panel">
-      <div className="status-block">
-        <span>Current file</span>
-        <strong title={currentFile}>{currentFile}</strong>
-      </div>
-      <div className="status-block">
-        <span>Saved</span>
-        <strong>{savedLabel}</strong>
-      </div>
+    <div className="side-panel-section files-panel explorer-panel">
+      <section className="explorer-current" aria-label="Current file">
+        <span className={isCurrentUnsaved ? "file-state-dot unsaved" : "file-state-dot"} aria-hidden="true" />
+        <div>
+          <strong title={currentFile}>{currentFile}</strong>
+          <span>{savedLabel}</span>
+        </div>
+      </section>
 
-      <div className="files-actions" aria-label="File actions">
+      <div className="explorer-actions" aria-label="File actions">
         <button type="button" onClick={onNewDocument}>
-          New document
+          <FilePlus size={15} />
+          <span>New</span>
         </button>
         <button type="button" onClick={onOpenDocument}>
-          Open .sdoc or JSON
+          <FolderOpen size={15} />
+          <span>Open</span>
         </button>
         <button type="button" onClick={onSaveSdoc}>
-          {sdocSaveLabel}
+          <Save size={15} />
+          <span>{sdocSaveLabel}</span>
         </button>
       </div>
 
-      <section className="recent-files" aria-label="Recent files">
-        <h3>Recent files</h3>
+      <section className="workspace-files explorer-section" aria-label="Workspace files">
+        <div className="explorer-section-header">
+          <h3>Explorer</h3>
+          {isDesktopRuntime && (
+            <button type="button" onClick={onRefreshWorkspace} disabled={!workspaceDirectory || isWorkspaceLoading} title="Refresh workspace">
+              <RefreshCw size={14} />
+            </button>
+          )}
+        </div>
+        {isDesktopRuntime ? (
+          <>
+            <div className="explorer-root">
+              <FolderOpen size={15} />
+              <strong title={workspaceDirectory ?? "No workspace folder selected"}>{workspaceDirectory ? basenameFromPath(workspaceDirectory) : "No folder selected"}</strong>
+              {workspaceDirectory && <span title={workspaceDirectory}>{workspaceDirectory}</span>}
+            </div>
+            <div className="explorer-folder-actions" aria-label="Workspace actions">
+              <button type="button" onClick={onChooseWorkspaceDirectory}>
+                {workspaceDirectory ? "Change folder" : "Open folder"}
+              </button>
+            </div>
+            {workspaceEntries.length === 0 ? (
+              <p className="explorer-empty">{isWorkspaceLoading ? "Loading workspace files" : "No .sdoc files in this folder"}</p>
+            ) : (
+              <ul className="explorer-tree">
+                {workspaceEntries.map((entry) => (
+                  <li key={entry.path} className={isCurrentWorkspaceEntry(entry, currentFile, currentWorkspaceEntries) ? "active" : undefined}>
+                    <button type="button" onClick={() => onOpenWorkspaceEntry(entry)} disabled={entry.kind !== "sdoc-file"} title={entry.path}>
+                      <FileText size={15} />
+                      <span>{entry.name}</span>
+                      <small>{formatWorkspaceEntryMeta(entry)}</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : (
+          <div className="workspace-boundary browser-boundary">
+            <strong>Desktop-only browsing</strong>
+            <span>Folder exploration is available through the Tauri app. Browser mode only opens files selected by the user.</span>
+          </div>
+        )}
+      </section>
+
+      <section className="recent-files explorer-section" aria-label="Recent files">
+        <h3>Recent documents</h3>
         {recentFiles.length === 0 ? (
           <p>No recent browser activity</p>
         ) : (
@@ -2213,6 +2262,7 @@ function FilesPanel({
             {recentFiles.map((entry) => (
               <li key={entry.id}>
                 <button type="button" onClick={() => onSelectRecentFile(entry)}>
+                  <FileText size={15} />
                   <strong>{entry.name}</strong>
                   <span>
                     {entry.action} {entry.title} - {formatRecentFileTime(entry.updatedAt)}
@@ -2224,57 +2274,20 @@ function FilesPanel({
         )}
       </section>
 
-      <section className="workspace-files" aria-label="Workspace files">
-        <h3>Workspace files</h3>
-        {isDesktopRuntime ? (
-          <>
-            <div className="workspace-boundary">
-              <strong title={workspaceDirectory ?? "No workspace folder selected"}>{workspaceDirectory ?? "No workspace folder selected"}</strong>
-              <span>Lists immediate `.sdoc` files from a selected desktop folder. This state is not saved to document.json.</span>
-            </div>
-            <div className="files-actions" aria-label="Workspace actions">
-              <button type="button" onClick={onChooseWorkspaceDirectory}>
-                Choose folder
-              </button>
-              <button type="button" onClick={onRefreshWorkspace} disabled={!workspaceDirectory || isWorkspaceLoading}>
-                {isWorkspaceLoading ? "Refreshing..." : "Refresh"}
-              </button>
-            </div>
-            {workspaceEntries.length === 0 ? (
-              <p>{isWorkspaceLoading ? "Loading workspace files" : "No workspace .sdoc files loaded"}</p>
-            ) : (
-              <ul>
-                {workspaceEntries.map((entry) => (
-                  <li key={entry.path}>
-                    <button type="button" onClick={() => onOpenWorkspaceEntry(entry)} disabled={entry.kind !== "sdoc-file"}>
-                      <strong>{entry.name}</strong>
-                      <span>{formatWorkspaceEntryMeta(entry)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        ) : (
-          <div className="workspace-boundary">
-            <strong>Desktop-only browsing</strong>
-            <span>Folder exploration is available through the Tauri app. Browser mode only opens files selected by the user.</span>
-          </div>
-        )}
-      </section>
-
       <section className="developer-workspace" aria-label="Unpacked folder workflow">
-        <h3>Developer workspace</h3>
-        <div className="workspace-boundary">
-          <strong>Single-file .sdoc is the browser format</strong>
-          <span>Unpacked folders are CLI/Tauri-only because browsers cannot manage arbitrary project folders.</span>
-        </div>
-        <button type="button" onClick={() => onCopyDeveloperCommand(unpackCommand)}>
-          Copy unpack command
-        </button>
-        <button type="button" onClick={() => onCopyDeveloperCommand(packCommand)}>
-          Copy pack command
-        </button>
+        <details>
+          <summary>Developer workspace</summary>
+          <div className="workspace-boundary">
+            <strong>Single-file .sdoc is the authoring format</strong>
+            <span>Unpacked folders and CLI commands are advanced review/debug workflows.</span>
+          </div>
+          <button type="button" onClick={() => onCopyDeveloperCommand(unpackCommand)}>
+            Copy unpack command
+          </button>
+          <button type="button" onClick={() => onCopyDeveloperCommand(packCommand)}>
+            Copy pack command
+          </button>
+        </details>
       </section>
     </div>
   );
@@ -3562,6 +3575,15 @@ function formatWorkspaceEntryMeta(entry: WindowSdocWorkspaceEntry): string {
     }
   }
   return parts.join(" - ");
+}
+
+function basenameFromPath(path: string): string {
+  const normalized = path.replace(/\\/g, "/");
+  return normalized.split("/").filter(Boolean).pop() ?? path;
+}
+
+function isCurrentWorkspaceEntry(entry: WindowSdocWorkspaceEntry, currentFile: string, candidates: WindowSdocWorkspaceEntry[]): boolean {
+  return entry.name === currentFile || entry.path === currentFile || candidates.some((candidate) => candidate.path === entry.path);
 }
 
 function formatByteSize(value: number): string {

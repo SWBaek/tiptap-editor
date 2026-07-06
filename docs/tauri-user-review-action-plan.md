@@ -32,7 +32,7 @@ The architecture is still valid, but the product surface is over-weighted toward
 ## Revised Near-Term Sequence
 
 1. Desktop workspace entry screen. Implemented on 2026-07-06; manual Tauri smoke remains recommended before the next user review.
-2. Explorer-first Files panel.
+2. Explorer-first Files panel. Implemented on 2026-07-06; manual Tauri smoke remains recommended before the next user review.
 3. Panel information architecture cleanup.
 4. Outline/TOC navigation and heading numbering boundary.
 5. Caption model and figure/table list boundary.

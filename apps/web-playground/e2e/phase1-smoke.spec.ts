@@ -48,7 +48,7 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await expect(page.getByRole("button", { name: "Open .sdoc", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview" })).toBeVisible();
   await page.getByRole("button", { name: "Files panel" }).click();
-  await expect(page.getByRole("complementary", { name: "Files side panel" })).toContainText("Current file");
+  await expect(page.getByRole("complementary", { name: "Files side panel" }).getByLabel("Current file")).toContainText("Playground Document.sdoc");
   await page.getByRole("button", { name: "Files panel" }).click();
   await expect(page.getByRole("complementary", { name: "Files side panel" })).toBeHidden();
   await page.getByRole("button", { name: "Settings panel" }).click();
@@ -215,19 +215,22 @@ test("tracks browser recent files in the Files side panel", async ({ page }) => 
   await page.getByRole("button", { name: "Files panel" }).click();
   const filesPanel = page.getByRole("complementary", { name: "Files side panel" });
   await expect(filesPanel).toBeVisible();
+  await expect(filesPanel.getByLabel("Current file")).toContainText("Playground Document.sdoc");
   await expect(filesPanel.getByLabel("Recent files")).toContainText("No recent browser activity");
   await expect(filesPanel.getByLabel("Workspace files")).toContainText("Desktop-only browsing");
-  await expect(filesPanel.getByLabel("Unpacked folder workflow")).toContainText("CLI/Tauri-only");
+  await expect(filesPanel.getByLabel("Unpacked folder workflow")).toContainText("advanced review/debug workflows");
 
   await page.getByRole("button", { name: "Settings panel" }).click();
   await page.getByLabel("Title", { exact: true }).fill("Files Panel Spec");
   await page.getByRole("button", { name: "Files panel" }).click();
+  await filesPanel.getByText("Developer workspace").click();
   await filesPanel.getByRole("button", { name: "Copy unpack command" }).click();
   await expect(page.locator(".status-note")).toContainText('npm run sdoc -- unpack "Files Panel Spec.sdoc" "Files Panel Spec.sdoc.d"');
 
   const sdocDownload = page.waitForEvent("download");
   await filesPanel.getByRole("button", { name: "Download .sdoc" }).click();
   expect((await sdocDownload).suggestedFilename()).toBe("Files Panel Spec.sdoc");
+  await expect(filesPanel.getByLabel("Current file")).toContainText("Files Panel Spec.sdoc");
   await expect(filesPanel.getByLabel("Recent files")).toContainText("Files Panel Spec.sdoc");
   await expect(filesPanel.getByLabel("Recent files")).toContainText("saved Files Panel Spec");
 
@@ -278,9 +281,11 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await expect(page.getByRole("region", { name: "Document workflow" })).toBeVisible();
   await page.getByRole("button", { name: "Files panel" }).click();
   const filesPanel = page.getByRole("complementary", { name: "Files side panel" });
+  await expect(filesPanel.getByLabel("Workspace files")).toContainText("Docs");
   await expect(filesPanel.getByLabel("Workspace files")).toContainText("opened.sdoc");
   await filesPanel.getByRole("button", { name: /opened\.sdoc/ }).click();
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("opened");
+  await expect(filesPanel.getByLabel("Current file")).toContainText("opened.sdoc");
   await expect(page.locator(".status-note")).toContainText("Initialized empty .sdoc");
 });
 

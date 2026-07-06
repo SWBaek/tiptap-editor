@@ -1,8 +1,8 @@
 ---
 title: "Phase 5 Author-First Productization Goal"
 status: in_progress
-progress_percent: 17
-current_slice: explorer-first-files-panel
+progress_percent: 34
+current_slice: information-architecture-cleanup
 created_at: 2026-07-06
 started_at: 2026-07-06
 completed_at:
@@ -17,8 +17,8 @@ planning_docs:
   - docs/desktop-native-smoke.md
 completed_slices:
   - desktop-workspace-entry
-remaining_slices:
   - explorer-first-files-panel
+remaining_slices:
   - information-architecture-cleanup
   - core-authoring-ux
   - publishing-style-profiles
@@ -33,6 +33,9 @@ progress_log:
   - date: 2026-07-06
     progress_percent: 17
     note: "desktop-workspace-entry implemented and validated with npm test, npm run build, npm run test:e2e, npm run typecheck:desktop, and npm run build:desktop. Commit hash is recorded in the final run report."
+  - date: 2026-07-06
+    progress_percent: 34
+    note: "explorer-first-files-panel implemented with compact current-file state, explorer-style workspace entries, browser boundary retention, and collapsed developer commands. Validation and commit hash are recorded in the final run report."
 done_rule: "When this goal is fully completed, update status to done, progress_percent to 100, completed_at to the completion date, and record final evidence in progress_log."
 ---
 

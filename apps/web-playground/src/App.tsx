@@ -111,6 +111,7 @@ import {
   addLocalHistoryEntry,
   areAssetsDirty,
   createChangeReview,
+  createDataGridRowPayloadPreview,
   createDataGridRowReviewModel,
   createReviewActionPlan,
   createReviewBatchConflictSummary,
@@ -2312,16 +2313,7 @@ function ExportPanel({
                                       <code>{formatDataGridRowEventValue(event.newValue, event.kind === "row-deleted" ? "(deleted row)" : "(empty)")}</code>
                                     </div>
                                   </div>
-                                  {getDataGridRowEventPayloadEntries(event).length > 0 && (
-                                    <dl className="data-grid-row-payload-preview" aria-label="Row payload preview">
-                                      {getDataGridRowEventPayloadEntries(event).map(([column, value]) => (
-                                        <div key={column}>
-                                          <dt>{column}</dt>
-                                          <dd>{formatDataGridRowEventValue(value, "(empty)")}</dd>
-                                        </div>
-                                      ))}
-                                    </dl>
-                                  )}
+                                  <RowPayloadPreview event={event} />
                                 </div>
                                 <div className="data-grid-row-event-actions">
                                   <button className="accept" type="button" onClick={() => onAcceptDataGridRowEvent(item, event)}>
@@ -2428,6 +2420,31 @@ function ExportAction({
       <button type="button" onClick={onClick}>
         {label}
       </button>
+    </div>
+  );
+}
+
+function RowPayloadPreview({ event }: { event: DataGridRowDiffEvent }) {
+  const preview = createDataGridRowPayloadPreview(event);
+  if (preview.totalCount === 0) {
+    return null;
+  }
+
+  return (
+    <div className="data-grid-row-payload-preview" aria-label="Row payload preview">
+      <dl>
+        {preview.entries.map(([column, value]) => (
+          <div key={column}>
+            <dt>{column}</dt>
+            <dd>{formatDataGridRowEventValue(value, "(empty)")}</dd>
+          </div>
+        ))}
+      </dl>
+      {preview.hiddenCount > 0 && (
+        <span className="data-grid-row-payload-overflow">
+          {preview.hiddenCount} more column{preview.hiddenCount === 1 ? "" : "s"} hidden from preview
+        </span>
+      )}
     </div>
   );
 }
@@ -3579,6 +3596,7 @@ function decodeTextAsset(bytes: Uint8Array): string {
 }
 
 function dataGridRowEventMatchesQuery(event: DataGridRowDiffEvent, item: DataGridRowReviewItem, query: string): boolean {
+  const payloadValues = createDataGridRowPayloadPreview(event, Number.MAX_SAFE_INTEGER).entries.flat();
   return [
     item.title,
     item.sourceAssetId,
@@ -3588,7 +3606,7 @@ function dataGridRowEventMatchesQuery(event: DataGridRowDiffEvent, item: DataGri
     event.column ?? "",
     event.oldValue ?? "",
     event.newValue ?? "",
-    ...getDataGridRowEventPayloadEntries(event).flat()
+    ...payloadValues
   ]
     .join(" ")
     .toLowerCase()
@@ -3597,11 +3615,6 @@ function dataGridRowEventMatchesQuery(event: DataGridRowDiffEvent, item: DataGri
 
 function formatDataGridRowEventValue(value: string | undefined, fallback: string): string {
   return value === undefined || value.length === 0 ? fallback : value;
-}
-
-function getDataGridRowEventPayloadEntries(event: DataGridRowDiffEvent): Array<[string, string]> {
-  const row = event.kind === "row-added" ? event.newRow : event.kind === "row-deleted" ? event.oldRow : undefined;
-  return row ? Object.entries(row) : [];
 }
 
 function getImageExtension(filename: string, mimeType: string): string {

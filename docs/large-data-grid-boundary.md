@@ -80,11 +80,12 @@ The editor shows a compact asset-backed preview optimized for scanning, not a fu
 - The browser Export panel shows compact side-by-side before/after cell values for row events using runtime diff event data.
 - The browser Export panel shows added/deleted row payload previews from runtime `oldRow`/`newRow` diff event fields without embedding rows in canonical JSON.
 - Authored `dataGrid.attrs.keyColumns` is supported as semantic row identity metadata. Validation rejects malformed entries, diagnostics report missing source columns, and row review uses those columns instead of relying only on inferred `id`/`key`/`name` columns.
+- Wide row payload previews are capped with a hidden-column summary so large CSV/JSON events remain scannable without storing preview state in `document.json`.
 
 ## Deferred Work
 
 - Tauri-native revision save-back following `docs/data-grid-row-diff-merge-boundary.md`;
-- richer multi-column cell review for very wide data grids;
+- column pinning, grouping, and richer multi-column cell comparison for very wide data grids;
 - richer CSV/JSON validation rule configuration and authored column typing beyond row identity;
 - full spreadsheet editing;
 - formulas and computed columns;

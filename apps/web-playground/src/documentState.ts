@@ -215,6 +215,12 @@ export interface DataGridRowReviewModel {
   items: DataGridRowReviewItem[];
 }
 
+export interface DataGridRowPayloadPreview {
+  entries: Array<[string, string]>;
+  totalCount: number;
+  hiddenCount: number;
+}
+
 export function isMetadataDirty(current: SDocMetadata, baseline: SDocMetadata): boolean {
   return stableStringify(current) !== stableStringify(baseline);
 }
@@ -490,6 +496,17 @@ export function findDataGridRowRejectionEvent(
   event: DataGridRowDiffEvent
 ): DataGridRowDiffEvent | undefined {
   return reverseEvents.find((candidate) => dataGridRowEventsAreRejectionPair(candidate, event));
+}
+
+export function createDataGridRowPayloadPreview(event: DataGridRowDiffEvent, maxColumns = 12): DataGridRowPayloadPreview {
+  const row = event.kind === "row-added" ? event.newRow : event.kind === "row-deleted" ? event.oldRow : undefined;
+  const entries = row ? Object.entries(row) : [];
+  const visibleCount = Math.max(0, Math.floor(maxColumns));
+  return {
+    entries: entries.slice(0, visibleCount),
+    totalCount: entries.length,
+    hiddenCount: Math.max(0, entries.length - visibleCount)
+  };
 }
 
 export function renderVisualDiffRuntimeCss(items: VisualDiffOverlayItem[], selectedId: string | null = null): string {

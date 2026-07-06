@@ -85,11 +85,12 @@ The first browser slices project saved-baseline/current assets into row review r
 - Browser row review renders compact side-by-side before/after cell values for row events from the runtime diff event data.
 - Browser row review renders added/deleted row payload previews from runtime `oldRow`/`newRow` diff event fields without storing row data in `document.json`.
 - Authored `dataGrid.attrs.keyColumns` is validated by schema/diagnostics and passed into row diff/merge projection as the preferred row identity source.
+- Wide added/deleted row payload previews are capped in the browser UI with an explicit hidden-column count, while filtering still searches the full runtime row payload.
 
 ## Deferred Work
 
 - Tauri-native revision save-back workflow;
-- richer multi-column cell diff layout for very wide rows;
+- column pinning, column grouping, and richer multi-column cell diff layout for very wide rows;
 - multi-user conflict resolution;
 - formula-aware spreadsheet merge;
 - PLM, requirements database, or external spreadsheet connectors.

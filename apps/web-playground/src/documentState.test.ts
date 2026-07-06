@@ -3,6 +3,7 @@ import {
   addLocalHistoryEntry,
   areAssetsDirty,
   createChangeReview,
+  createDataGridRowPayloadPreview,
   createReviewActionPlan,
   createReviewBatchConflictSummary,
   createSideBySideDiffRows,
@@ -423,6 +424,25 @@ describe("document state helpers", () => {
       oldValue: "GROUND",
       newValue: "GND"
     });
+  });
+
+  it("limits wide dataGrid row payload previews without dropping runtime search data", () => {
+    const newRow = Object.fromEntries(Array.from({ length: 15 }, (_value, index) => [`c${index + 1}`, `v${index + 1}`]));
+    const preview = createDataGridRowPayloadPreview({
+      kind: "row-added",
+      severity: "info",
+      gridId: "blk_grid",
+      sourceAssetId: "asset_pinout.csv",
+      rowKey: "1",
+      newRow,
+      message: "Added row 1"
+    });
+
+    expect(preview.entries).toHaveLength(12);
+    expect(preview.entries[0]).toEqual(["c1", "v1"]);
+    expect(preview.entries[11]).toEqual(["c12", "v12"]);
+    expect(preview.totalCount).toBe(15);
+    expect(preview.hiddenCount).toBe(3);
   });
 
   it("updates a dataGrid source asset reference for revision save-back without embedding rows", () => {

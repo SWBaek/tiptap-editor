@@ -1042,10 +1042,16 @@ button {
 .data-grid-row-payload-preview {
   display: grid;
   gap: 4px;
+  min-width: 0;
+}
+
+.data-grid-row-payload-preview dl {
+  display: grid;
+  gap: 4px;
   margin: 0;
 }
 
-.data-grid-row-payload-preview div {
+.data-grid-row-payload-preview dl div {
   display: grid;
   grid-template-columns: minmax(58px, 0.42fr) minmax(0, 1fr);
   gap: 6px;
@@ -1067,6 +1073,11 @@ button {
 
 .data-grid-row-payload-preview dd {
   color: #eef5fa;
+}
+
+.data-grid-row-payload-overflow {
+  color: #aebdca;
+  font-size: 0.68rem;
 }
 
 .data-grid-row-event-toggle button {

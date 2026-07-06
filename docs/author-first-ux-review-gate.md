@@ -51,11 +51,13 @@ Before the next real-user review:
 - Review/Diagnostics/Developer features are available but visually secondary.
 - Top toolbar is grouped or reduced, and selected-text formatting is easier than hunting through all icons.
 - Heading numbering is visible as a runtime/export projection and can be disabled without changing heading text.
+- Figure and table lists are visible from the Outline surface.
+- Equations can be edited from the writing surface without touching JSON.
 
 Current status on 2026-07-06:
 
-- Implemented: desktop start screen, explorer-first Files, primary/advanced panel IA, initial heading outline, runtime heading numbering, toolbar grouping, and selected-text bubble formatting.
-- Remaining before the stronger authoring review gate: caption policy, figure/table lists, equation edit flow, and publishing profile clarity.
+- Implemented: desktop start screen, explorer-first Files, primary/advanced panel IA, initial heading outline, runtime heading numbering, figure/table structure lists, toolbar grouping, selected-text bubble formatting, and equation edit flow.
+- Remaining before the stronger authoring review gate: canonical table caption policy and publishing profile clarity.
 
 ## Review Scenarios
 

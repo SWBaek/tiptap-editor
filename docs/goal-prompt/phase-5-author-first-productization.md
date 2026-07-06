@@ -1,7 +1,7 @@
 ---
 title: "Phase 5 Author-First Productization Goal"
 status: in_progress
-progress_percent: 61
+progress_percent: 70
 current_slice: core-authoring-ux
 created_at: 2026-07-06
 started_at: 2026-07-06
@@ -13,6 +13,7 @@ planning_docs:
   - docs/phase-5-plan.md
   - docs/ui-shell-plan.md
   - docs/author-first-ux-review-gate.md
+  - docs/authoring-structure-projections.md
   - docs/tauri-user-review-action-plan.md
   - docs/desktop-native-smoke.md
 completed_slices:
@@ -42,6 +43,9 @@ progress_log:
   - date: 2026-07-06
     progress_percent: 61
     note: "core-authoring-ux structure sub-slice implemented with runtime heading numbering, configurable outline depth, all-heading outline generation, toolbar grouping, and selected-text bubble formatting. Remaining Core Authoring UX work includes captions, figure/table lists, and equation edit flow."
+  - date: 2026-07-06
+    progress_percent: 70
+    note: "core-authoring-ux structure projection sub-slice implemented with figure list projection from authored figure captions, table list projection from table structure, and equation edit flow for inline/block latex. Remaining Core Authoring UX work is canonical table caption policy before moving to publishing style profiles."
 done_rule: "When this goal is fully completed, update status to done, progress_percent to 100, completed_at to the completion date, and record final evidence in progress_log."
 ---
 

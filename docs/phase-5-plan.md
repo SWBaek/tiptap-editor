@@ -103,7 +103,7 @@ Acceptance evidence:
 
 ## Priority Slice 4: Core Authoring UX
 
-Status: in progress. Heading/outline/selected-text formatting sub-slice implemented on 2026-07-06; captions, figure/table lists, and equation edit UX remain.
+Status: in progress. Heading/outline/selected-text formatting and structure projection sub-slices implemented on 2026-07-06; full table caption storage policy remains.
 
 Implement the technical-writing features the review identified as essential.
 
@@ -111,9 +111,9 @@ Acceptance criteria:
 
 - Heading auto-numbering with enable/disable and style profile options. Initial runtime projection implemented with enable/disable and numbered-level controls.
 - Outline/TOC panel generated from headings, with click-to-jump navigation and configurable depth. Initial heading outline implemented from all headings, independent of fold ranges.
-- Figure and table captions with stable references and numbering policy.
-- Figure list and table list generated from captions.
-- Equation editing by double-click or explicit edit action.
+- Figure and table captions with stable references and numbering policy. Figure captions use existing authored caption content; table caption storage is deferred until a schema boundary is defined.
+- Figure list and table list generated from captions. Figure list uses authored captions; table list currently uses generated table structure summaries until canonical table captions are defined.
+- Equation editing by double-click or explicit edit action. Implemented for inline and block equations by updating existing `attrs.latex`.
 - Selected-text bubble toolbar for common inline formatting. Initial selected-text bubble implemented for bold, italic, underline, code, and reference entry.
 
 Design constraints:
@@ -127,9 +127,12 @@ Acceptance evidence so far:
 - Heading numbers are injected through runtime CSS from stable heading IDs and are not written into heading text.
 - Settings exposes runtime heading numbering enable/level and outline depth controls.
 - Outline displays all heading nodes, shows generated numbers when enabled, and can filter visible depth.
+- Figure list displays generated figure numbers from authored figure captions.
+- Table list displays generated table numbers and structure summaries without adding table caption schema.
+- Equations can be edited by double-click or toolbar action without storing edit UI state.
 - Top toolbar is grouped into Text, Insert, Structure, and Advanced authoring tools.
 - Selected text shows a compact bubble toolbar for common inline marks.
-- Playwright covers heading numbering projection, outline depth controls, and selected-text bubble formatting.
+- Playwright covers heading numbering projection, outline depth controls, selected-text bubble formatting, figure/table list projection, and equation editing.
 
 ## Priority Slice 5: Publishing Style Profiles
 

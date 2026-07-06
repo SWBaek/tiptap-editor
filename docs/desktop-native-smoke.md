@@ -68,6 +68,8 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
    - Confirm References and Traceability appear under Diagnostics, and raw JSON/AI/Data Grid tools appear under Developer.
    - Confirm heading numbering appears as a runtime projection and can be disabled from Settings without changing heading text.
    - Confirm Outline supports heading navigation and visible depth control.
+   - Confirm Outline shows figure and table lists after inserting a figure or table.
+   - Confirm double-clicking an equation opens an edit prompt and updates rendered math without exposing raw JSON.
    - Confirm selecting text shows a compact bubble toolbar for bold, italic, underline, code, and reference entry.
 
 7. Browser Boundary Regression

@@ -649,6 +649,10 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
 
   await expect(page.locator(".status-note")).toContainText("Inserted image architecture-diagram.png");
   await expect(page.locator('.editor-surface figure[data-type="figure"] img')).toBeVisible();
+  await page.getByRole("button", { name: "Outline panel" }).click();
+  const figureList = page.getByRole("complementary", { name: "Outline side panel" }).getByLabel("Figure list");
+  await expect(figureList).toContainText("Figure 1");
+  await expect(figureList).toContainText("architecture diagram");
 
   const insertedDocument = await readPreviewDocument(page);
   const insertedFigure = findFirstNodeByType(insertedDocument, "figure");
@@ -753,6 +757,10 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   await fillTableCell(page, "th", 1, "Status");
   await fillTableCell(page, "td", 0, "API");
   await fillTableCell(page, "td", 1, "Ready");
+  await page.getByRole("button", { name: "Outline panel" }).click();
+  const tableList = page.getByRole("complementary", { name: "Outline side panel" }).getByLabel("Table list");
+  await expect(tableList).toContainText("Table 1");
+  await expect(tableList).toContainText("Name, Status");
 
   await expect.poll(async () => findFirstNodeByType(await readPreviewDocument(page), "table").attrs?.id).toEqual(expect.any(String));
   const insertedDocument = await readPreviewDocument(page);
@@ -845,15 +853,22 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   await expect(page.locator(".status-note")).toContainText("Inserted equation block");
   await expect(page.locator(".editor-surface .sdoc-equation-block .katex")).toBeVisible();
 
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toBe("Edit equation");
+    await dialog.accept("x^2+y^2=z^2");
+  });
+  await page.locator(".editor-surface .sdoc-equation-block").dblclick();
+  await expect(page.locator(".status-note")).toContainText("Updated equation");
+
   const insertedDocument = await readPreviewDocument(page);
   expect(findFirstNodeByType(insertedDocument, "equation").attrs?.latex).toBe("E=mc^2");
-  expect(findFirstNodeByType(insertedDocument, "equationBlock").attrs?.latex).toBe("a^2+b^2=c^2");
+  expect(findFirstNodeByType(insertedDocument, "equationBlock").attrs?.latex).toBe("x^2+y^2=z^2");
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
   await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("Energy $E=mc^2$");
-  await expect(page.locator(".preview-output")).toContainText("$$\na^2+b^2=c^2\n$$");
+  await expect(page.locator(".preview-output")).toContainText("$$\nx^2+y^2=z^2\n$$");
 
   const sdocDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download .sdoc" }).click();
@@ -870,7 +885,7 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   await selectPreviewTab(page, "JSON");
   const reopenedDocument = await readPreviewDocument(page);
   expect(findFirstNodeByType(reopenedDocument, "equation").attrs?.latex).toBe("E=mc^2");
-  expect(findFirstNodeByType(reopenedDocument, "equationBlock").attrs?.latex).toBe("a^2+b^2=c^2");
+  expect(findFirstNodeByType(reopenedDocument, "equationBlock").attrs?.latex).toBe("x^2+y^2=z^2");
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 

@@ -65,7 +65,7 @@ import {
   type DataGridRowDiffEvent,
   type SDocMetadata
 } from "@sdoc/format";
-import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, type ValidationResult, validateDocument } from "@sdoc/schema";
+import { createAssetId, createBlockId, createEmptyDocument, type SDocDocument, type SDocNode, type ValidationResult, validateDocument } from "@sdoc/schema";
 import {
   BlockIdExtension,
   CalloutNode,
@@ -193,6 +193,18 @@ interface AuthorOutlineItem {
   title: string;
   number?: string;
 }
+interface AuthorFigureItem {
+  id: string;
+  number: string;
+  caption: string;
+  detail: string;
+}
+interface AuthorTableItem {
+  id: string;
+  number: string;
+  title: string;
+  detail: string;
+}
 interface DrawioExternalEditConflict {
   blockId: string;
   sourceAssetId: string;
@@ -308,6 +320,8 @@ export function App() {
   }, [documentId, editor, editorRevision]);
   const sectionFoldRanges = useMemo(() => createSectionFoldRanges(document), [document]);
   const outlineItems = useMemo(() => createAuthorOutlineItems(document, headingNumbering.enabled ? headingNumbering.maxLevel : 0), [document, headingNumbering]);
+  const figureItems = useMemo(() => createAuthorFigureItems(document), [document]);
+  const tableItems = useMemo(() => createAuthorTableItems(document), [document]);
   const visibleOutlineItems = useMemo(() => outlineItems.filter((item) => item.headingLevel <= outlineDepth), [outlineDepth, outlineItems]);
   const hiddenByFoldNodeIds = useMemo(() => collectHiddenFoldNodeIds(sectionFoldRanges, collapsedHeadingIds), [collapsedHeadingIds, sectionFoldRanges]);
   const foldRuntimeCss = useMemo(() => renderFoldRuntimeCss(hiddenByFoldNodeIds, collapsedHeadingIds), [collapsedHeadingIds, hiddenByFoldNodeIds]);
@@ -1485,6 +1499,50 @@ export function App() {
     setStatusMessage(inserted ? "Inserted equation block" : "Cannot insert equation block");
   }
 
+  function editSelectedEquationFromPrompt() {
+    const position = getSelectedEquationPosition(editor);
+    if (position === null) {
+      setStatusMessage("Select an equation to edit");
+      return;
+    }
+
+    editEquationAtPosition(position);
+  }
+
+  function editEquationAtPosition(position: number) {
+    const node = editor.state.doc.nodeAt(position);
+    if (!node || (node.type.name !== "equation" && node.type.name !== "equationBlock")) {
+      setStatusMessage("Select an equation to edit");
+      return;
+    }
+
+    const currentLatex = typeof node.attrs.latex === "string" ? node.attrs.latex : "";
+    const nextLatex = window.prompt("Edit equation", currentLatex)?.trim();
+    if (!nextLatex || nextLatex === currentLatex) {
+      setStatusMessage("Canceled equation edit");
+      return;
+    }
+
+    const transaction = editor.state.tr.setNodeMarkup(position, undefined, { ...node.attrs, latex: nextLatex });
+    editor.view.dispatch(transaction.scrollIntoView());
+    editor.view.focus();
+    setActiveTab("json");
+    setStatusMessage("Updated equation");
+  }
+
+  function handleEditorPaneDoubleClick(event: React.MouseEvent<HTMLElement>) {
+    const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-type='equation'], [data-type='equationBlock']") : null;
+    if (!target) {
+      return;
+    }
+
+    const position = findEquationPositionFromElement(editor, target);
+    if (position !== null) {
+      event.preventDefault();
+      editEquationAtPosition(position);
+    }
+  }
+
   function insertMermaidDiagramFromPrompt() {
     const source = window.prompt("Mermaid diagram", "flowchart TD\nA[Start] --> B[Done]")?.trim();
     if (!source) {
@@ -1638,6 +1696,8 @@ export function App() {
           {activePanel === "outline" && (
             <OutlinePanel
               items={visibleOutlineItems}
+              figures={figureItems}
+              tables={tableItems}
               outlineDepth={outlineDepth}
               onOutlineDepthChange={setOutlineDepth}
               highlightedNodeId={highlightedNodeId}
@@ -1885,6 +1945,9 @@ export function App() {
           <ToolbarButton title="Insert equation block" active={editor.isActive("equationBlock")} onClick={insertEquationBlockFromPrompt}>
             <Sigma size={18} />
           </ToolbarButton>
+          <ToolbarButton title="Edit selected equation" active={editor.isActive("equation") || editor.isActive("equationBlock")} onClick={editSelectedEquationFromPrompt}>
+            <Sigma size={18} />
+          </ToolbarButton>
           <ToolbarButton title="Insert Mermaid diagram" active={editor.isActive("diagram")} onClick={insertMermaidDiagramFromPrompt}>
             <Workflow size={18} />
           </ToolbarButton>
@@ -1972,7 +2035,7 @@ export function App() {
         </div>
 
         <div className={isPreviewOpen ? "editor-grid" : "editor-grid preview-collapsed"}>
-          <section className="editor-pane" ref={editorPaneRef}>
+          <section className="editor-pane" ref={editorPaneRef} onDoubleClick={handleEditorPaneDoubleClick}>
             {foldRuntimeCss && <style data-sdoc-fold-runtime>{foldRuntimeCss}</style>}
             {headingNumberRuntimeCss && <style data-sdoc-heading-number-runtime>{headingNumberRuntimeCss}</style>}
             {brokenReferenceRuntimeCss && <style data-sdoc-broken-reference-runtime>{brokenReferenceRuntimeCss}</style>}
@@ -2475,12 +2538,16 @@ function FilesPanel({
 
 function OutlinePanel({
   items,
+  figures,
+  tables,
   outlineDepth,
   onOutlineDepthChange,
   highlightedNodeId,
   onRevealNode
 }: {
   items: AuthorOutlineItem[];
+  figures: AuthorFigureItem[];
+  tables: AuthorTableItem[];
   outlineDepth: number;
   onOutlineDepthChange: (depth: number) => void;
   highlightedNodeId: string | null;
@@ -2509,6 +2576,44 @@ function OutlinePanel({
                 <button type="button" style={{ paddingLeft: `${Math.max(0, item.headingLevel - 1) * 12 + 8}px` }} onClick={() => onRevealNode(item.headingId, item.title)}>
                   <span>{item.number ? item.number : `H${item.headingLevel}`}</span>
                   <strong>{item.title}</strong>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="outline-section" aria-label="Figure list">
+        <h3>Figures</h3>
+        {figures.length === 0 ? (
+          <p className="outline-empty">No figures yet</p>
+        ) : (
+          <ul className="outline-list structured-list">
+            {figures.map((figure) => (
+              <li className={highlightedNodeId === figure.id ? "active" : undefined} key={figure.id}>
+                <button type="button" onClick={() => onRevealNode(figure.id, figure.caption)}>
+                  <span>{figure.number}</span>
+                  <strong>{figure.caption}</strong>
+                  <small>{figure.detail}</small>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="outline-section" aria-label="Table list">
+        <h3>Tables</h3>
+        {tables.length === 0 ? (
+          <p className="outline-empty">No tables yet</p>
+        ) : (
+          <ul className="outline-list structured-list">
+            {tables.map((table) => (
+              <li className={highlightedNodeId === table.id ? "active" : undefined} key={table.id}>
+                <button type="button" onClick={() => onRevealNode(table.id, table.title)}>
+                  <span>{table.number}</span>
+                  <strong>{table.title}</strong>
+                  <small>{table.detail}</small>
                 </button>
               </li>
             ))}
@@ -3727,16 +3832,95 @@ function createAuthorOutlineItems(document: SDocDocument, numberingMaxLevel: num
   return items;
 }
 
-function getSdocNodeText(node: SDocDocument["content"][number]): string {
+function createAuthorFigureItems(document: SDocDocument): AuthorFigureItem[] {
+  let count = 0;
+  return document.content.flatMap((node) => {
+    if (node.type !== "figure") {
+      return [];
+    }
+
+    const id = getSdocNodeId(node);
+    if (!id) {
+      return [];
+    }
+
+    count += 1;
+    const caption = getSdocNodeText(node).trim() || "Untitled figure";
+    const assetId = typeof node.attrs?.assetId === "string" ? node.attrs.assetId : "asset";
+    return [{ id, number: `Figure ${count}`, caption, detail: assetId }];
+  });
+}
+
+function createAuthorTableItems(document: SDocDocument): AuthorTableItem[] {
+  let count = 0;
+  return document.content.flatMap((node) => {
+    if (node.type !== "table") {
+      return [];
+    }
+
+    const id = getSdocNodeId(node);
+    if (!id) {
+      return [];
+    }
+
+    count += 1;
+    const rows = node.content ?? [];
+    const columnCount = rows.reduce((max, row) => Math.max(max, row.content?.length ?? 0), 0);
+    const headerText = rows[0]?.content?.map((cell) => getSdocNodeText(cell).trim()).filter(Boolean).join(", ");
+    const title = headerText ? headerText : `${rows.length} row${rows.length === 1 ? "" : "s"}`;
+    const detail = `${rows.length} row${rows.length === 1 ? "" : "s"} x ${columnCount} column${columnCount === 1 ? "" : "s"}`;
+    return [{ id, number: `Table ${count}`, title, detail }];
+  });
+}
+
+function getSdocNodeId(node: SDocNode): string | null {
+  return typeof node.attrs?.id === "string" && node.attrs.id.length > 0 ? node.attrs.id : null;
+}
+
+function getSdocNodeText(node: SDocNode): string {
   if (typeof node.text === "string") {
     return node.text;
   }
 
   if (Array.isArray(node.content)) {
-    return node.content.map((child) => getSdocNodeText(child as SDocDocument["content"][number])).join("");
+    return node.content.map((child) => getSdocNodeText(child)).join("");
   }
 
   return "";
+}
+
+function getSelectedEquationPosition(editor: Editor): number | null {
+  const { selection } = editor.state;
+  const candidates = [selection.from, selection.from - 1, selection.to, selection.to - 1];
+  for (const position of candidates) {
+    if (position < 0) {
+      continue;
+    }
+
+    const node = editor.state.doc.nodeAt(position);
+    if (node?.type.name === "equation" || node?.type.name === "equationBlock") {
+      return position;
+    }
+  }
+
+  return null;
+}
+
+function findEquationPositionFromElement(editor: Editor, element: HTMLElement): number | null {
+  const basePosition = editor.view.posAtDOM(element, 0);
+  const candidates = [basePosition, basePosition - 1, basePosition + 1];
+  for (const position of candidates) {
+    if (position < 0) {
+      continue;
+    }
+
+    const node = editor.state.doc.nodeAt(position);
+    if (node?.type.name === "equation" || node?.type.name === "equationBlock") {
+      return position;
+    }
+  }
+
+  return null;
 }
 
 function collectHiddenFoldNodeIds(ranges: SectionFoldRange[], collapsedHeadingIds: Set<string>): Set<string> {

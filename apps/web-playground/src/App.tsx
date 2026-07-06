@@ -160,7 +160,7 @@ import {
 } from "./documentState";
 
 type PreviewTab = "json" | "markdown" | "diff";
-type ActivityPanel = "files" | "review" | "references" | "traceability" | "history" | "export" | "settings";
+type ActivityPanel = "files" | "outline" | "export" | "settings" | "review" | "diagnostics" | "history" | "developer";
 type CalloutKind = "note" | "warning";
 type RecentFileAction = "opened" | "saved";
 type DerivedOutputName = "plain.md" | "chunks.jsonl" | "outline.json" | "references.json";
@@ -1043,7 +1043,7 @@ export function App() {
   }
 
   function openReferencePicker() {
-    openActivityPanel("references");
+    openActivityPanel("diagnostics");
     setStatusMessage("Choose a reference target");
   }
 
@@ -1055,7 +1055,7 @@ export function App() {
     }
 
     const inserted = insertCrossReference(editor, target.id, undefined, target.label);
-    openActivityPanel("references");
+    openActivityPanel("diagnostics");
     setStatusMessage(inserted ? `Inserted reference to ${target.label}` : `Cannot insert reference to ${target.label}`);
   }
 
@@ -1069,7 +1069,7 @@ export function App() {
     const nextDocument = updateCrossReferenceLabel(document, reference.id, reference.targetLabel);
     editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
     repairEditorBlockIds(editor);
-    openActivityPanel("references");
+    openActivityPanel("diagnostics");
     setStatusMessage(`Updated reference label: ${reference.targetLabel}`);
   }
 
@@ -1083,7 +1083,7 @@ export function App() {
     const nextDocument = retargetCrossReference(document, referenceId, target);
     editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
     repairEditorBlockIds(editor);
-    openActivityPanel("references");
+    openActivityPanel("diagnostics");
     setStatusMessage(`Retargeted reference to ${target.label}`);
   }
 
@@ -1097,7 +1097,7 @@ export function App() {
     const nextDocument = removeCrossReference(document, reference.id);
     editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
     repairEditorBlockIds(editor);
-    openActivityPanel("references");
+    openActivityPanel("diagnostics");
     setStatusMessage(`Removed broken reference: ${reference.label}`);
   }
 
@@ -1121,7 +1121,7 @@ export function App() {
     }
 
     const updated = setSelectedBlockHumanId(editor, normalized);
-    openActivityPanel("traceability");
+    openActivityPanel("diagnostics");
     setStatusMessage(updated ? `Set requirement ID ${normalized} on ${target.id}` : `Cannot set requirement ID on ${target.id}`);
   }
 
@@ -1133,7 +1133,7 @@ export function App() {
     }
 
     const updated = setSelectedBlockHumanId(editor, null);
-    openActivityPanel("traceability");
+    openActivityPanel("diagnostics");
     setStatusMessage(updated ? `Cleared requirement ID on ${target.id}` : `Cannot clear requirement ID on ${target.id}`);
   }
 
@@ -1561,6 +1561,14 @@ export function App() {
             />
           )}
 
+          {activePanel === "outline" && (
+            <OutlinePanel
+              sections={sectionFoldRanges}
+              highlightedNodeId={highlightedNodeId}
+              onRevealNode={revealEditorNode}
+            />
+          )}
+
           {activePanel === "review" && (
             <ReviewPanel
               review={changeReview}
@@ -1585,25 +1593,18 @@ export function App() {
             />
           )}
 
-          {activePanel === "references" && (
-            <ReferencePanel
+          {activePanel === "diagnostics" && (
+            <DiagnosticsPanel
               diagnostics={referenceDiagnostics}
+              traceability={requirementTraceability}
               highlightedNodeId={highlightedNodeId}
               onInsertReference={insertCrossReferenceToTarget}
               onRevealNode={revealEditorNode}
               onRetargetReference={retargetBrokenReference}
               onRemoveReference={removeBrokenReference}
               onUpdateReferenceLabel={updateReferenceLabel}
-            />
-          )}
-
-          {activePanel === "traceability" && (
-            <TraceabilityPanel
-              traceability={requirementTraceability}
-              highlightedNodeId={highlightedNodeId}
               onSetSelectedTag={tagSelectedBlock}
               onClearSelectedTag={clearSelectedBlockTag}
-              onRevealNode={revealEditorNode}
             />
           )}
 
@@ -1622,17 +1623,24 @@ export function App() {
           {activePanel === "export" && (
             <ExportPanel
               filenames={exportFilenames}
+              onExportMarkdown={downloadMarkdown}
+              onExportHtml={downloadHtml}
+              onCopyDeveloperCommand={showDeveloperCommand}
+            />
+          )}
+
+          {activePanel === "developer" && (
+            <DeveloperPanel
+              filenames={exportFilenames}
               derivedOutputs={derivedOutputs}
               dataGridDiagnostics={dataGridDiagnostics}
               dataGridRowReview={dataGridRowReview}
+              onExportSdoc={downloadSdoc}
+              onExportJson={downloadJson}
+              onExportDerived={downloadDerivedOutput}
               onAcceptDataGridRowEvent={acceptDataGridRowEvent}
               onRejectDataGridRowEvent={(item, event) => rejectDataGridRowEvent(item, event)}
               onRejectDataGridRowEventAsRevision={(item, event) => rejectDataGridRowEvent(item, event, "revision")}
-              onExportSdoc={downloadSdoc}
-              onExportJson={downloadJson}
-              onExportMarkdown={downloadMarkdown}
-              onExportHtml={downloadHtml}
-              onExportDerived={downloadDerivedOutput}
               onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
@@ -1863,9 +1871,6 @@ export function App() {
           <ToolbarButton title="Open .sdoc or document.json" onClick={openDocumentAction}>
             <FolderOpen size={18} />
           </ToolbarButton>
-          <ToolbarButton title="Download document.json" onClick={downloadJson}>
-            <Braces size={18} />
-          </ToolbarButton>
           <ToolbarButton title="Download Markdown" onClick={downloadMarkdown}>
             <FileText size={18} />
           </ToolbarButton>
@@ -2002,27 +2007,32 @@ function ActivityBar({
 }) {
   return (
     <nav className="activity-bar" aria-label="Primary">
+      <span className="activity-group-label">Write</span>
       <ActivityButton active={activePanel === "files" && isOpen} label="Files" onClick={() => onSelect("files")}>
         <FolderOpen size={20} />
       </ActivityButton>
-      <ActivityButton active={activePanel === "review" && isOpen} label="Review" onClick={() => onSelect("review")}>
-        <Workflow size={20} />
-      </ActivityButton>
-      <ActivityButton active={activePanel === "references" && isOpen} label="References" onClick={() => onSelect("references")}>
-        <Link2 size={20} />
-      </ActivityButton>
-      <ActivityButton active={activePanel === "traceability" && isOpen} label="Traceability" onClick={() => onSelect("traceability")}>
-        <Sigma size={20} />
-      </ActivityButton>
-      <ActivityButton active={activePanel === "history" && isOpen} label="History" onClick={() => onSelect("history")}>
-        <HistoryIcon size={20} />
+      <ActivityButton active={activePanel === "outline" && isOpen} label="Outline" onClick={() => onSelect("outline")}>
+        <List size={20} />
       </ActivityButton>
       <ActivityButton active={activePanel === "export" && isOpen} label="Export" onClick={() => onSelect("export")}>
         <Download size={20} />
       </ActivityButton>
-      <div className="activity-spacer" />
       <ActivityButton active={activePanel === "settings" && isOpen} label="Settings" onClick={() => onSelect("settings")}>
         <Settings size={20} />
+      </ActivityButton>
+      <span className="activity-group-label advanced">Review</span>
+      <ActivityButton active={activePanel === "review" && isOpen} label="Review" onClick={() => onSelect("review")}>
+        <Workflow size={20} />
+      </ActivityButton>
+      <ActivityButton active={activePanel === "diagnostics" && isOpen} label="Diagnostics" onClick={() => onSelect("diagnostics")}>
+        <Search size={20} />
+      </ActivityButton>
+      <ActivityButton active={activePanel === "history" && isOpen} label="History" onClick={() => onSelect("history")}>
+        <HistoryIcon size={20} />
+      </ActivityButton>
+      <div className="activity-spacer" />
+      <ActivityButton active={activePanel === "developer" && isOpen} label="Developer" onClick={() => onSelect("developer")}>
+        <Braces size={20} />
       </ActivityButton>
     </nav>
   );
@@ -2293,7 +2303,99 @@ function FilesPanel({
   );
 }
 
+function OutlinePanel({
+  sections,
+  highlightedNodeId,
+  onRevealNode
+}: {
+  sections: SectionFoldRange[];
+  highlightedNodeId: string | null;
+  onRevealNode: (nodeId: string, label: string) => void;
+}) {
+  return (
+    <div className="side-panel-section outline-panel">
+      <section className="outline-section" aria-label="Document outline">
+        <h3>Outline</h3>
+        {sections.length === 0 ? (
+          <p className="outline-empty">No headings yet</p>
+        ) : (
+          <ul className="outline-list">
+            {sections.map((section) => (
+              <li className={highlightedNodeId === section.headingId ? "active" : undefined} key={section.headingId}>
+                <button type="button" style={{ paddingLeft: `${Math.max(0, section.headingLevel - 1) * 12 + 8}px` }} onClick={() => onRevealNode(section.headingId, section.title)}>
+                  <span>H{section.headingLevel}</span>
+                  <strong>{section.title}</strong>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function ExportPanel({
+  filenames,
+  onExportMarkdown,
+  onExportHtml,
+  onCopyDeveloperCommand
+}: {
+  filenames: {
+    sdoc: string;
+    json: string;
+    markdown: string;
+    html: string;
+    pdf: string;
+    pptx: string;
+  };
+  onExportMarkdown: () => void;
+  onExportHtml: () => void;
+  onCopyDeveloperCommand: (command: string) => void;
+}) {
+  const pdfCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pdf -o ${quoteCliPath(filenames.pdf)}`;
+  const docxCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format docx --template controlled -o ${quoteCliPath(filenames.sdoc.replace(/\.sdoc$/i, ".docx"))}`;
+
+  return (
+    <div className="side-panel-section export-panel">
+      <section className="export-section" aria-label="Readable exports">
+        <h3>Deliverables</h3>
+        <ExportAction label="Export Markdown" filename={filenames.markdown} description="Human-readable Markdown with stable block anchors." onClick={onExportMarkdown} />
+        <ExportAction label="Export HTML" filename={filenames.html} description="Single-file themed HTML for browser reading and lightweight publishing." onClick={onExportHtml} />
+      </section>
+
+      <section className="export-section" aria-label="PDF publishing boundary">
+        <h3>PDF</h3>
+        <div className="workspace-boundary">
+          <strong>CLI/Tauri PDF</strong>
+          <span>Save .sdoc first, then generate PDF through the print pipeline; browser HTML export remains the previewable path.</span>
+        </div>
+        <ExportAction
+          label="Copy PDF command"
+          filename={filenames.pdf}
+          description="Generates from the saved .sdoc file with Playwright/Chromium print emulation."
+          onClick={() => onCopyDeveloperCommand(pdfCommand)}
+        />
+      </section>
+
+      <section className="export-section" aria-label="DOCX publishing boundary">
+        <h3>DOCX</h3>
+        <div className="workspace-boundary">
+          <strong>CLI/Tauri DOCX</strong>
+          <span>Word handoff is a derived export. Template/profile settings stay outside canonical body content.</span>
+        </div>
+        <ExportAction
+          label="Copy DOCX command"
+          filename={filenames.sdoc.replace(/\.sdoc$/i, ".docx")}
+          description="Generates editable Word output from the saved .sdoc file."
+          onClick={() => onCopyDeveloperCommand(docxCommand)}
+        />
+      </section>
+    </div>
+  );
+}
+
+function DeveloperPanel({
   filenames,
   derivedOutputs,
   dataGridDiagnostics,
@@ -2303,8 +2405,6 @@ function ExportPanel({
   onRejectDataGridRowEventAsRevision,
   onExportSdoc,
   onExportJson,
-  onExportMarkdown,
-  onExportHtml,
   onExportDerived,
   onCopyDeveloperCommand
 }: {
@@ -2324,8 +2424,6 @@ function ExportPanel({
   onRejectDataGridRowEventAsRevision: (item: DataGridRowReviewItem, event: DataGridRowDiffEvent) => void;
   onExportSdoc: () => void;
   onExportJson: () => void;
-  onExportMarkdown: () => void;
-  onExportHtml: () => void;
   onExportDerived: (name: DerivedOutputName) => void;
   onCopyDeveloperCommand: (command: string) => void;
 }) {
@@ -2358,12 +2456,6 @@ function ExportPanel({
           onClick={onExportSdoc}
         />
         <ExportAction label="Export document.json" filename={filenames.json} description="Canonical semantic document JSON for debugging and tooling." onClick={onExportJson} />
-      </section>
-
-      <section className="export-section" aria-label="Readable exports">
-        <h3>Readable</h3>
-        <ExportAction label="Export Markdown" filename={filenames.markdown} description="Human-readable Markdown with stable block anchors." onClick={onExportMarkdown} />
-        <ExportAction label="Export HTML" filename={filenames.html} description="Single-file themed HTML for browser reading and lightweight publishing." onClick={onExportHtml} />
       </section>
 
       <section className="export-section" aria-label="Data grid diagnostics">
@@ -3027,6 +3119,62 @@ function HistoryEntryCard({
   );
 }
 
+function DiagnosticsPanel({
+  diagnostics,
+  traceability,
+  highlightedNodeId,
+  onInsertReference,
+  onRevealNode,
+  onRetargetReference,
+  onRemoveReference,
+  onUpdateReferenceLabel,
+  onSetSelectedTag,
+  onClearSelectedTag
+}: {
+  diagnostics: ReferenceDiagnosticsModel;
+  traceability: RequirementTraceabilityModel;
+  highlightedNodeId: string | null;
+  onInsertReference: (targetId: string) => void;
+  onRevealNode: (nodeId: string, label: string) => void;
+  onRetargetReference: (referenceId: string, targetId: string) => void;
+  onRemoveReference: (referenceId: string) => void;
+  onUpdateReferenceLabel: (referenceId: string) => void;
+  onSetSelectedTag: () => void;
+  onClearSelectedTag: () => void;
+}) {
+  return (
+    <div className="side-panel-section diagnostics-panel">
+      <section className="diagnostics-summary" aria-label="Diagnostics summary">
+        <h3>Diagnostics</h3>
+        <div>
+          <span>References</span>
+          <strong>{diagnostics.label}</strong>
+        </div>
+        <div>
+          <span>Traceability</span>
+          <strong>{traceability.label}</strong>
+        </div>
+      </section>
+      <ReferencePanel
+        diagnostics={diagnostics}
+        highlightedNodeId={highlightedNodeId}
+        onInsertReference={onInsertReference}
+        onRevealNode={onRevealNode}
+        onRetargetReference={onRetargetReference}
+        onRemoveReference={onRemoveReference}
+        onUpdateReferenceLabel={onUpdateReferenceLabel}
+      />
+      <TraceabilityPanel
+        traceability={traceability}
+        highlightedNodeId={highlightedNodeId}
+        onSetSelectedTag={onSetSelectedTag}
+        onClearSelectedTag={onClearSelectedTag}
+        onRevealNode={onRevealNode}
+      />
+    </div>
+  );
+}
+
 function TraceabilityPanel({
   traceability,
   highlightedNodeId,
@@ -3313,12 +3461,13 @@ function targetMatchesReferenceQuery(target: ReferenceTargetSummary, query: stri
 function getActivityPanelLabel(panel: ActivityPanel): string {
   const labels: Record<ActivityPanel, string> = {
     files: "Files",
-    review: "Review",
-    references: "References",
-    traceability: "Traceability",
-    history: "History",
+    outline: "Outline",
     export: "Export",
-    settings: "Settings"
+    settings: "Settings",
+    review: "Review",
+    diagnostics: "Diagnostics",
+    history: "History",
+    developer: "Developer"
   };
   return labels[panel];
 }

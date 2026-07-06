@@ -33,7 +33,7 @@ The architecture is still valid, but the product surface is over-weighted toward
 
 1. Desktop workspace entry screen. Implemented on 2026-07-06; manual Tauri smoke remains recommended before the next user review.
 2. Explorer-first Files panel. Implemented on 2026-07-06; manual Tauri smoke remains recommended before the next user review.
-3. Panel information architecture cleanup.
+3. Panel information architecture cleanup. Implemented on 2026-07-06; manual user review remains required.
 4. Outline/TOC navigation and heading numbering boundary.
 5. Caption model and figure/table list boundary.
 6. Toolbar grouping and selected-text bubble toolbar.

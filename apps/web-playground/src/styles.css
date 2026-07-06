@@ -49,6 +49,22 @@ button {
   border-right: 1px solid #0a0f14;
 }
 
+.activity-group-label {
+  width: 100%;
+  margin: 2px 0 4px;
+  color: #71808d;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.activity-group-label.advanced {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .activity-button {
   display: grid;
   place-items: center;
@@ -177,6 +193,69 @@ button {
   align-content: start;
 }
 
+.outline-panel {
+  align-content: start;
+}
+
+.outline-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.outline-section h3 {
+  margin: 0;
+  color: #d9e1e8;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.outline-empty {
+  margin: 0;
+  color: #aeb8c2;
+  font-size: 12px;
+}
+
+.outline-list {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.outline-list button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  text-align: left;
+}
+
+.outline-list li.active button {
+  background: rgba(111, 179, 193, 0.2);
+  border-color: rgba(111, 179, 193, 0.56);
+}
+
+.outline-list span {
+  color: #9bc5d0;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.outline-list strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #f7f9fb;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
 .settings-section {
   display: grid;
   gap: 10px;
@@ -198,6 +277,47 @@ button {
 
 .review-panel {
   align-content: start;
+}
+
+.diagnostics-panel {
+  align-content: start;
+}
+
+.diagnostics-summary {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.diagnostics-summary h3 {
+  margin: 0;
+  color: #d9e1e8;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.diagnostics-summary div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.diagnostics-summary span {
+  color: #aeb8c2;
+  font-size: 12px;
+}
+
+.diagnostics-summary strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #f7f9fb;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
 }
 
 .review-counts {

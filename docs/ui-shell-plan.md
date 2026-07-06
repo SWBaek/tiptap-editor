@@ -97,10 +97,10 @@ All review filters, selected events, repaired candidates, panel expansion, and d
 
 ## Implementation Order
 
-1. Desktop `StartScreen` for Open Folder, Open `.sdoc`, New `.sdoc`, and Recent Documents.
-2. Explorer-first Files panel with real workspace `.sdoc` listing.
-3. Activity Bar cleanup: primary author surfaces first, advanced surfaces grouped.
-4. Outline panel with click-to-jump heading navigation.
-5. Export panel simplification and Developer/Debug split.
-6. Toolbar grouping and selected-text bubble toolbar.
-7. Diagnostics grouping for References and Traceability.
+1. Desktop `StartScreen` for Open Folder, Open `.sdoc`, New `.sdoc`, and Recent Documents. Implemented.
+2. Explorer-first Files panel with real workspace `.sdoc` listing. Implemented.
+3. Activity Bar cleanup: primary author surfaces first, advanced surfaces grouped. Implemented.
+4. Outline panel with click-to-jump heading navigation. Initial heading outline implemented.
+5. Export panel simplification and Developer/Debug split. Implemented.
+6. Diagnostics grouping for References and Traceability. Implemented.
+7. Toolbar grouping and selected-text bubble toolbar. Planned in Core Authoring UX.

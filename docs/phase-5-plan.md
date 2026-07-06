@@ -78,7 +78,7 @@ Acceptance evidence:
 
 ## Priority Slice 3: Information Architecture Cleanup
 
-Status: planned next.
+Status: implemented on 2026-07-06; manual user review still required before declaring the Phase 5 UX gate complete.
 
 Reduce panel overload and make authoring the obvious main workflow.
 
@@ -91,9 +91,19 @@ Acceptance criteria:
 - Review defaults to comparing saved/current or file A/file B, not unexplained live tracking.
 - Export panel shows deliverables first: Markdown, HTML, PDF, DOCX. Raw JSON and AI/RAG outputs move to Developer/AI export.
 
+Acceptance evidence:
+
+- Activity Bar now separates primary author surfaces from advanced surfaces.
+- Primary surfaces are Files, Outline, Export, and Settings.
+- Advanced surfaces are Review, Diagnostics, History, and Developer.
+- References and Traceability are grouped under Diagnostics rather than top-level panels.
+- Export focuses on deliverables: Markdown, HTML, PDF command, and DOCX command.
+- Raw `document.json`, `.sdoc` developer export, AI/RAG derived outputs, and Data Grid diagnostics live under Developer.
+- Playwright covers the new Outline, Diagnostics, Developer, and deliverable Export routes.
+
 ## Priority Slice 4: Core Authoring UX
 
-Status: planned.
+Status: planned next.
 
 Implement the technical-writing features the review identified as essential.
 

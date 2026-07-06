@@ -65,6 +65,7 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
 6. Authoring First Impression
    - Confirm the default visible workflow emphasizes writing, outline/files, save, and deliverable export.
    - Confirm Review, References, Traceability, raw JSON, AI/RAG, Data Grid, and CLI/debug tools are secondary or advanced surfaces.
+   - Confirm References and Traceability appear under Diagnostics, and raw JSON/AI/Data Grid tools appear under Developer.
 
 7. Browser Boundary Regression
    - Run `npm run dev:web`.

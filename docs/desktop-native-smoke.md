@@ -71,10 +71,15 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
    - Confirm Outline shows figure and table lists after inserting a figure or table.
    - Confirm double-clicking an equation opens an edit prompt and updates rendered math without exposing raw JSON.
    - Confirm selecting text shows a compact bubble toolbar for bold, italic, underline, code, and reference entry.
+   - Confirm the Export panel offers publishing profile selection for derived HTML/PDF output without changing authored content.
+   - Confirm Draw.io insertion asks whether to create a new diagram or import an existing source.
+   - Confirm importing Draw.io preserves editable source in `.sdoc/assets/`.
+   - Confirm creating a new Draw.io diagram opens the external editor when the desktop bridge and executable path are available.
 
 7. Browser Boundary Regression
    - Run `npm run dev:web`.
    - Confirm the browser Files panel does not claim native folder browsing, native path save-back, or external editor launch without a desktop bridge.
+   - Confirm the browser can create/import Draw.io source assets but does not claim native external editing without the bridge.
 
 ## Evidence To Record
 

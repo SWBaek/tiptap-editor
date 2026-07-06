@@ -108,3 +108,4 @@ All review filters, selected events, repaired candidates, panel expansion, and d
 8. Figure/table lists and equation edit UX. Initial implementation complete.
 9. Canonical table caption policy. Implemented.
 10. Publishing style profile selection for derived HTML/PDF exports. Implemented for v1 presets.
+11. Draw.io create/import choice with source-preserving assets. Implemented.

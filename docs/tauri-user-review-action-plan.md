@@ -39,7 +39,7 @@ The architecture is still valid, but the product surface is over-weighted toward
 6. Toolbar grouping and selected-text bubble toolbar. Initial grouping and selected-text bubble formatting implemented on 2026-07-06.
 7. Equation double-click edit flow. Implemented on 2026-07-06 for inline and block latex edits.
 8. Publishing style profiles for HTML/PDF/DOCX. v1 HTML/PDF profile presets implemented on 2026-07-06; DOCX remains configurable through controlled and external Word templates.
-9. Draw.io create/import flow.
+9. Draw.io create/import flow. Implemented on 2026-07-06 with an author-facing create/import choice, source assets stored in `.sdoc/assets/`, and desktop bridge launch when available.
 
 ## Acceptance Evidence For The Next Review
 

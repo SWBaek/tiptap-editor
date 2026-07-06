@@ -1,11 +1,11 @@
 ---
 title: "Phase 5 Author-First Productization Goal"
-status: in_progress
-progress_percent: 90
-current_slice: drawio-create-or-import-flow
+status: done
+progress_percent: 100
+current_slice: completed
 created_at: 2026-07-06
 started_at: 2026-07-06
-completed_at:
+completed_at: 2026-07-06
 owner_model: gpt-5.5-medium
 source_reviews:
   - docs/user-review/2026-07-06-Tauri-app-review.md
@@ -23,8 +23,8 @@ completed_slices:
   - information-architecture-cleanup
   - core-authoring-ux
   - publishing-style-profiles
-remaining_slices:
   - drawio-create-or-import-flow
+remaining_slices: []
 progress_log:
   - date: 2026-07-06
     progress_percent: 0
@@ -53,6 +53,9 @@ progress_log:
   - date: 2026-07-06
     progress_percent: 90
     note: "publishing-style-profiles completed for v1 with HTML/PDF profile presets, custom HTML export options, CLI --profile support, browser Export panel profile selection, and tests proving profile choices stay outside canonical document content."
+  - date: 2026-07-06
+    progress_percent: 100
+    note: "drawio-create-or-import-flow completed with an author-facing create/import choice, source-preserving .drawio assets, desktop bridge launch when available, browser-safe boundary behavior, updated review docs, npm test, npm run build, npm run test:e2e, npm run typecheck:desktop, and npm run build:desktop. Commit and push evidence is recorded in the final run report."
 done_rule: "When this goal is fully completed, update status to done, progress_percent to 100, completed_at to the completion date, and record final evidence in progress_log."
 ---
 

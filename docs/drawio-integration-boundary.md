@@ -62,3 +62,12 @@ Semantic diff should initially report Draw.io changes at the diagram block level
 ## Minimal Asset Model Implementation
 
 The first implementation slice accepts `diagram.attrs.kind = "drawio"` in schema validation, requires `sourceAssetId`, and preserves optional `previewAssetId`. `.sdoc` pack/save paths include both referenced assets, deterministic serialization omits `null` runtime attributes, and semantic diff reports source/preview asset changes without diffing raw XML. Markdown and HTML exports prefer the preview asset when present and otherwise emit a source-preserving placeholder.
+
+## Create Or Import UX Implementation
+
+The Phase 5 authoring slice exposes one Draw.io insertion action. The action asks whether to create a new diagram or import an existing `.drawio` / `.drawio.xml` source file.
+
+- Import validates the selected source, stores it in `.sdoc/assets/`, and inserts a `diagram` node with `attrs.kind = "drawio"` and `attrs.sourceAssetId`.
+- Create new generates a minimal editable `.drawio` source asset, stores it in `.sdoc/assets/`, inserts the same asset-backed `diagram` node shape, and opens the Tauri external-editor bridge when available.
+- Browser mode may create the source asset and show the source-preserving placeholder, but it must not claim native external editing without the desktop bridge.
+- The generated XML source, temporary checkout path, process/session state, and conflict state remain outside `document.json`.

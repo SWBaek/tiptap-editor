@@ -997,6 +997,28 @@ test("imports a Draw.io source asset and round-trips through .sdoc", async ({ pa
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 
+test("creates a new Draw.io diagram as an asset-backed source", async ({ page }) => {
+  await page.goto("/");
+  await selectPreviewTab(page, "JSON");
+
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("Create a new Draw.io diagram?");
+    await dialog.accept();
+  });
+  await page.getByRole("button", { name: "Insert Draw.io diagram" }).click();
+  await expect(page.locator(".status-note")).toContainText("Created Draw.io diagram");
+  await expect(page.locator(".editor-surface .sdoc-diagram pre")).toContainText("Draw.io diagram source:");
+
+  const document = await readPreviewDocument(page);
+  const diagram = findFirstNodeByType(document, "diagram");
+  expect(diagram.attrs?.kind).toBe("drawio");
+  expect(String(diagram.attrs?.sourceAssetId)).toMatch(/^asset_[a-z0-9_]+\.drawio$/);
+  expect(JSON.stringify(document)).not.toContain("<mxfile");
+  expectUniqueIds(collectBlockIds(document));
+});
+
 test("resolves a Draw.io external edit conflict as a revision asset", async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     const editedSource = new TextEncoder().encode("<mxfile><diagram id=\"d1\">external-edit</diagram></mxfile>");

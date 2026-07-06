@@ -158,7 +158,7 @@ Acceptance evidence:
 
 ## Priority Slice 6: Draw.io Create Or Import Flow
 
-Status: planned after workspace/explorer cleanup.
+Status: accepted on 2026-07-06. Browser-safe import/create choice is implemented; desktop bridge opening is used when the native adapter is available.
 
 Improve Draw.io UX from a raw source import into an author-facing choice.
 
@@ -169,6 +169,14 @@ Acceptance criteria:
 - Create new makes a source-preserving Draw.io asset, inserts a `diagram` node, and opens it through the desktop bridge when available.
 - Preview SVG/PNG remains non-canonical and regenerable.
 - Raw XML, temp paths, editor process state, and conflict state stay out of `document.json`.
+
+Acceptance evidence:
+
+- The Draw.io toolbar action asks whether to create a new diagram or import an existing `.drawio` source.
+- Import still stores editable source bytes in `.sdoc/assets/` and stores only `diagram.attrs.sourceAssetId` in `document.json`.
+- Create new generates a minimal editable `.drawio` source asset, inserts a Draw.io `diagram` node, and opens the desktop external editor through the existing bridge when available.
+- Browser mode creates/imports source-preserving assets but does not claim native editing when the desktop bridge is absent.
+- Playwright covers import round trip, create-new asset-backed insertion, and external edit conflict resolution.
 
 ## Reprioritized Existing Work
 

@@ -56,8 +56,8 @@ Before the next real-user review:
 
 Current status on 2026-07-06:
 
-- Implemented: desktop start screen, explorer-first Files, primary/advanced panel IA, initial heading outline, runtime heading numbering, figure/table structure lists, toolbar grouping, selected-text bubble formatting, and equation edit flow.
-- Remaining before the stronger authoring review gate: Draw.io create/import clarity and manual Tauri smoke review.
+- Implemented: desktop start screen, explorer-first Files, primary/advanced panel IA, heading outline, runtime heading numbering, figure/table structure lists, canonical table captions, toolbar grouping, selected-text bubble formatting, equation edit flow, publishing style profiles, and Draw.io create/import choice.
+- Remaining before the stronger authoring review gate: manual Tauri smoke review and 3-5 user review sessions.
 
 ## Review Scenarios
 

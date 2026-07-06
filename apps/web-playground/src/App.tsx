@@ -962,6 +962,52 @@ export function App() {
     }
   }
 
+  function startDrawioInsertFlow() {
+    const createNew = window.confirm("Create a new Draw.io diagram? Choose Cancel to import an existing .drawio file.");
+    if (createNew) {
+      void createNewDrawioDiagram();
+      return;
+    }
+
+    drawioInputRef.current?.click();
+  }
+
+  async function createNewDrawioDiagram() {
+    const blockId = createBlockId();
+    const assetId = `${createAssetId()}.drawio`;
+    const sourceBytes = createEmptyDrawioSourceBytes(assetId);
+    const inserted = insertDrawioDiagram(editor, assetId, undefined, blockId);
+    if (!inserted) {
+      setStatusMessage("Cannot create Draw.io diagram");
+      return;
+    }
+
+    setAssets((current) => ({ ...current, [assetId]: sourceBytes }));
+    setActiveTab("json");
+
+    if (!nativeDrawioExternalEditorAdapter) {
+      setStatusMessage(`Created Draw.io diagram ${assetId}. External editing is available in the desktop app.`);
+      return;
+    }
+
+    try {
+      const session = await nativeDrawioExternalEditorAdapter.checkoutSource(assetId, sourceBytes);
+      const opened = await nativeDrawioExternalEditorAdapter.openExternalEditor(session.sessionId, drawioExecutablePath);
+      if (opened.status === "launch-failed") {
+        await nativeDrawioExternalEditorAdapter.closeSession(session.sessionId).catch(() => undefined);
+        setStatusMessage(opened.message ?? `Created Draw.io diagram ${assetId}, but could not launch the external editor.`);
+        return;
+      }
+
+      setDrawioBridgeSession(session);
+      setDrawioBridgeTargetId(blockId);
+      setDrawioExternalEditConflict(null);
+      setStatusMessage(`Created Draw.io diagram ${assetId} and opened external editor.`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function openSelectedDrawioExternalEditor() {
     if (!nativeDrawioExternalEditorAdapter) {
       setStatusMessage("Draw.io external editing is available in the desktop app.");
@@ -1997,7 +2043,7 @@ export function App() {
           <ToolbarButton title="Insert Mermaid diagram" active={editor.isActive("diagram")} onClick={insertMermaidDiagramFromPrompt}>
             <Workflow size={18} />
           </ToolbarButton>
-          <ToolbarButton title="Import Draw.io source" active={editor.isActive("diagram", { kind: "drawio" })} onClick={() => drawioInputRef.current?.click()}>
+          <ToolbarButton title="Insert Draw.io diagram" active={editor.isActive("diagram", { kind: "drawio" })} onClick={startDrawioInsertFlow}>
             <FileJson size={18} />
           </ToolbarButton>
           <ToolbarButton title="Open Draw.io external editor" active={drawioBridgeSession !== null} onClick={openSelectedDrawioExternalEditor}>
@@ -4358,6 +4404,24 @@ function isDrawioFile(file: File): boolean {
 function isUsableDrawioSource(bytes: Uint8Array): boolean {
   const text = new TextDecoder().decode(bytes).trimStart();
   return text.startsWith("<mxfile") || text.startsWith("<diagram") || text.includes("<mxfile ");
+}
+
+function createEmptyDrawioSourceBytes(assetId: string): Uint8Array {
+  const diagramId = createBlockId();
+  const escapedName = escapeXmlText(assetId.replace(/\.(drawio|drawio\.xml)$/i, "") || "Diagram");
+  const graphModel =
+    '<mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel>';
+  const source = `<mxfile host="SDoc"><diagram id="${diagramId}" name="${escapedName}">${graphModel}</diagram></mxfile>`;
+  return new TextEncoder().encode(source);
+}
+
+function escapeXmlText(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 function getSelectedDrawioDiagramReference(editor: Editor | null): { blockId: string; sourceAssetId: string } | null {

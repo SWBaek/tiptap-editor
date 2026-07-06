@@ -34,9 +34,9 @@ The architecture is still valid, but the product surface is over-weighted toward
 1. Desktop workspace entry screen. Implemented on 2026-07-06; manual Tauri smoke remains recommended before the next user review.
 2. Explorer-first Files panel. Implemented on 2026-07-06; manual Tauri smoke remains recommended before the next user review.
 3. Panel information architecture cleanup. Implemented on 2026-07-06; manual user review remains required.
-4. Outline/TOC navigation and heading numbering boundary.
+4. Outline/TOC navigation and heading numbering boundary. Initial runtime heading numbering, outline depth control, and all-heading outline implemented on 2026-07-06.
 5. Caption model and figure/table list boundary.
-6. Toolbar grouping and selected-text bubble toolbar.
+6. Toolbar grouping and selected-text bubble toolbar. Initial grouping and selected-text bubble formatting implemented on 2026-07-06.
 7. Equation double-click edit flow.
 8. Publishing style profiles for HTML/PDF/DOCX.
 9. Draw.io create/import flow.

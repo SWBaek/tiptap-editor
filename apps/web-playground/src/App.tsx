@@ -179,6 +179,20 @@ interface EditorHighlightOverlay {
   width: number;
   height: number;
 }
+interface BubbleToolbarPosition {
+  top: number;
+  left: number;
+}
+interface HeadingNumberingSettings {
+  enabled: boolean;
+  maxLevel: number;
+}
+interface AuthorOutlineItem {
+  headingId: string;
+  headingLevel: number;
+  title: string;
+  number?: string;
+}
 interface DrawioExternalEditConflict {
   blockId: string;
   sourceAssetId: string;
@@ -238,7 +252,11 @@ export function App() {
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [highlightOverlay, setHighlightOverlay] = useState<EditorHighlightOverlay | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
+  const [selectionRevision, setSelectionRevision] = useState(0);
   const [collapsedHeadingIds, setCollapsedHeadingIds] = useState<Set<string>>(() => new Set());
+  const [headingNumbering, setHeadingNumbering] = useState<HeadingNumberingSettings>({ enabled: true, maxLevel: 3 });
+  const [outlineDepth, setOutlineDepth] = useState(3);
+  const [bubbleToolbarPosition, setBubbleToolbarPosition] = useState<BubbleToolbarPosition | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -252,6 +270,7 @@ export function App() {
   const drawioInputRef = useRef<HTMLInputElement>(null);
   const editorPaneRef = useRef<HTMLElement>(null);
   const highlightTimeoutRef = useRef<number | null>(null);
+  const bubbleSelectionRangeRef = useRef<{ from: number; to: number } | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -272,7 +291,8 @@ export function App() {
         class: "editor-surface"
       }
     },
-    onUpdate: () => setEditorRevision((revision) => revision + 1)
+    onUpdate: () => setEditorRevision((revision) => revision + 1),
+    onSelectionUpdate: () => setSelectionRevision((revision) => revision + 1)
   });
 
   useEffect(() => {
@@ -287,12 +307,62 @@ export function App() {
     return editor ? toSdocDocument(editor.getJSON(), documentId) : initialDocument;
   }, [documentId, editor, editorRevision]);
   const sectionFoldRanges = useMemo(() => createSectionFoldRanges(document), [document]);
+  const outlineItems = useMemo(() => createAuthorOutlineItems(document, headingNumbering.enabled ? headingNumbering.maxLevel : 0), [document, headingNumbering]);
+  const visibleOutlineItems = useMemo(() => outlineItems.filter((item) => item.headingLevel <= outlineDepth), [outlineDepth, outlineItems]);
   const hiddenByFoldNodeIds = useMemo(() => collectHiddenFoldNodeIds(sectionFoldRanges, collapsedHeadingIds), [collapsedHeadingIds, sectionFoldRanges]);
   const foldRuntimeCss = useMemo(() => renderFoldRuntimeCss(hiddenByFoldNodeIds, collapsedHeadingIds), [collapsedHeadingIds, hiddenByFoldNodeIds]);
+  const headingNumberRuntimeCss = useMemo(
+    () => renderHeadingNumberRuntimeCss(outlineItems, headingNumbering.enabled),
+    [headingNumbering.enabled, outlineItems]
+  );
 
   useEffect(() => {
     setCollapsedHeadingIds((current) => pruneCollapsedHeadingIds(current, sectionFoldRanges));
   }, [sectionFoldRanges]);
+
+  useEffect(() => {
+    if (!editor || !editorPaneRef.current) {
+      setBubbleToolbarPosition(null);
+      return;
+    }
+
+    const { from, to, empty } = editor.state.selection;
+    if (empty || editor.isActive("codeBlock")) {
+      setBubbleToolbarPosition(null);
+      return;
+    }
+
+    bubbleSelectionRangeRef.current = { from, to };
+    const start = editor.view.coordsAtPos(from);
+    const end = editor.view.coordsAtPos(to);
+    const pane = editorPaneRef.current;
+    const paneRect = pane.getBoundingClientRect();
+    const left = Math.max(12, Math.min((start.left + end.right) / 2 - paneRect.left + pane.scrollLeft, pane.clientWidth - 12));
+    const top = Math.max(12, Math.min(start.top, end.top) - paneRect.top + pane.scrollTop - 50);
+    setBubbleToolbarPosition({ left, top });
+  }, [editor, editorRevision, selectionRevision]);
+
+  function runBubbleSelectionCommand(command: "bold" | "italic" | "underline" | "code") {
+    const range = bubbleSelectionRangeRef.current;
+    const markType = editor.state.schema.marks[command];
+    if (!range || !markType) {
+      setStatusMessage(`Cannot format selection: ${command}`);
+      return;
+    }
+
+    const from = Math.max(0, Math.min(range.from, range.to));
+    const to = Math.max(from, Math.max(range.from, range.to));
+    if (from === to) {
+      setStatusMessage(`Cannot format selection: ${command}`);
+      return;
+    }
+
+    const hasMark = editor.state.doc.rangeHasMark(from, to, markType);
+    const transaction = hasMark ? editor.state.tr.removeMark(from, to, markType) : editor.state.tr.addMark(from, to, markType.create());
+    editor.view.dispatch(transaction.scrollIntoView());
+    editor.view.focus();
+    setStatusMessage(`Formatted selection: ${command}`);
+  }
 
   const validation = validateDocument(document);
   const json = stableStringify(document);
@@ -1531,7 +1601,11 @@ export function App() {
               document={document}
               assetCount={Object.keys(assets).length}
               drawioExecutablePath={drawioExecutablePath}
+              headingNumbering={headingNumbering}
+              outlineDepth={outlineDepth}
               onMetadataChange={setMetadata}
+              onHeadingNumberingChange={setHeadingNumbering}
+              onOutlineDepthChange={setOutlineDepth}
               onDrawioExecutablePathChange={(path) => {
                 setDrawioExecutablePath(path);
                 storeDrawioExecutablePath(path);
@@ -1563,7 +1637,9 @@ export function App() {
 
           {activePanel === "outline" && (
             <OutlinePanel
-              sections={sectionFoldRanges}
+              items={visibleOutlineItems}
+              outlineDepth={outlineDepth}
+              onOutlineDepthChange={setOutlineDepth}
               highlightedNodeId={highlightedNodeId}
               onRevealNode={revealEditorNode}
             />
@@ -1700,11 +1776,15 @@ export function App() {
 
         <div className="toolbar" aria-label="Editor toolbar">
           <div className="toolbar-group primary" aria-label="Basic writing tools">
+          <span className="toolbar-group-label">Text</span>
           <ToolbarButton title="Heading 1" active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
             <Heading1 size={18} />
           </ToolbarButton>
           <ToolbarButton title="Heading 2" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
             <Heading2 size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Heading 3" active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+            <Heading2 size={16} />
           </ToolbarButton>
           <ToolbarButton title="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
             <Bold size={18} />
@@ -1721,6 +1801,10 @@ export function App() {
           <ToolbarButton title="Ordered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
             <ListOrdered size={18} />
           </ToolbarButton>
+          </div>
+
+          <div className="toolbar-group primary" aria-label="Insert tools">
+          <span className="toolbar-group-label">Insert</span>
           <ToolbarButton title="Blockquote" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
             <Quote size={18} />
           </ToolbarButton>
@@ -1744,7 +1828,8 @@ export function App() {
           </ToolbarButton>
           </div>
 
-          <div className="toolbar-group advanced" aria-label="Advanced authoring tools">
+          <div className="toolbar-group advanced" aria-label="Structure tools">
+          <span className="toolbar-group-label">Structure</span>
           <ToolbarButton title="Fold section" onClick={foldSelectedSection}>
             <ChevronRight size={18} />
           </ToolbarButton>
@@ -1757,6 +1842,16 @@ export function App() {
           <ToolbarButton title="Insert data grid" active={editor.isActive("dataGrid")} onClick={() => dataGridInputRef.current?.click()}>
             <FileJson size={18} />
           </ToolbarButton>
+          <ToolbarButton title="Move block up" onClick={() => moveBlock("up")}>
+            <ArrowUp size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Move block down" onClick={() => moveBlock("down")}>
+            <ArrowDown size={18} />
+          </ToolbarButton>
+          </div>
+
+          <div className="toolbar-group advanced" aria-label="Table and advanced insertion tools">
+          <span className="toolbar-group-label">Advanced</span>
           <ToolbarButton title="Add row after" active={editor.isActive("table")} onClick={() => runTableCommand("addRowAfter", "Added table row")}>
             <Rows3 size={18} />
           </ToolbarButton>
@@ -1804,12 +1899,6 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Close Draw.io external edit" active={drawioBridgeSession !== null} onClick={closeDrawioExternalEdit}>
             <Trash2 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Move block up" onClick={() => moveBlock("up")}>
-            <ArrowUp size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Move block down" onClick={() => moveBlock("down")}>
-            <ArrowDown size={18} />
           </ToolbarButton>
           </div>
           <div className="toolbar-spacer" />
@@ -1885,8 +1974,45 @@ export function App() {
         <div className={isPreviewOpen ? "editor-grid" : "editor-grid preview-collapsed"}>
           <section className="editor-pane" ref={editorPaneRef}>
             {foldRuntimeCss && <style data-sdoc-fold-runtime>{foldRuntimeCss}</style>}
+            {headingNumberRuntimeCss && <style data-sdoc-heading-number-runtime>{headingNumberRuntimeCss}</style>}
             {brokenReferenceRuntimeCss && <style data-sdoc-broken-reference-runtime>{brokenReferenceRuntimeCss}</style>}
             {visualDiffRuntimeCss && <style data-sdoc-diff-overlay-runtime>{visualDiffRuntimeCss}</style>}
+            {bubbleToolbarPosition && (
+              <div
+                className="selection-bubble-toolbar"
+                style={{ top: bubbleToolbarPosition.top, left: bubbleToolbarPosition.left }}
+                aria-label="Selected text formatting"
+                onMouseDown={(event) => event.preventDefault()}
+              >
+                <ToolbarButton title="Bold selection" active={editor.isActive("bold")} onMouseDown={(event) => {
+                  event.preventDefault();
+                  runBubbleSelectionCommand("bold");
+                }} onClick={() => undefined}>
+                  <Bold size={16} />
+                </ToolbarButton>
+                <ToolbarButton title="Italic selection" active={editor.isActive("italic")} onMouseDown={(event) => {
+                  event.preventDefault();
+                  runBubbleSelectionCommand("italic");
+                }} onClick={() => undefined}>
+                  <Italic size={16} />
+                </ToolbarButton>
+                <ToolbarButton title="Underline selection" active={editor.isActive("underline")} onMouseDown={(event) => {
+                  event.preventDefault();
+                  runBubbleSelectionCommand("underline");
+                }} onClick={() => undefined}>
+                  <UnderlineIcon size={16} />
+                </ToolbarButton>
+                <ToolbarButton title="Code selection" active={editor.isActive("code")} onMouseDown={(event) => {
+                  event.preventDefault();
+                  runBubbleSelectionCommand("code");
+                }} onClick={() => undefined}>
+                  <Code2 size={16} />
+                </ToolbarButton>
+                <ToolbarButton title="Insert reference for selection" active={editor.isActive("crossReference")} onClick={openReferencePicker}>
+                  <Link2 size={16} />
+                </ToolbarButton>
+              </div>
+            )}
             <EditorContent editor={editor} />
             {highlightOverlay && (
               <div
@@ -2069,7 +2195,11 @@ function SettingsPanel({
   document,
   assetCount,
   drawioExecutablePath,
+  headingNumbering,
+  outlineDepth,
   onMetadataChange,
+  onHeadingNumberingChange,
+  onOutlineDepthChange,
   onDrawioExecutablePathChange
 }: {
   metadata: SDocMetadata;
@@ -2077,7 +2207,11 @@ function SettingsPanel({
   document: SDocDocument;
   assetCount: number;
   drawioExecutablePath: string;
+  headingNumbering: HeadingNumberingSettings;
+  outlineDepth: number;
   onMetadataChange: (metadata: SDocMetadata) => void;
+  onHeadingNumberingChange: (settings: HeadingNumberingSettings) => void;
+  onOutlineDepthChange: (depth: number) => void;
   onDrawioExecutablePathChange: (path: string) => void;
 }) {
   return (
@@ -2096,6 +2230,42 @@ function SettingsPanel({
           <span>Metadata version</span>
           <input value={String(metadata.version ?? "")} onChange={(event) => onMetadataChange({ ...metadata, version: event.target.value })} />
         </label>
+      </section>
+
+      <section className="settings-section" aria-label="Authoring settings">
+        <h3>Authoring</h3>
+        <label className="metadata-field inline">
+          <span>Heading numbering</span>
+          <input
+            type="checkbox"
+            checked={headingNumbering.enabled}
+            onChange={(event) => onHeadingNumberingChange({ ...headingNumbering, enabled: event.target.checked })}
+          />
+        </label>
+        <label className="metadata-field">
+          <span>Number heading levels</span>
+          <select
+            value={headingNumbering.maxLevel}
+            onChange={(event) => onHeadingNumberingChange({ ...headingNumbering, maxLevel: Number(event.target.value) })}
+          >
+            {[1, 2, 3, 4, 5, 6].map((level) => (
+              <option value={level} key={level}>
+                H1-H{level}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="metadata-field">
+          <span>Outline depth</span>
+          <select value={outlineDepth} onChange={(event) => onOutlineDepthChange(Number(event.target.value))}>
+            {[1, 2, 3, 4, 5, 6].map((level) => (
+              <option value={level} key={level}>
+                H1-H{level}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="settings-note">Numbers and outline depth are runtime projections; heading text in document.json is unchanged.</p>
       </section>
 
       <section className="settings-section" aria-label="Native integration settings">
@@ -2304,11 +2474,15 @@ function FilesPanel({
 }
 
 function OutlinePanel({
-  sections,
+  items,
+  outlineDepth,
+  onOutlineDepthChange,
   highlightedNodeId,
   onRevealNode
 }: {
-  sections: SectionFoldRange[];
+  items: AuthorOutlineItem[];
+  outlineDepth: number;
+  onOutlineDepthChange: (depth: number) => void;
   highlightedNodeId: string | null;
   onRevealNode: (nodeId: string, label: string) => void;
 }) {
@@ -2316,15 +2490,25 @@ function OutlinePanel({
     <div className="side-panel-section outline-panel">
       <section className="outline-section" aria-label="Document outline">
         <h3>Outline</h3>
-        {sections.length === 0 ? (
+        <label className="outline-depth-control">
+          <span>Depth</span>
+          <select value={outlineDepth} onChange={(event) => onOutlineDepthChange(Number(event.target.value))}>
+            {[1, 2, 3, 4, 5, 6].map((level) => (
+              <option value={level} key={level}>
+                H1-H{level}
+              </option>
+            ))}
+          </select>
+        </label>
+        {items.length === 0 ? (
           <p className="outline-empty">No headings yet</p>
         ) : (
           <ul className="outline-list">
-            {sections.map((section) => (
-              <li className={highlightedNodeId === section.headingId ? "active" : undefined} key={section.headingId}>
-                <button type="button" style={{ paddingLeft: `${Math.max(0, section.headingLevel - 1) * 12 + 8}px` }} onClick={() => onRevealNode(section.headingId, section.title)}>
-                  <span>H{section.headingLevel}</span>
-                  <strong>{section.title}</strong>
+            {items.map((item) => (
+              <li className={highlightedNodeId === item.headingId ? "active" : undefined} key={item.headingId}>
+                <button type="button" style={{ paddingLeft: `${Math.max(0, item.headingLevel - 1) * 12 + 8}px` }} onClick={() => onRevealNode(item.headingId, item.title)}>
+                  <span>{item.number ? item.number : `H${item.headingLevel}`}</span>
+                  <strong>{item.title}</strong>
                 </button>
               </li>
             ))}
@@ -3506,6 +3690,55 @@ function getSelectedHeadingId(editor: Editor): string | null {
   return null;
 }
 
+function createAuthorOutlineItems(document: SDocDocument, numberingMaxLevel: number): AuthorOutlineItem[] {
+  const counters = [0, 0, 0, 0, 0, 0];
+  const items: AuthorOutlineItem[] = [];
+
+  for (const node of document.content) {
+    if (node.type !== "heading") {
+      continue;
+    }
+
+    const headingId = typeof node.attrs?.id === "string" ? node.attrs.id : null;
+    const headingLevel = typeof node.attrs?.level === "number" ? node.attrs.level : null;
+    if (!headingId || headingLevel === null || headingLevel < 1 || headingLevel > 6) {
+      continue;
+    }
+
+    counters[headingLevel - 1] += 1;
+    for (let index = headingLevel; index < counters.length; index += 1) {
+      counters[index] = 0;
+    }
+    for (let index = 0; index < headingLevel - 1; index += 1) {
+      if (counters[index] === 0) {
+        counters[index] = 1;
+      }
+    }
+
+    const number = numberingMaxLevel > 0 && headingLevel <= numberingMaxLevel ? counters.slice(0, headingLevel).join(".") : undefined;
+    items.push({
+      headingId,
+      headingLevel,
+      title: getSdocNodeText(node).trim() || headingId,
+      number
+    });
+  }
+
+  return items;
+}
+
+function getSdocNodeText(node: SDocDocument["content"][number]): string {
+  if (typeof node.text === "string") {
+    return node.text;
+  }
+
+  if (Array.isArray(node.content)) {
+    return node.content.map((child) => getSdocNodeText(child as SDocDocument["content"][number])).join("");
+  }
+
+  return "";
+}
+
 function collectHiddenFoldNodeIds(ranges: SectionFoldRange[], collapsedHeadingIds: Set<string>): Set<string> {
   const hiddenIds = new Set<string>();
   for (const range of ranges) {
@@ -3531,8 +3764,26 @@ function renderFoldRuntimeCss(hiddenNodeIds: Set<string>, collapsedHeadingIds: S
   return rules.join("\n");
 }
 
+function renderHeadingNumberRuntimeCss(items: AuthorOutlineItem[], enabled: boolean): string {
+  if (!enabled) {
+    return "";
+  }
+
+  return items
+    .filter((item) => item.number)
+    .map((item) => {
+      const selector = `.editor-surface h${item.headingLevel}[data-id="${escapeCssAttributeValue(item.headingId)}"]::before`;
+      return `${selector}{content:"${escapeCssContent(`${item.number}. `)}";color:#697887;font-weight:600;margin-right:0.35em;}`;
+    })
+    .join("\n");
+}
+
 function escapeCssAttributeValue(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
+
+function escapeCssContent(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\A ");
 }
 
 function findEditorElementByDataId(nodeId: string): HTMLElement | null {
@@ -3565,15 +3816,17 @@ function ToolbarButton({
   title,
   active = false,
   onClick,
+  onMouseDown,
   children
 }: {
   title: string;
   active?: boolean;
   onClick: () => void;
+  onMouseDown?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   children: React.ReactNode;
 }) {
   return (
-    <button className={active ? "tool-button active" : "tool-button"} title={title} aria-label={title} type="button" onClick={onClick}>
+    <button className={active ? "tool-button active" : "tool-button"} title={title} aria-label={title} type="button" onMouseDown={onMouseDown} onClick={onClick}>
       {children}
     </button>
   );

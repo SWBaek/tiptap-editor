@@ -59,18 +59,18 @@ Browser mode must not pretend to browse arbitrary folders. Folder listing belong
 ## Toolbar Rules
 
 - The top toolbar should expose only common writing controls by default.
-- Group controls by task: text, blocks, insert, structure, review/developer.
+- Group controls by task: text, blocks, insert, structure, review/developer. Initial Text, Insert, Structure, and Advanced grouping is implemented.
 - Move advanced insertions such as Draw.io source, dataGrid, external editor read-back, and debug actions behind menus or contextual controls.
-- Add a selected-text bubble toolbar for inline marks such as bold, italic, underline, code, and link.
+- Add a selected-text bubble toolbar for inline marks such as bold, italic, underline, code, and link. Initial bubble toolbar is implemented for common marks and reference entry.
 - Avoid long rows of equal-weight icons.
 
 ## Outline And Authoring Structure
 
 The Outline surface should become a primary authoring tool:
 
-- Generated from heading nodes.
-- Click-to-jump into the editor.
-- Configurable visible heading depth.
+- Generated from heading nodes. Implemented from all heading nodes rather than foldable sections only.
+- Click-to-jump into the editor. Implemented.
+- Configurable visible heading depth. Implemented as runtime UI state.
 - Later extended with figure list and table list after caption policy is implemented.
 
 Generated outline state is runtime/export state. It must not be stored as panel state in `document.json`.
@@ -103,4 +103,5 @@ All review filters, selected events, repaired candidates, panel expansion, and d
 4. Outline panel with click-to-jump heading navigation. Initial heading outline implemented.
 5. Export panel simplification and Developer/Debug split. Implemented.
 6. Diagnostics grouping for References and Traceability. Implemented.
-7. Toolbar grouping and selected-text bubble toolbar. Planned in Core Authoring UX.
+7. Toolbar grouping and selected-text bubble toolbar. Initial implementation complete.
+8. Caption policy, figure/table lists, and equation edit UX. Planned in remaining Core Authoring UX.

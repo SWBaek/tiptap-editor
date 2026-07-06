@@ -50,6 +50,12 @@ Before the next real-user review:
 - Export shows deliverables first; Save/Save As owns `.sdoc`.
 - Review/Diagnostics/Developer features are available but visually secondary.
 - Top toolbar is grouped or reduced, and selected-text formatting is easier than hunting through all icons.
+- Heading numbering is visible as a runtime/export projection and can be disabled without changing heading text.
+
+Current status on 2026-07-06:
+
+- Implemented: desktop start screen, explorer-first Files, primary/advanced panel IA, initial heading outline, runtime heading numbering, toolbar grouping, and selected-text bubble formatting.
+- Remaining before the stronger authoring review gate: caption policy, figure/table lists, equation edit flow, and publishing profile clarity.
 
 ## Review Scenarios
 

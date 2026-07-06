@@ -1,7 +1,7 @@
 ---
 title: "Phase 5 Author-First Productization Goal"
 status: in_progress
-progress_percent: 51
+progress_percent: 61
 current_slice: core-authoring-ux
 created_at: 2026-07-06
 started_at: 2026-07-06
@@ -39,6 +39,9 @@ progress_log:
   - date: 2026-07-06
     progress_percent: 51
     note: "information-architecture-cleanup implemented with primary/advanced Activity Bar grouping, initial Outline panel, Diagnostics grouping for References/Traceability, and Developer grouping for raw JSON, AI/RAG, and Data Grid tools. Validation and commit hash are recorded in the final run report."
+  - date: 2026-07-06
+    progress_percent: 61
+    note: "core-authoring-ux structure sub-slice implemented with runtime heading numbering, configurable outline depth, all-heading outline generation, toolbar grouping, and selected-text bubble formatting. Remaining Core Authoring UX work includes captions, figure/table lists, and equation edit flow."
 done_rule: "When this goal is fully completed, update status to done, progress_percent to 100, completed_at to the completion date, and record final evidence in progress_log."
 ---
 

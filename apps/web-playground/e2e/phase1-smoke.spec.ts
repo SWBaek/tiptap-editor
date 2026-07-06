@@ -90,6 +90,44 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   expect(screenshot.length).toBeGreaterThan(1_000);
 });
 
+test("shows authoring structure projections without changing heading text", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Outline panel" }).click();
+  const outlinePanel = page.getByRole("complementary", { name: "Outline side panel" });
+  await expect(outlinePanel.getByLabel("Document outline")).toContainText("1");
+  await expect(outlinePanel.getByLabel("Document outline")).toContainText("System Overview");
+
+  const headingNumberCss = page.locator("style[data-sdoc-heading-number-runtime]");
+  await expect.poll(() => headingNumberCss.evaluate((node) => node.textContent ?? "")).toContain('content:"1. "');
+
+  await page.getByRole("button", { name: "Settings panel" }).click();
+  const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
+  await expect(settingsPanel.getByLabel("Authoring settings")).toContainText("Heading numbering");
+  await settingsPanel.getByLabel("Heading numbering").uncheck();
+  await expect(page.locator("style[data-sdoc-heading-number-runtime]")).toHaveCount(0);
+
+  await selectPreviewTab(page, "JSON");
+  const document = await readPreviewDocument(page);
+  expect(document.content?.[0]?.content?.[0]?.text).toBe("System Overview");
+});
+
+test("applies selected text formatting through the bubble toolbar", async ({ page }) => {
+  await page.goto("/");
+
+  const firstParagraph = page.locator(".editor-surface p").first();
+  await firstParagraph.click();
+  await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+  const bubble = page.getByLabel("Selected text formatting");
+  await expect(bubble).toBeVisible();
+  await bubble.getByRole("button", { name: "Bold selection" }).click();
+
+  await selectPreviewTab(page, "JSON");
+  const document = await readPreviewDocument(page);
+  const paragraph = document.content?.find((node) => node.type === "paragraph");
+  expect(JSON.stringify(paragraph)).toContain('"type":"bold"');
+});
+
 test("uses the Review side panel for diff workflow controls", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Title", { exact: true }).fill("Review Panel Spec");
@@ -1193,7 +1231,7 @@ async function assertInlineToolbarCommands(page: Page): Promise<void> {
 
   await page.locator(".editor-surface p").first().click({ clickCount: 3 });
   for (const command of inlineToolbarCommands) {
-    await page.getByRole("button", { name: command }).click();
+    await page.getByRole("button", { name: command, exact: true }).click();
   }
 
   const document = await readPreviewDocument(page);

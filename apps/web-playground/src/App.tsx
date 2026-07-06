@@ -53,7 +53,7 @@ import {
   type SDocDiffEvent,
   type SDocReviewBatchItem
 } from "@sdoc/diff";
-import { exportDerivedOutputs, exportMarkdown } from "@sdoc/export";
+import { exportDerivedOutputs, exportMarkdown, type PublishingStyleProfileName } from "@sdoc/export";
 import {
   applyDataGridAssetRevision,
   applyDataGridRowMerge,
@@ -268,6 +268,7 @@ export function App() {
   const [collapsedHeadingIds, setCollapsedHeadingIds] = useState<Set<string>>(() => new Set());
   const [headingNumbering, setHeadingNumbering] = useState<HeadingNumberingSettings>({ enabled: true, maxLevel: 3 });
   const [outlineDepth, setOutlineDepth] = useState(3);
+  const [publishingStyleProfile, setPublishingStyleProfile] = useState<PublishingStyleProfileName>("modern");
   const [bubbleToolbarPosition, setBubbleToolbarPosition] = useState<BubbleToolbarPosition | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
@@ -516,9 +517,9 @@ export function App() {
       return;
     }
 
-    const payload = createHtmlPayload(document, metadata, assets);
+    const payload = createHtmlPayload(document, metadata, assets, publishingStyleProfile);
     downloadBlob(new Blob([payload.text], { type: "text/html" }), payload.filename);
-    setStatusMessage("Exported HTML");
+    setStatusMessage(`Exported HTML with ${publishingStyleProfile} profile`);
   }
 
   function downloadDerivedOutput(name: DerivedOutputName) {
@@ -1799,6 +1800,8 @@ export function App() {
           {activePanel === "export" && (
             <ExportPanel
               filenames={exportFilenames}
+              styleProfile={publishingStyleProfile}
+              onStyleProfileChange={setPublishingStyleProfile}
               onExportMarkdown={downloadMarkdown}
               onExportHtml={downloadHtml}
               onCopyDeveloperCommand={showDeveloperCommand}
@@ -2669,6 +2672,8 @@ function OutlinePanel({
 
 function ExportPanel({
   filenames,
+  styleProfile,
+  onStyleProfileChange,
   onExportMarkdown,
   onExportHtml,
   onCopyDeveloperCommand
@@ -2681,17 +2686,30 @@ function ExportPanel({
     pdf: string;
     pptx: string;
   };
+  styleProfile: PublishingStyleProfileName;
+  onStyleProfileChange: (profile: PublishingStyleProfileName) => void;
   onExportMarkdown: () => void;
   onExportHtml: () => void;
   onCopyDeveloperCommand: (command: string) => void;
 }) {
-  const pdfCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pdf -o ${quoteCliPath(filenames.pdf)}`;
+  const profileOption = styleProfile === "modern" ? "" : ` --profile ${styleProfile}`;
+  const pdfCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format pdf${profileOption} -o ${quoteCliPath(filenames.pdf)}`;
   const docxCommand = `npm run sdoc -- export ${quoteCliPath(filenames.sdoc)} --format docx --template controlled -o ${quoteCliPath(filenames.sdoc.replace(/\.sdoc$/i, ".docx"))}`;
 
   return (
     <div className="side-panel-section export-panel">
       <section className="export-section" aria-label="Readable exports">
         <h3>Deliverables</h3>
+        <label className="metadata-field">
+          <span>Publishing profile</span>
+          <select value={styleProfile} onChange={(event) => onStyleProfileChange(event.target.value as PublishingStyleProfileName)}>
+            <option value="modern">Modern</option>
+            <option value="ieee">IEEE</option>
+            <option value="iso">ISO/IEC</option>
+            <option value="korean">Korean</option>
+          </select>
+        </label>
+        <p className="settings-note">Profile selection affects derived HTML/PDF styling only; the source document content is unchanged.</p>
         <ExportAction label="Export Markdown" filename={filenames.markdown} description="Human-readable Markdown with stable block anchors." onClick={onExportMarkdown} />
         <ExportAction label="Export HTML" filename={filenames.html} description="Single-file themed HTML for browser reading and lightweight publishing." onClick={onExportHtml} />
       </section>

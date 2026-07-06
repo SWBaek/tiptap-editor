@@ -196,6 +196,40 @@ describe("exportHtml", () => {
     expect(html).toContain('a[href^="http"]::after');
   });
 
+  it("renders publishing style profiles without mutating canonical content", () => {
+    const html = exportHtml(document, { styleProfile: "ieee" });
+
+    expect(html).toContain('class="sdoc-profile-ieee"');
+    expect(html).toContain('--sdoc-body-font: "Times New Roman", Times, serif;');
+    expect(html).toContain("text-transform: uppercase;");
+    expect(JSON.stringify(document)).not.toContain("sdoc-profile-ieee");
+  });
+
+  it("renders custom HTML export chrome and typography outside document.json", () => {
+    const html = exportHtml(document, {
+      customStyle: {
+        logoDataUrl: "data:image/png;base64,abc",
+        logoAlt: "Company",
+        headerText: "Engineering Release",
+        footerText: "Internal review",
+        typography: {
+          bodyFont: "Arial, sans-serif",
+          baseFontSize: "14px"
+        },
+        css: "    .sdoc-document { border-color: #123456; }"
+      }
+    });
+
+    expect(html).toContain('class="sdoc-profile-modern"');
+    expect(html).toContain('class="sdoc-profile-header"');
+    expect(html).toContain('alt="Company"');
+    expect(html).toContain("Engineering Release");
+    expect(html).toContain("Internal review");
+    expect(html).toContain("--sdoc-body-font: Arial, sans-serif;");
+    expect(html).toContain("border-color: #123456;");
+    expect(JSON.stringify(document)).not.toContain("Engineering Release");
+  });
+
   it("renders a controlled corporate template without changing document content", () => {
     const html = exportHtml(document, {
       title: "Controlled Spec",
@@ -210,7 +244,7 @@ describe("exportHtml", () => {
       }
     });
 
-    expect(html).toContain('class="sdoc-corporate-template sdoc-corporate-template-controlled"');
+    expect(html).toContain('class="sdoc-profile-modern sdoc-corporate-template sdoc-corporate-template-controlled"');
     expect(html).toContain('aria-label="Corporate document control"');
     expect(html).toContain("DOC-OBC-001");
     expect(html).toContain("Approved");

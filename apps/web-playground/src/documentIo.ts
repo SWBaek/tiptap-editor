@@ -1,4 +1,4 @@
-import { exportDerivedOutputs, exportHtml, exportMarkdown } from "@sdoc/export";
+import { exportDerivedOutputs, exportHtml, exportMarkdown, type PublishingStyleProfileName } from "@sdoc/export";
 import { collectReferencedAssetIds, createEmptySdocContainer, packSdoc, unpackSdoc, type SDocMetadata } from "@sdoc/format";
 import { createEmptyDocument, type SDocDocument, validateDocument } from "@sdoc/schema";
 
@@ -73,10 +73,16 @@ export function createMarkdownPayload(document: SDocDocument, metadata: SDocMeta
   };
 }
 
-export function createHtmlPayload(document: SDocDocument, metadata: SDocMetadata, assets: SDocAssets = {}): CreateHtmlPayloadResult {
+export function createHtmlPayload(
+  document: SDocDocument,
+  metadata: SDocMetadata,
+  assets: SDocAssets = {},
+  styleProfile: PublishingStyleProfileName = "modern"
+): CreateHtmlPayloadResult {
   return {
     text: exportHtml(document, {
       title: metadata.title || undefined,
+      styleProfile,
       assetResolver: (assetId) => {
         const asset = assets[assetId];
         return asset ? bytesToDataUrl(assetId, asset) : undefined;

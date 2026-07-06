@@ -75,6 +75,14 @@ describe("sdoc CLI", () => {
     expect(html.stdout).toContain(".sdoc-document");
   });
 
+  it("exports themed HTML with a publishing style profile", async () => {
+    const html = await runSdoc(["export", validDocumentPath, "--format", "html", "--profile", "iso"]);
+
+    expect(html.stdout).toContain('class="sdoc-profile-iso"');
+    expect(html.stdout).toContain("border-top: 4px solid var(--sdoc-accent-color);");
+    expect(html.stdout).not.toContain('"styleProfile"');
+  });
+
   it("exports controlled corporate template HTML from .sdoc metadata", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "sdoc-cli-"));
     const unpackedPath = path.join(tempDir, "controlled.sdoc.d");
@@ -91,7 +99,7 @@ describe("sdoc CLI", () => {
 
       const html = await runSdoc(["export", unpackedPath, "--format", "html", "--template", "controlled"]);
 
-      expect(html.stdout).toContain('class="sdoc-corporate-template sdoc-corporate-template-controlled"');
+      expect(html.stdout).toContain('class="sdoc-profile-modern sdoc-corporate-template sdoc-corporate-template-controlled"');
       expect(html.stdout).toContain("Controlled Spec");
       expect(html.stdout).toContain("DOC-OBC-001");
       expect(html.stdout).toContain("Approved");

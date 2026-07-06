@@ -72,7 +72,7 @@ The Outline surface should become a primary authoring tool:
 - Click-to-jump into the editor. Implemented.
 - Configurable visible heading depth. Implemented as runtime UI state.
 - Figure list from authored figure captions. Implemented.
-- Table list from table structure summaries. Implemented as a projection until canonical table captions are defined.
+- Table list from authored table captions, with table structure summaries as fallback. Implemented.
 
 Generated outline state is runtime/export state. It must not be stored as panel state in `document.json`.
 
@@ -106,4 +106,5 @@ All review filters, selected events, repaired candidates, panel expansion, and d
 6. Diagnostics grouping for References and Traceability. Implemented.
 7. Toolbar grouping and selected-text bubble toolbar. Initial implementation complete.
 8. Figure/table lists and equation edit UX. Initial implementation complete.
-9. Canonical table caption policy. Planned as a schema/export boundary before implementation.
+9. Canonical table caption policy. Implemented.
+10. Publishing style profile selection for derived HTML/PDF exports. Implemented for v1 presets.

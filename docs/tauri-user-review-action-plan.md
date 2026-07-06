@@ -35,10 +35,10 @@ The architecture is still valid, but the product surface is over-weighted toward
 2. Explorer-first Files panel. Implemented on 2026-07-06; manual Tauri smoke remains recommended before the next user review.
 3. Panel information architecture cleanup. Implemented on 2026-07-06; manual user review remains required.
 4. Outline/TOC navigation and heading numbering boundary. Initial runtime heading numbering, outline depth control, and all-heading outline implemented on 2026-07-06.
-5. Caption model and figure/table list boundary. Figure list and table structure list implemented on 2026-07-06; canonical table caption storage remains deferred.
+5. Caption model and figure/table list boundary. Figure list, canonical table captions, and table list captions implemented on 2026-07-06.
 6. Toolbar grouping and selected-text bubble toolbar. Initial grouping and selected-text bubble formatting implemented on 2026-07-06.
 7. Equation double-click edit flow. Implemented on 2026-07-06 for inline and block latex edits.
-8. Publishing style profiles for HTML/PDF/DOCX.
+8. Publishing style profiles for HTML/PDF/DOCX. v1 HTML/PDF profile presets implemented on 2026-07-06; DOCX remains configurable through controlled and external Word templates.
 9. Draw.io create/import flow.
 
 ## Acceptance Evidence For The Next Review

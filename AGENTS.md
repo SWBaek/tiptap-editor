@@ -67,6 +67,7 @@ Use npm workspaces from the repository root.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json markdown`: export a sample document to Markdown.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json chunks`: export RAG-oriented JSONL chunks.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format html --template controlled -o controlled.html`: export controlled corporate HTML without changing `document.json`.
+- `npm run sdoc -- export examples/sdoc-json/basic.document.json --format html --profile ieee -o ieee.html`: export derived HTML with a publishing style profile without changing `document.json`.
 - `npm run sdoc -- export examples/sdoc-json/basic.document.json --format docx --template controlled -o controlled.docx`: export an editable derived Word handoff without changing `document.json`.
 - `npm run sdoc -- template validate controlled.docx`: validate a `.docx/.dotx` template package before future external template injection uses it.
 - `npm run sdoc -- template validate-mapping controlled.docx --style paragraph=Normal --placeholder sdoc-body`: check external Word template mapping requirements before future injection uses it.

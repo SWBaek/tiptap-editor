@@ -1,8 +1,8 @@
 ---
 title: "Phase 5 Author-First Productization Goal"
 status: in_progress
-progress_percent: 80
-current_slice: publishing-style-profiles
+progress_percent: 90
+current_slice: drawio-create-or-import-flow
 created_at: 2026-07-06
 started_at: 2026-07-06
 completed_at:
@@ -14,6 +14,7 @@ planning_docs:
   - docs/ui-shell-plan.md
   - docs/author-first-ux-review-gate.md
   - docs/authoring-structure-projections.md
+  - docs/publishing-style-profiles.md
   - docs/tauri-user-review-action-plan.md
   - docs/desktop-native-smoke.md
 completed_slices:
@@ -21,8 +22,8 @@ completed_slices:
   - explorer-first-files-panel
   - information-architecture-cleanup
   - core-authoring-ux
-remaining_slices:
   - publishing-style-profiles
+remaining_slices:
   - drawio-create-or-import-flow
 progress_log:
   - date: 2026-07-06
@@ -49,6 +50,9 @@ progress_log:
   - date: 2026-07-06
     progress_percent: 80
     note: "core-authoring-ux completed with canonical table captions in table.attrs.caption, editor caption editing, table list caption projection, validation, semantic diff, Markdown/HTML/DOCX/PPTX export coverage, and browser .sdoc round-trip E2E evidence."
+  - date: 2026-07-06
+    progress_percent: 90
+    note: "publishing-style-profiles completed for v1 with HTML/PDF profile presets, custom HTML export options, CLI --profile support, browser Export panel profile selection, and tests proving profile choices stay outside canonical document content."
 done_rule: "When this goal is fully completed, update status to done, progress_percent to 100, completed_at to the completion date, and record final evidence in progress_log."
 ---
 

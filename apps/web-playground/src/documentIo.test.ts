@@ -166,6 +166,14 @@ describe("createHtmlPayload", () => {
     expect(payload.text).toContain('<h1 id="title">Round Trip</h1>');
   });
 
+  it("passes the selected publishing profile to HTML export", () => {
+    const payload = createHtmlPayload(document, metadata, {}, "korean");
+
+    expect(payload.text).toContain('class="sdoc-profile-korean"');
+    expect(payload.text).toContain('--sdoc-body-font: "Noto Sans KR"');
+    expect(JSON.stringify(document)).not.toContain("sdoc-profile-korean");
+  });
+
   it("embeds available figure assets as data URLs", () => {
     const figureDocument: SDocDocument = {
       schemaVersion: 1,

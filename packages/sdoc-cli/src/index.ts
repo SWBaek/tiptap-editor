@@ -9,9 +9,11 @@ import {
   exportHtml,
   exportMarkdown,
   exportPptx,
+  normalizePublishingStyleProfile,
   validateWordTemplateMapping,
   validateWordTemplatePackage,
   type CorporateTemplateName,
+  type PublishingStyleProfileName,
   type WordTemplateMappingRequirement
 } from "@sdoc/export";
 import {
@@ -245,12 +247,13 @@ async function runReview(args: string[]): Promise<void> {
 async function runExport(args: string[]): Promise<void> {
   const [inputPath, ...rest] = args;
   if (!inputPath) {
-      throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|pdf|pptx|chunks|outline|references> [--template controlled] [--template-file file.dotx] [-o output]");
+      throw new Error("usage: sdoc export <input.sdoc|document.json> --format <markdown|html|pdf|pptx|chunks|outline|references> [--profile modern|ieee|iso|korean] [--template controlled] [--template-file file.dotx] [-o output]");
   }
 
-  const positionals = getPositionals(rest, new Set(["--format", "-o", "--template", "--template-file", "--template-style", "--template-placeholder"]));
+  const positionals = getPositionals(rest, new Set(["--format", "-o", "--profile", "--template", "--template-file", "--template-style", "--template-placeholder"]));
   const format = getOption(rest, "--format") ?? positionals[0] ?? "markdown";
   const output = getOption(rest, "-o") ?? positionals[1];
+  const profile = parsePublishingStyleProfile(getOption(rest, "--profile"));
   const template = parseCorporateTemplate(getOption(rest, "--template"));
   const templateFile = getOption(rest, "--template-file");
   if (format.toLowerCase() === "pdf") {
@@ -258,7 +261,7 @@ async function runExport(args: string[]): Promise<void> {
       throw new Error("usage: sdoc export <input.sdoc|document.json> --format pdf -o output.pdf");
     }
 
-    await writePdfExport(await loadExportInput(inputPath), output, template);
+    await writePdfExport(await loadExportInput(inputPath), output, template, profile);
     return;
   }
 
@@ -285,7 +288,7 @@ async function runExport(args: string[]): Promise<void> {
     return;
   }
 
-  const exportText = renderExport(await loadExportInput(inputPath), format, template);
+  const exportText = renderExport(await loadExportInput(inputPath), format, template, profile);
 
   if (output) {
     await writeFile(output, exportText, "utf8");
@@ -326,7 +329,7 @@ async function writeDocxExport(input: ExportInput, outputPath: string, options: 
   await writeFile(outputPath, bytes);
 }
 
-async function writePdfExport(input: ExportInput, outputPath: string, template?: CorporateTemplateName): Promise<void> {
+async function writePdfExport(input: ExportInput, outputPath: string, template?: CorporateTemplateName, profile?: PublishingStyleProfileName): Promise<void> {
   const { chromium } = await import("playwright");
   const browser = await chromium.launch();
   try {
@@ -337,6 +340,7 @@ async function writePdfExport(input: ExportInput, outputPath: string, template?:
         title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
         metadata: input.metadata,
         template,
+        styleProfile: profile,
         dataGridSourceResolver: (assetId) => decodeTextAsset(input.assets[assetId])
       }),
       { waitUntil: "load" }
@@ -543,6 +547,19 @@ function parseCorporateTemplate(value: string | undefined): CorporateTemplateNam
   throw new Error(`unsupported export template: ${value}`);
 }
 
+function parsePublishingStyleProfile(value: string | undefined): PublishingStyleProfileName | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const profile = normalizePublishingStyleProfile(value);
+  if (profile === value) {
+    return profile;
+  }
+
+  throw new Error(`unsupported publishing style profile: ${value}`);
+}
+
 function parseDataGridFormat(value: string | undefined): "csv" | "json" {
   if (value === "csv" || value === "json") {
     return value;
@@ -621,7 +638,8 @@ Commands:
   sdoc data-grid apply <baseline.csv|json> <proposed.csv|json> <current.csv|json> --format csv|json --event <index> [--key col[,col]] [--asset-policy update|revision] [--asset-output output.csv|json] [-o output]
   sdoc diff <old.sdoc|old.document.json> <new.sdoc|new.document.json>
   sdoc export <input.sdoc|document.json> <markdown|html|pdf|chunks|outline|references> [output]
-  sdoc export <input.sdoc> --format html|pdf|docx --template controlled [-o output]
+  sdoc export <input.sdoc> --format html|pdf [--profile modern|ieee|iso|korean] [--template controlled] [-o output]
+  sdoc export <input.sdoc> --format docx --template controlled [-o output.docx]
   sdoc export <input.sdoc> --format docx --template-file company.dotx [--template-style nodeType=StyleId] [--template-placeholder tag] [-o output.docx]
   sdoc pack <folder> <output.sdoc>
   sdoc review <accept|reject> <baseline.sdoc|document.json> <current.sdoc|document.json> --event <id> [--kind added|deleted|modified|moved] [-o output.document.json]
@@ -632,7 +650,7 @@ Commands:
 `);
 }
 
-function renderExport(input: ExportInput, format: string, template?: CorporateTemplateName): string {
+function renderExport(input: ExportInput, format: string, template?: CorporateTemplateName, profile?: PublishingStyleProfileName): string {
   const document = input.document;
   const normalizedFormat = format.toLowerCase();
   if (normalizedFormat === "markdown" || normalizedFormat === "plain" || normalizedFormat === "plain.md") {
@@ -644,6 +662,7 @@ function renderExport(input: ExportInput, format: string, template?: CorporateTe
       title: typeof input.metadata.title === "string" ? input.metadata.title : undefined,
       metadata: input.metadata,
       template,
+      styleProfile: profile,
       dataGridSourceResolver: (assetId) => decodeTextAsset(input.assets[assetId])
     });
   }

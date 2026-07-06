@@ -8,6 +8,23 @@ export interface HtmlExportOptions {
   dataGridPreviewRows?: number;
   template?: CorporateTemplateName;
   metadata?: CorporateTemplateMetadata;
+  styleProfile?: PublishingStyleProfileName;
+  customStyle?: HtmlCustomStyleOptions;
+}
+
+export type PublishingStyleProfileName = "modern" | "ieee" | "iso" | "korean";
+
+export interface HtmlCustomStyleOptions {
+  css?: string;
+  logoDataUrl?: string;
+  logoAlt?: string;
+  headerText?: string;
+  footerText?: string;
+  typography?: {
+    bodyFont?: string;
+    headingFont?: string;
+    baseFontSize?: string;
+  };
 }
 
 export interface DataGridPreviewOptions {
@@ -161,12 +178,18 @@ export function exportHtml(document: SDocDocument, options: HtmlExportOptions = 
   const title = options.title?.trim() || getDocumentTitle(document) || "SDoc Document";
   const blocks = document.content.map((node) => renderHtmlBlock(node, references, options)).filter(Boolean);
   const corporateTemplate = normalizeCorporateTemplate(options.template);
-  const bodyClass = corporateTemplate ? ' class="sdoc-corporate-template sdoc-corporate-template-controlled"' : "";
+  const styleProfile = normalizePublishingStyleProfile(options.styleProfile);
+  const bodyClasses = [
+    `sdoc-profile-${styleProfile}`,
+    corporateTemplate ? "sdoc-corporate-template sdoc-corporate-template-controlled" : ""
+  ].filter(Boolean);
+  const bodyClass = ` class="${bodyClasses.join(" ")}"`;
   const corporateHeader = corporateTemplate
     ? `${renderCorporateHeader(document, title, options.metadata)}
   <div class="sdoc-corporate-watermark">${escapeHtml(getCorporateMetadataValue(options.metadata, "classification", "CONTROLLED"))}</div>
 `
     : "";
+  const profileChrome = renderHtmlProfileChrome(options.customStyle);
   const corporateFooter = corporateTemplate ? `\n${renderCorporateFooter(document, options.metadata)}` : "";
 
   return `<!doctype html>
@@ -177,13 +200,15 @@ export function exportHtml(document: SDocDocument, options: HtmlExportOptions = 
   <title>${escapeHtml(title)}</title>
   <style>
 ${PUBLISH_HTML_CSS}
+${PUBLISH_HTML_PROFILE_CSS[styleProfile]}
+${renderCustomStyleCss(options.customStyle)}
   </style>
 </head>
 <body${bodyClass}>
-${corporateHeader}  <main class="sdoc-document">
+${corporateHeader}${profileChrome.header}  <main class="sdoc-document">
 ${blocks.map((block) => indentHtml(block, 4)).join("\n\n")}
   </main>
-${corporateFooter}
+${profileChrome.footer}${corporateFooter}
 </body>
 </html>
 `;
@@ -200,6 +225,45 @@ export function exportDerivedOutputs(document: SDocDocument): DerivedOutputs {
 
 function normalizeCorporateTemplate(template: HtmlExportOptions["template"]): CorporateTemplateName | undefined {
   return template === "controlled" ? template : undefined;
+}
+
+export function normalizePublishingStyleProfile(profile: unknown): PublishingStyleProfileName {
+  return profile === "ieee" || profile === "iso" || profile === "korean" || profile === "modern" ? profile : "modern";
+}
+
+function renderHtmlProfileChrome(style: HtmlCustomStyleOptions | undefined): { header: string; footer: string } {
+  if (!style?.logoDataUrl && !style?.headerText && !style?.footerText) {
+    return { header: "", footer: "" };
+  }
+
+  const logo = style.logoDataUrl
+    ? `<img src="${escapeHtmlAttribute(style.logoDataUrl)}" alt="${escapeHtmlAttribute(style.logoAlt ?? "Document logo")}">`
+    : "";
+  const headerText = style.headerText ? `<strong>${escapeHtml(style.headerText)}</strong>` : "";
+  const header = logo || headerText ? `  <header class="sdoc-profile-header">${logo}${headerText}</header>\n` : "";
+  const footer = style.footerText ? `\n  <footer class="sdoc-profile-footer">${escapeHtml(style.footerText)}</footer>` : "";
+  return { header, footer };
+}
+
+function renderCustomStyleCss(style: HtmlCustomStyleOptions | undefined): string {
+  const rules: string[] = [];
+  const typographyRules: string[] = [];
+  if (style?.typography?.bodyFont) {
+    typographyRules.push(`--sdoc-body-font: ${style.typography.bodyFont};`);
+  }
+  if (style?.typography?.headingFont) {
+    typographyRules.push(`--sdoc-heading-font: ${style.typography.headingFont};`);
+  }
+  if (style?.typography?.baseFontSize) {
+    typographyRules.push(`--sdoc-base-font-size: ${style.typography.baseFontSize};`);
+  }
+  if (typographyRules.length > 0) {
+    rules.push(`    :root {\n      ${typographyRules.join("\n      ")}\n    }`);
+  }
+  if (style?.css?.trim()) {
+    rules.push(`    /* Custom local export CSS */\n${style.css}`);
+  }
+  return rules.length > 0 ? `\n${rules.join("\n\n")}` : "";
 }
 
 function renderCorporateHeader(document: SDocDocument, title: string, metadata: CorporateTemplateMetadata | undefined): string {
@@ -1993,9 +2057,22 @@ const DOCX_STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:styles>`;
 
 const PUBLISH_HTML_CSS = `    :root {
-      color: #182026;
-      background: #eef1f4;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --sdoc-body-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --sdoc-heading-font: var(--sdoc-body-font);
+      --sdoc-base-font-size: 16px;
+      --sdoc-page-background: #eef1f4;
+      --sdoc-document-background: #ffffff;
+      --sdoc-text-color: #182026;
+      --sdoc-heading-color: #17212b;
+      --sdoc-accent-color: #0c5f70;
+      --sdoc-border-color: #dfe5ea;
+      --sdoc-muted-color: #4e5d6b;
+      --sdoc-table-header-background: #eef3f6;
+      --sdoc-caption-style: italic;
+      color: var(--sdoc-text-color);
+      background: var(--sdoc-page-background);
+      font-family: var(--sdoc-body-font);
+      font-size: var(--sdoc-base-font-size);
       line-height: 1.65;
     }
 
@@ -2008,10 +2085,36 @@ const PUBLISH_HTML_CSS = `    :root {
       width: min(860px, 100%);
       margin: 0 auto;
       padding: 40px;
-      background: #ffffff;
-      border: 1px solid #dfe5ea;
+      background: var(--sdoc-document-background);
+      border: 1px solid var(--sdoc-border-color);
       border-radius: 8px;
       box-shadow: 0 12px 30px rgba(17, 24, 39, 0.06);
+    }
+
+    .sdoc-profile-header,
+    .sdoc-profile-footer {
+      width: min(860px, 100%);
+      margin: 0 auto 18px;
+      color: var(--sdoc-muted-color);
+      font-size: 0.9rem;
+    }
+
+    .sdoc-profile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .sdoc-profile-header img {
+      max-width: 160px;
+      max-height: 48px;
+      object-fit: contain;
+    }
+
+    .sdoc-profile-footer {
+      margin-top: 18px;
+      text-align: center;
     }
 
     .sdoc-corporate-template {
@@ -2095,7 +2198,8 @@ const PUBLISH_HTML_CSS = `    :root {
 
     h1, h2, h3, h4, h5, h6 {
       margin: 1.4em 0 0.45em;
-      color: #17212b;
+      color: var(--sdoc-heading-color);
+      font-family: var(--sdoc-heading-font);
       line-height: 1.22;
     }
 
@@ -2104,14 +2208,14 @@ const PUBLISH_HTML_CSS = `    :root {
     }
 
     a {
-      color: #0c5f70;
+      color: var(--sdoc-accent-color);
       text-underline-offset: 2px;
     }
 
     blockquote {
       margin: 1em 0;
       padding-left: 16px;
-      color: #4e5d6b;
+      color: var(--sdoc-muted-color);
       border-left: 3px solid #92a4b4;
     }
 
@@ -2148,7 +2252,7 @@ const PUBLISH_HTML_CSS = `    :root {
     }
 
     th {
-      background: #eef3f6;
+      background: var(--sdoc-table-header-background);
       text-align: left;
     }
 
@@ -2171,8 +2275,18 @@ const PUBLISH_HTML_CSS = `    :root {
     }
 
     figcaption {
-      color: #4e5d6b;
+      color: var(--sdoc-muted-color);
       font-size: 0.92rem;
+      font-style: var(--sdoc-caption-style);
+      text-align: center;
+    }
+
+    caption {
+      caption-side: bottom;
+      padding-top: 8px;
+      color: var(--sdoc-muted-color);
+      font-size: 0.92rem;
+      font-style: var(--sdoc-caption-style);
       text-align: center;
     }
 
@@ -2181,7 +2295,7 @@ const PUBLISH_HTML_CSS = `    :root {
     }
 
     .sdoc-data-grid-source {
-      color: #586875;
+      color: var(--sdoc-muted-color);
       font-size: 0.9rem;
     }
 
@@ -2317,3 +2431,72 @@ const PUBLISH_HTML_CSS = `    :root {
         white-space: pre-wrap;
       }
     }`;
+
+const PUBLISH_HTML_PROFILE_CSS: Record<PublishingStyleProfileName, string> = {
+  modern: `    .sdoc-profile-modern {
+      --sdoc-accent-color: #0c5f70;
+    }`,
+  ieee: `    .sdoc-profile-ieee {
+      --sdoc-body-font: "Times New Roman", Times, serif;
+      --sdoc-heading-font: "Times New Roman", Times, serif;
+      --sdoc-base-font-size: 15px;
+      --sdoc-page-background: #ffffff;
+      --sdoc-border-color: #b8c0c7;
+      --sdoc-accent-color: #1f4e79;
+      --sdoc-caption-style: normal;
+    }
+
+    .sdoc-profile-ieee .sdoc-document {
+      max-width: 760px;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .sdoc-profile-ieee h1 {
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .sdoc-profile-ieee h2,
+    .sdoc-profile-ieee h3 {
+      text-transform: uppercase;
+    }`,
+  iso: `    .sdoc-profile-iso {
+      --sdoc-page-background: #f3f4f2;
+      --sdoc-heading-color: #1f2933;
+      --sdoc-accent-color: #7a4f14;
+      --sdoc-border-color: #a9b4bd;
+      --sdoc-table-header-background: #e7ecef;
+      --sdoc-caption-style: normal;
+    }
+
+    .sdoc-profile-iso .sdoc-document {
+      border-radius: 0;
+      box-shadow: none;
+      border-top: 4px solid var(--sdoc-accent-color);
+    }
+
+    .sdoc-profile-iso h1,
+    .sdoc-profile-iso h2 {
+      border-bottom: 1px solid var(--sdoc-border-color);
+      padding-bottom: 0.22em;
+    }`,
+  korean: `    .sdoc-profile-korean {
+      --sdoc-body-font: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+      --sdoc-heading-font: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+      --sdoc-base-font-size: 16px;
+      --sdoc-page-background: #f4f5f7;
+      --sdoc-heading-color: #202735;
+      --sdoc-accent-color: #245b8f;
+      --sdoc-caption-style: normal;
+    }
+
+    .sdoc-profile-korean .sdoc-document {
+      max-width: 900px;
+    }
+
+    .sdoc-profile-korean p,
+    .sdoc-profile-korean li {
+      word-break: keep-all;
+    }`
+};

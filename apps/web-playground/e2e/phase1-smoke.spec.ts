@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 interface JsonNode {
   type?: unknown;
@@ -343,6 +343,7 @@ test("exports deliverables and keeps developer outputs separate", async ({ page 
   await expect(exportPanel.getByLabel("DOCX publishing boundary")).toContainText("CLI/Tauri DOCX");
   await expect(exportPanel).not.toContainText("document.json");
   await expect(exportPanel).not.toContainText("plain.md");
+  await exportPanel.getByLabel("Publishing profile").selectOption("korean");
 
   const markdownDownload = page.waitForEvent("download");
   await exportPanel.getByRole("button", { name: "Export Markdown" }).click();
@@ -351,11 +352,15 @@ test("exports deliverables and keeps developer outputs separate", async ({ page 
 
   const htmlDownload = page.waitForEvent("download");
   await exportPanel.getByRole("button", { name: "Export HTML" }).click();
-  expect((await htmlDownload).suggestedFilename()).toBe("Export Panel Spec.html");
-  await expect(page.locator(".status-note")).toContainText("Exported HTML");
+  const downloadedHtml = await htmlDownload;
+  expect(downloadedHtml.suggestedFilename()).toBe("Export Panel Spec.html");
+  const htmlPath = test.info().outputPath("Export Panel Spec.html");
+  await downloadedHtml.saveAs(htmlPath);
+  expect(await readFile(htmlPath, "utf8")).toContain('class="sdoc-profile-korean"');
+  await expect(page.locator(".status-note")).toContainText("Exported HTML with korean profile");
 
   await exportPanel.getByRole("button", { name: "Copy PDF command" }).click();
-  await expect(page.locator(".status-note")).toContainText('npm run sdoc -- export "Export Panel Spec.sdoc" --format pdf -o "Export Panel Spec.pdf"');
+  await expect(page.locator(".status-note")).toContainText('npm run sdoc -- export "Export Panel Spec.sdoc" --format pdf --profile korean -o "Export Panel Spec.pdf"');
 
   await exportPanel.getByRole("button", { name: "Copy DOCX command" }).click();
   await expect(page.locator(".status-note")).toContainText('npm run sdoc -- export "Export Panel Spec.sdoc" --format docx --template controlled -o "Export Panel Spec.docx"');

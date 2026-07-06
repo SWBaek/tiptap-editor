@@ -137,16 +137,24 @@ Acceptance evidence so far:
 
 ## Priority Slice 5: Publishing Style Profiles
 
-Status: planned after core authoring UX.
+Status: accepted on 2026-07-06 for v1 HTML/PDF profile presets. DOCX remains configurable through the existing controlled template and external Word template injection boundary.
 
 Make HTML/PDF/DOCX output configurable without turning `document.json` into a page-layout format.
 
 Acceptance criteria:
 
 - Provide style/profile presets for captions and headings, such as IEEE, ISO/IEC, Modern, and Korean.
-- Support custom profile settings for HTML export CSS, logo, typography, and document chrome.
-- Store app/workspace profile selection outside canonical body content unless the value is document metadata.
+- Support custom profile settings for HTML export CSS, logo, typography, and document chrome through headless export options.
+- Store app/workspace profile selection outside canonical body content unless the value is document metadata. The browser Export panel currently keeps profile choice as runtime state.
 - Keep generated exports disposable and regenerable.
+
+Acceptance evidence:
+
+- `docs/publishing-style-profiles.md` defines the canonical boundary and v1 presets.
+- `exportHtml` supports `modern`, `ieee`, `iso`, and `korean` profiles plus custom HTML chrome/typography/CSS options.
+- CLI HTML/PDF export accepts `--profile modern|ieee|iso|korean`; PDF reuses the HTML print pipeline.
+- Browser Export panel exposes profile selection for HTML export and reflected PDF commands without showing raw developer outputs.
+- Tests cover headless HTML profiles, custom HTML chrome, CLI profile export, browser payload generation, and Export panel E2E.
 
 ## Priority Slice 6: Draw.io Create Or Import Flow
 

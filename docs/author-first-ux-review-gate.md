@@ -57,7 +57,7 @@ Before the next real-user review:
 Current status on 2026-07-06:
 
 - Implemented: desktop start screen, explorer-first Files, primary/advanced panel IA, initial heading outline, runtime heading numbering, figure/table structure lists, toolbar grouping, selected-text bubble formatting, and equation edit flow.
-- Remaining before the stronger authoring review gate: canonical table caption policy and publishing profile clarity.
+- Remaining before the stronger authoring review gate: Draw.io create/import clarity and manual Tauri smoke review.
 
 ## Review Scenarios
 

@@ -239,6 +239,51 @@ test("tracks browser recent files in the Files side panel", async ({ page }) => 
   await expect(page.locator(".status-note")).toContainText("Recent file metadata only: reopen Files Panel Spec.sdoc");
 });
 
+test("shows a desktop start screen before opening a Tauri workspace document", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as typeof window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
+    (window as typeof window & { __SDOC_NATIVE_SAVE_BRIDGE__?: unknown }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
+      async saveSdoc() {
+        return undefined;
+      },
+      async chooseSdocSavePath() {
+        return "C:\\Docs\\new-document.sdoc";
+      },
+      async openSdoc() {
+        return { path: "C:\\Docs\\opened.sdoc", bytes: new Uint8Array() };
+      },
+      async openSdocPath(path: string) {
+        return { path, bytes: new Uint8Array() };
+      },
+      async chooseSdocWorkspaceDirectory() {
+        return "C:\\Docs";
+      },
+      async listSdocWorkspaceEntries() {
+        return [{ name: "opened.sdoc", path: "C:\\Docs\\opened.sdoc", kind: "sdoc-file" }];
+      }
+    };
+  });
+
+  await page.goto("/");
+  const startScreen = page.getByLabel("Desktop start screen");
+  await expect(startScreen).toBeVisible();
+  await expect(startScreen.getByRole("button", { name: "Open Folder" })).toBeVisible();
+  await expect(startScreen.getByRole("button", { name: "Open .sdoc" })).toBeVisible();
+  await expect(startScreen.getByRole("button", { name: "New .sdoc" })).toBeVisible();
+  await expect(startScreen.getByLabel("Recent Documents")).toContainText("No recent documents yet.");
+  await expect(page.getByRole("region", { name: "Document workflow" })).toHaveCount(0);
+  await expect(page.locator(".editor-surface")).toHaveCount(0);
+
+  await startScreen.getByRole("button", { name: "Open Folder" }).click();
+  await expect(page.getByRole("region", { name: "Document workflow" })).toBeVisible();
+  await page.getByRole("button", { name: "Files panel" }).click();
+  const filesPanel = page.getByRole("complementary", { name: "Files side panel" });
+  await expect(filesPanel.getByLabel("Workspace files")).toContainText("opened.sdoc");
+  await filesPanel.getByRole("button", { name: /opened\.sdoc/ }).click();
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("opened");
+  await expect(page.locator(".status-note")).toContainText("Initialized empty .sdoc");
+});
+
 test("exports readable and AI/RAG outputs from the Export side panel", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Title", { exact: true }).fill("Export Panel Spec");

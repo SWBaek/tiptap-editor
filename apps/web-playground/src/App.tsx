@@ -170,6 +170,7 @@ interface RecentFileEntry {
   title: string;
   action: RecentFileAction;
   updatedAt: string;
+  nativePath?: string;
 }
 interface EditorHighlightOverlay {
   nodeId: string;
@@ -226,6 +227,7 @@ export function App() {
   const [assets, setAssets] = useState<SDocAssets>({});
   const [currentFilename, setCurrentFilename] = useState<string | null>(null);
   const [currentNativePath, setCurrentNativePath] = useState<string | null>(null);
+  const [isDesktopStartScreenOpen, setIsDesktopStartScreenOpen] = useState(() => detectDocumentFileRuntime().kind === "desktop");
   const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>(loadStoredRecentFiles);
   const [workspaceDirectory, setWorkspaceDirectory] = useState<string | null>(null);
   const [workspaceEntries, setWorkspaceEntries] = useState<WindowSdocWorkspaceEntry[]>([]);
@@ -391,7 +393,7 @@ export function App() {
       setSelectedHistoryId(null);
       setCurrentFilename(payload.filename);
       setCurrentNativePath(saveResult.path);
-      addRecentFile(payload.filename, metadata.title || payload.filename, "saved");
+      addRecentFile(payload.filename, metadata.title || payload.filename, "saved", saveResult.path);
       markSaved(saveResult.message);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
@@ -472,9 +474,10 @@ export function App() {
     setDrawioExternalEditConflict(null);
     setCurrentFilename(name);
     setCurrentNativePath(nativePath);
-    addRecentFile(name, nextMetadata.title || name, "opened");
+    addRecentFile(name, nextMetadata.title || name, "opened", nativePath);
     setActiveTab("markdown");
     setIsPreviewOpen(false);
+    setIsDesktopStartScreenOpen(false);
     markSaved(loaded.statusMessage);
   }
 
@@ -531,20 +534,33 @@ export function App() {
     markSaved("Marked current state as saved");
   }
 
-  function addRecentFile(name: string, title: string, action: RecentFileAction) {
+  function addRecentFile(name: string, title: string, action: RecentFileAction, nativePath: string | null = null) {
     const entry: RecentFileEntry = {
-      id: name,
+      id: nativePath ?? name,
       name,
       title,
       action,
       updatedAt: new Date().toISOString()
     };
+    if (nativePath) {
+      entry.nativePath = nativePath;
+    }
     const nextEntries = upsertRecentFile(recentFiles, entry);
     setRecentFiles(nextEntries);
     storeRecentFiles(nextEntries);
   }
 
-  function explainRecentFileAccess(entry: RecentFileEntry) {
+  async function openRecentFile(entry: RecentFileEntry) {
+    if (documentFileRuntime.kind === "desktop" && nativeSdocWorkspaceAdapter && entry.nativePath) {
+      try {
+        const opened = await nativeSdocWorkspaceAdapter.openFile(entry.nativePath);
+        await openDocumentBytes(filenameFromNativePath(opened.path), opened.bytes, opened.path);
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : String(error));
+      }
+      return;
+    }
+
     setStatusMessage(`Recent file metadata only: reopen ${entry.name} from disk to load it in the browser`);
   }
 
@@ -562,6 +578,7 @@ export function App() {
       }
 
       await refreshWorkspaceEntries(directoryPath);
+      setIsDesktopStartScreenOpen(false);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     }
@@ -733,6 +750,7 @@ export function App() {
     setCurrentNativePath(null);
     setActiveTab("markdown");
     setIsPreviewOpen(false);
+    setIsDesktopStartScreenOpen(false);
     setSavedAt("Not saved");
     setStatusMessage("Created new document");
   }
@@ -1464,6 +1482,7 @@ export function App() {
   }
 
   const activePanelLabel = getActivityPanelLabel(activePanel);
+  const showDesktopStartScreen = documentFileRuntime.kind === "desktop" && isDesktopStartScreenOpen && !currentFilename && !workspaceDirectory;
 
   return (
     <main className={isSidePanelOpen ? "app-shell" : "app-shell side-panel-collapsed"}>
@@ -1534,7 +1553,7 @@ export function App() {
               onOpenDocument={openDocumentAction}
               onSaveSdoc={downloadSdoc}
               sdocSaveLabel={sdocSaveRoute.label}
-              onSelectRecentFile={explainRecentFileAccess}
+              onSelectRecentFile={(entry) => void openRecentFile(entry)}
               onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
               onRefreshWorkspace={() => void refreshWorkspaceEntries()}
               onOpenWorkspaceEntry={openWorkspaceEntry}
@@ -1621,6 +1640,17 @@ export function App() {
       )}
 
       <section className="workspace">
+        {showDesktopStartScreen ? (
+          <DesktopStartScreen
+            recentFiles={recentFiles}
+            isWorkspaceLoading={isWorkspaceLoading}
+            onNewDocument={createNewDocument}
+            onOpenDocument={() => void openDocumentAction()}
+            onChooseWorkspaceDirectory={() => void chooseWorkspaceDirectoryAction()}
+            onOpenRecentFile={(entry) => void openRecentFile(entry)}
+          />
+        ) : (
+          <>
         <div className="document-command-bar" role="region" aria-label="Document workflow">
           <div className="document-command-main">
             <label className="document-title-field">
@@ -1888,8 +1918,76 @@ export function App() {
           </section>
           )}
         </div>
+          </>
+        )}
       </section>
     </main>
+  );
+}
+
+function DesktopStartScreen({
+  recentFiles,
+  isWorkspaceLoading,
+  onNewDocument,
+  onOpenDocument,
+  onChooseWorkspaceDirectory,
+  onOpenRecentFile
+}: {
+  recentFiles: RecentFileEntry[];
+  isWorkspaceLoading: boolean;
+  onNewDocument: () => void;
+  onOpenDocument: () => void;
+  onChooseWorkspaceDirectory: () => void;
+  onOpenRecentFile: (entry: RecentFileEntry) => void;
+}) {
+  return (
+    <div className="desktop-start-screen" aria-label="Desktop start screen">
+      <section className="desktop-start-main">
+        <div className="desktop-start-heading">
+          <FileText size={28} />
+          <div>
+            <h1>SDoc Editor</h1>
+            <p>Open a workspace or create a technical document.</p>
+          </div>
+        </div>
+
+        <div className="desktop-start-actions" aria-label="Start actions">
+          <button type="button" onClick={onChooseWorkspaceDirectory} disabled={isWorkspaceLoading}>
+            <FolderOpen size={18} />
+            <span>{isWorkspaceLoading ? "Opening folder..." : "Open Folder"}</span>
+          </button>
+          <button type="button" onClick={onOpenDocument}>
+            <FileText size={18} />
+            <span>Open .sdoc</span>
+          </button>
+          <button type="button" onClick={onNewDocument}>
+            <FilePlus size={18} />
+            <span>New .sdoc</span>
+          </button>
+        </div>
+      </section>
+
+      <section className="desktop-start-recent" aria-label="Recent Documents">
+        <h2>Recent Documents</h2>
+        {recentFiles.length === 0 ? (
+          <p>No recent documents yet.</p>
+        ) : (
+          <ul>
+            {recentFiles.map((entry) => (
+              <li key={entry.id}>
+                <button type="button" onClick={() => onOpenRecentFile(entry)}>
+                  <strong>{entry.name}</strong>
+                  <span>
+                    {entry.action} {entry.title} - {formatRecentFileTime(entry.updatedAt)}
+                  </span>
+                  {entry.nativePath && <small title={entry.nativePath}>{entry.nativePath}</small>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -3434,7 +3532,8 @@ function isRecentFileEntry(value: unknown): value is RecentFileEntry {
     typeof entry.name === "string" &&
     typeof entry.title === "string" &&
     (entry.action === "opened" || entry.action === "saved") &&
-    typeof entry.updatedAt === "string"
+    typeof entry.updatedAt === "string" &&
+    (entry.nativePath === undefined || typeof entry.nativePath === "string")
   );
 }
 

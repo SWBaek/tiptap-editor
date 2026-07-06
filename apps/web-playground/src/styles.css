@@ -1274,6 +1274,136 @@ button {
   background: #eef1f4;
 }
 
+.desktop-start-screen {
+  display: grid;
+  grid-row: 1 / -1;
+  grid-template-columns: minmax(280px, 480px) minmax(280px, 520px);
+  gap: 24px;
+  align-content: start;
+  min-width: 0;
+  min-height: 100%;
+  padding: 56px clamp(24px, 5vw, 72px);
+  overflow: auto;
+  background: #f5f7f8;
+}
+
+.desktop-start-main,
+.desktop-start-recent {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+}
+
+.desktop-start-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.desktop-start-heading svg {
+  flex: 0 0 auto;
+  color: #2d6874;
+}
+
+.desktop-start-heading h1 {
+  margin: 0;
+  color: #17212b;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.desktop-start-heading p,
+.desktop-start-recent p {
+  margin: 4px 0 0;
+  color: #657484;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.desktop-start-actions {
+  display: grid;
+  gap: 10px;
+  max-width: 320px;
+}
+
+.desktop-start-actions button,
+.desktop-start-recent button {
+  min-width: 0;
+  color: #22313d;
+  background: #ffffff;
+  border: 1px solid #ccd6dd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.desktop-start-actions button {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.desktop-start-actions button:hover:not(:disabled),
+.desktop-start-recent button:hover {
+  background: #eef3f6;
+  border-color: #9db7c4;
+}
+
+.desktop-start-actions button:disabled {
+  color: #7d8994;
+  cursor: not-allowed;
+}
+
+.desktop-start-recent h2 {
+  margin: 0;
+  color: #17212b;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.desktop-start-recent ul {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.desktop-start-recent button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.desktop-start-recent strong,
+.desktop-start-recent span,
+.desktop-start-recent small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-start-recent strong {
+  color: #17212b;
+  font-size: 14px;
+}
+
+.desktop-start-recent span,
+.desktop-start-recent small {
+  color: #657484;
+  font-size: 12px;
+}
+
 .document-command-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2745,6 +2875,16 @@ button {
 
   .workspace {
     grid-template-rows: auto 52px minmax(0, 1fr);
+  }
+
+  .desktop-start-screen {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 28px 18px;
+  }
+
+  .desktop-start-heading h1 {
+    font-size: 24px;
   }
 
   .document-command-bar {

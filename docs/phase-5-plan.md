@@ -1,229 +1,144 @@
 # Phase 5 Productization Plan
 
 Created: 2026-07-03
+Realigned: 2026-07-06 after first Tauri app user review
 
 ## Goal
 
-Phase 5 turns the accepted MVP slices into product workflows for non-developer authors. The priority is desktop-native `.sdoc` file handling, review usability, requirement traceability, repair workflows, and native asset integrations while preserving `document.json` as the only canonical source of truth.
+Phase 5 turns the accepted MVP foundation into a real desktop authoring product. The product must feel like a technical document editor first, not a document-management console, ALM tool, schema debugger, or collection of experimental panels.
+
+The core format rules remain unchanged: `.sdoc/document.json` is canonical, `.sdoc` is the user-facing single ZIP container, exports are derived, and UI/runtime state never enters `document.json`.
+
+## Review-Driven Direction Change
+
+The 2026-07-06 Tauri app review changes the Phase 5 priority order. The next work must focus on author workflow and desktop file entry before adding more review, traceability, data-grid, or publishing depth.
+
+Accepted changes:
+
+- Desktop must not open directly into a sample document when no workspace/document is selected.
+- Files must behave like a simple file explorer, with actual folder contents visible.
+- Save/Save As is the `.sdoc` workflow; `.sdoc` should not be presented as a normal export target.
+- Raw `document.json`, AI/RAG outputs, schema state, data-grid review, and debug previews belong behind Developer/Advanced surfaces.
+- Review, References, and Traceability are useful but must not read as the product's primary purpose.
+- Core authoring features now outrank advanced review features: heading numbering, outline/TOC navigation, captions, table/figure lists, equation editing, and selected-text formatting.
 
 ## Product Principles
 
-- Normal users open, save, and share one `.sdoc` file.
-- Git, unpacked folders, and raw JSON remain optional developer/reviewer workflows.
-- Tauri owns native filesystem, external editor, file watcher, and OS integration.
-- Browser playground remains browser-safe and must not claim native capabilities.
-- UI/runtime state stays outside `document.json`.
-- Stable `attrs.id` remains the internal identity key; `attrs.humanId` is human-facing metadata only.
+- Normal users open a workspace or `.sdoc`, write, save, reopen, and export deliverables.
+- The desktop app owns native folder/file workflows; the browser playground remains a browser-safe demo.
+- Files, outline, editor body, and save state are primary. Review and diagnostics are secondary.
+- Git, unpacked folders, raw JSON, schema details, CLI commands, and AI/RAG exports are optional developer/reviewer workflows.
+- Data-grid features appear only when a document actually contains asset-backed data grids.
+- Style/profile settings may affect rendering and export, but must not store UI state in canonical body nodes.
 
-## Priority Slice: Author-First UX Review Gate
+## Priority Slice 1: Desktop Workspace Entry
 
-Status: in progress on 2026-07-06.
+Status: implemented on 2026-07-06; manual Tauri smoke still recommended before the next user review.
 
-Before adding more Phase 5 feature depth, prepare the app for a first real-user review. The first-run experience must read as a technical document editor, not a schema/debug console or document management dashboard.
-
-Acceptance criteria:
-
-- Add `docs/author-first-ux-review-gate.md` and `docs/user-review-checklist.md`.
-- Default the web playground toward the writing surface, with side panels and debug previews secondary.
-- Keep New, Open `.sdoc`, Save/Download `.sdoc`, and Export visible in the normal authoring flow.
-- Prioritize basic writing controls ahead of advanced diagram, data-grid, review, and debug controls.
-- Preserve existing Review, Traceability, References, Export, Settings, and debug access without storing UI/runtime state in `document.json`.
-- Run `npm test`, `npm run build`, and `npm run test:e2e`.
-
-Stop rule:
-
-- After this slice passes validation, pause major feature work and collect 3-5 user reviews before changing Phase 5 priorities.
-
-## Slice 1: Tauri Desktop Shell Foundation
-
-Status: initial foundation implemented on 2026-07-03; native save-back policy model, workspace writer entrypoint, browser/desktop save-route boundary, Tauri runtime capability detection, native path runtime state, route-based save action execution, web-safe native save/open bridge discovery, desktop-side native save bridge installer, and Rust initialization bootstrap hook added on 2026-07-04.
+Replace the desktop first-run experience with a workspace/document entry screen.
 
 Acceptance criteria:
 
-- Add an `apps/desktop/` workspace for the future Tauri shell.
-- Reuse the existing web playground build as the first desktop frontend.
-- Add narrow native commands for reading and writing `.sdoc` bytes by path.
-- Keep native filesystem access behind a desktop adapter instead of mixing it into browser code.
-- Document that Rust/Tauri toolchains are required for desktop build validation.
-
-Exclusions:
-
-- Full file explorer.
-- Draw.io external editor launch.
-- Asset file watching.
-- Git integration.
-- Canonical format changes.
+- Tauri desktop starts at a lightweight start screen when no document or workspace is active.
+- Start screen offers Open Folder, Open `.sdoc`, New `.sdoc`, and Recent Documents.
+- The web playground may keep sample content, but desktop product mode must not treat sample content as the user's current document.
+- Workspace path, recent documents, selected folder, and start-screen state remain runtime/user settings, not `document.json`.
+- `npm run build:desktop` documentation and emitted executable name are consistent (`sdoc-desktop.exe`, not `sdoc-destop.exe`).
 
 Acceptance evidence:
 
-- `apps/desktop/` exists as an npm workspace with Tauri v2 configuration.
-- The desktop shell reuses `apps/web-playground/dist` and the web dev server.
-- `read_sdoc_file` and `write_sdoc_file` native commands are limited to `.sdoc` paths.
-- `apps/desktop/src/nativeSdocFileAdapter.ts` keeps Tauri IPC behind a desktop adapter.
-- `apps/desktop/src/sdocSaveBackModel.ts` validates native save-back targets before writes: only concrete `.sdoc` files with non-empty package bytes are writable, and unpacked folders are not treated as normal authoring save targets.
-- `apps/desktop/src/nativeSdocSaveBack.ts` connects validated save-back plans to `nativeWorkspaceAdapter.writeSdoc` without exposing broad filesystem mutation helpers to the web runtime.
-- `apps/web-playground/src/documentFileRuntime.ts` keeps browser download saves and future desktop native save/save-as routes explicit, detecting Tauri capability from runtime globals without importing Tauri IPC into the browser playground.
-- `apps/web-playground/src/documentFileActions.ts` executes save routes through injected browser or native adapters, so desktop native routes cannot silently fall back to browser download when no native adapter is wired.
-- `apps/web-playground/src/documentNativeBridge.ts` discovers optional `window.__SDOC_NATIVE_SAVE_BRIDGE__` save and open adapters without importing Tauri APIs into the browser bundle.
-- `apps/desktop/src/nativeSdocSaveBridge.ts` installs that window bridge from the desktop layer, writes through the validated native save-back model, and uses the Tauri dialog plugin for `.sdoc` open/save-as path selection.
-- `apps/web-playground/src/App.tsx` keeps the current native path as runtime-only state, clears it for browser open/download/new flows, sets it after native open, and uses it only for save-route selection.
-- `apps/desktop/src-tauri` registers `tauri-plugin-dialog`, grants dialog permissions for native open/save-as, disables automatic window creation, and creates the main window with a Rust `initialization_script` that installs `window.__SDOC_NATIVE_SAVE_BRIDGE__` before the web app scripts run.
-- Root scripts expose `npm run dev:desktop`, `npm run build:desktop`, and `npm run typecheck:desktop`.
-- Node validation passes with `npm run typecheck:desktop`, `npm test`, `npm run build`, and `npm run test:e2e`.
-- `apps/desktop/src-tauri/Cargo.lock` locks the desktop Rust dependency graph for reproducible Tauri builds.
-- `apps/desktop/src-tauri/icons/icon.ico` provides the required Windows resource icon for Tauri packaging.
-- Native Tauri build passes locally with Rust/Cargo installed; `npm run build:desktop` emits `apps/desktop/src-tauri/target/release/sdoc-desktop.exe`.
-- `npm run dev:desktop` launches the Vite dev server on `127.0.0.1:6280` and starts `target/debug/sdoc-desktop.exe` with WebView2.
-- `docs/desktop-native-smoke.md` defines the required manual desktop UX smoke protocol for `.sdoc` open, save, save-as, workspace folder selection, and browser-boundary regression.
-- Manual native dialog UX smoke is still required before declaring Phase 5 desktop-native workflow complete.
+- Desktop runtime now shows a Start Screen with Open Folder, Open `.sdoc`, New `.sdoc`, and Recent Documents when no workspace/document is active.
+- Browser playground behavior remains unchanged and may still load the sample document.
+- Recent documents can retain optional native paths for desktop reopen, stored only as user-local runtime state.
+- Playwright covers the desktop-runtime start screen and workspace entry boundary.
+- `npm run build:desktop` emits `apps/desktop/src-tauri/target/release/sdoc-desktop.exe`.
 
-## Slice 2: Native File Explorer And Workspace Adapter
+## Priority Slice 2: Explorer-First Files Panel
 
-Status: initial workspace adapter implemented on 2026-07-03; web-safe workspace bridge discovery, desktop workspace folder chooser/list bridge, and Files panel workspace listing UX added on 2026-07-05.
+Status: planned next.
 
-Add a VS Code-like Files activity panel for desktop. It should expose current document, recent documents, open/save/save-as, and later unpacked folder workflows. Git and unpacked folders must remain optional and hidden from the normal authoring path.
+Turn Files into a simple VS Code-like explorer instead of a mixed action/status panel.
 
 Acceptance criteria:
 
-- Document the browser/desktop boundary for native file exploration.
-- Add a desktop workspace adapter that lists `.sdoc` files without exposing broad filesystem APIs to browser code.
-- Keep unpacked folder workflow optional and explicitly marked as developer/reviewer scope.
-- Keep recent files, selected folders, expanded nodes, sort order, and Git status out of `document.json`.
-- Reuse the existing Activity Bar and Files panel direction instead of adding a competing shell model.
+- Show current workspace folder and immediate `.sdoc` files clearly.
+- Show which document is open and whether it has unsaved changes.
+- Move secondary file operations to context menus or compact action menus.
+- Keep developer-only unpack/pack commands out of the default author path.
+- Do not expose broad filesystem APIs to browser code; continue using the Tauri adapter boundary.
 
-Acceptance evidence:
+## Priority Slice 3: Information Architecture Cleanup
 
-- `docs/native-file-explorer-boundary.md` records the explorer boundary and deferred work.
-- `list_sdoc_workspace_entries` returns immediate `.sdoc` files and optional unpacked `.sdoc` folders.
-- `apps/desktop/src/nativeWorkspaceAdapter.ts` keeps workspace listing and `.sdoc` byte IO behind a Tauri adapter.
-- `apps/desktop/src/workspaceModel.ts` provides testable entry sorting, labeling, and validation.
-- Unit tests cover workspace entry ordering, labeling, and bridge response validation.
-- `apps/web-playground/src/documentNativeBridge.ts` discovers an optional native workspace adapter without importing Tauri APIs into the browser bundle.
-- `apps/desktop/src/nativeSdocSaveBridge.ts` exposes folder selection, immediate `.sdoc` workspace listing, and path-based `.sdoc` open through the installed desktop bridge.
-- `apps/web-playground/src/App.tsx` shows workspace files only as runtime Files panel state; selected folders, listed paths, loading state, and workspace entries are not written to `document.json`.
-- Browser mode shows the workspace browsing boundary instead of pretending to browse local folders.
-- `docs/desktop-native-smoke.md` includes a workspace-folder scenario that verifies listed `.sdoc` files load through the native adapter and remain runtime-only UI state.
+Status: planned before more feature depth.
 
-## Slice 3: Draw.io External Editor Bridge
-
-Status: initial bridge primitive implemented on 2026-07-03; browser-safe Draw.io source import UX added on 2026-07-05; desktop bridge UI open/read-back wiring, explicit conflict resolution, and local executable path setting added on 2026-07-05.
-
-Implement the bridge described in `docs/drawio-external-editor-bridge.md`. The bridge checks out Draw.io source assets into temporary files, launches the configured external editor, validates save-back, and writes accepted changes through the existing asset-backed diagram source policy.
+Reduce panel overload and make authoring the obvious main workflow.
 
 Acceptance criteria:
 
-- Keep Draw.io XML in `.sdoc/assets/` and out of `document.json`.
-- Check out source asset bytes to a private Tauri temp file.
-- Launch a configured external editor or platform default opener without storing executable/process state in canonical JSON.
-- Read edited temp file bytes back and classify invalid source or source conflict as runtime status.
-- Keep preview regeneration, file watching, and save-back UI as later slices.
+- Activity Bar separates primary author surfaces from advanced/reviewer surfaces.
+- Primary: Files, Outline, Export, Settings.
+- Advanced/optional: Review, Diagnostics, History, Developer.
+- References and Traceability move under Diagnostics unless explicitly enabled for a document type/profile.
+- Review defaults to comparing saved/current or file A/file B, not unexplained live tracking.
+- Export panel shows deliverables first: Markdown, HTML, PDF, DOCX. Raw JSON and AI/RAG outputs move to Developer/AI export.
 
-Acceptance evidence:
+## Priority Slice 4: Core Authoring UX
 
-- `checkout_drawio_source_asset`, `open_drawio_external_editor`, `read_drawio_external_edit`, and `close_drawio_external_edit` are exposed as Tauri commands.
-- `apps/desktop/src/nativeDrawioExternalEditorBridge.ts` wraps the commands behind a desktop adapter.
-- `apps/desktop/src/drawioBridgeModel.ts` resolves Draw.io diagram references, validates source XML, and classifies save-back status without mutating document JSON.
-- Unit tests cover Draw.io reference resolution, source validation, conflict classification, and runtime status event shape.
-- The browser toolbar can import `.drawio` or `.drawio.xml` source files, stores the source bytes in `.sdoc/assets/`, and inserts a `diagram` block with only `attrs.kind = "drawio"` and `attrs.sourceAssetId` in `document.json`.
-- Playwright coverage verifies Draw.io source import and `.sdoc` round trip without serializing XML source text into canonical JSON.
-- The web runtime discovers an optional native Draw.io external editor adapter through the existing desktop bridge boundary without importing Tauri APIs into the browser bundle.
-- The editor toolbar can open the selected Draw.io source through the desktop bridge, read valid saved XML back into the asset store, and keep conflicts, temp paths, and session state runtime-only.
-- Desktop bridge tests cover checkout/open/read-back/close routing through the injected Draw.io adapter.
-- Conflict read-back stores the external edit as a runtime candidate and offers explicit keep-current, replace-source, or save-as-revision actions.
-- Revision save-back creates a new Draw.io asset, updates only the reviewed diagram `sourceAssetId`, and keeps raw XML out of `document.json`.
-- Playwright coverage verifies mocked desktop conflict resolution as a revision asset and `.sdoc` package generation.
-- Settings can store a local Draw.io executable path outside canonical document data; blank settings use the OS default opener.
-- Playwright coverage verifies the executable path is passed to the native bridge and not serialized into `document.json`.
+Status: planned.
 
-## Slice 4: Review UX Hardening
-
-Status: initial review UX hardening implemented on 2026-07-03. Visual semantic diff review UX, requirement tagging diagnostics, broken reference repair actions, runtime accept/reject action planning, headless single-event accept/reject apply, browser Review panel single-event apply UX, visible-event batch accept/reject, side-by-side document diff, and partial batch conflict summaries are implemented.
-
-Productize the visual semantic diff overlay, requirement tagging diagnostics, and broken reference repair actions. These features must consume existing semantic diff and reference diagnostic sources instead of creating independent review state in canonical JSON.
+Implement the technical-writing features the review identified as essential.
 
 Acceptance criteria:
 
-- Project semantic diff events into a Review panel view-model without introducing a second diff format.
-- Provide runtime-only event filters, selected event state, and inline overlay state.
-- Keep deleted blocks visible in the Review panel even when they no longer have an editor DOM anchor.
-- Preserve the textual Diff preview as the debug view for developer/reviewer workflows.
-- Verify that review selection and overlay toggles do not mutate `document.json`.
+- Heading auto-numbering with enable/disable and style profile options.
+- Outline/TOC panel generated from headings, with click-to-jump navigation and configurable depth.
+- Figure and table captions with stable references and numbering policy.
+- Figure list and table list generated from captions.
+- Equation editing by double-click or explicit edit action.
+- Selected-text bubble toolbar for common inline formatting.
 
-Acceptance evidence:
+Design constraints:
 
-- `apps/web-playground/src/documentState.ts` creates semantic review items, filter counts, filtered item sets, and runtime overlay CSS from `SDocDiffEvent`.
-- `apps/web-playground/src/App.tsx` adds Review panel event filters, selectable review events, and stable-ID editor focusing for anchorable changes.
-- Unit tests cover event projection, filter counts, filtered results, selected overlay CSS, and deleted-event exclusion from editor CSS.
-- Playwright coverage verifies Review panel filtering/selection and confirms `document.json` remains unchanged by review-only interactions.
-- `apps/web-playground/src/documentState.ts` creates requirement traceability diagnostics for tagged blocks, duplicate `humanId` values, recommended-pattern warnings, and heading coverage gaps.
-- `packages/editor-tiptap/src/index.ts` exposes selected-block `humanId` helpers so the UI can set or clear authored tags without treating them as internal identity.
-- The Traceability Activity panel lets authors set/clear selected block IDs, inspect diagnostics, and jump to tagged or missing-heading blocks.
-- Unit and Playwright coverage verify traceability diagnostics, selected-block tag editing, and runtime panel state staying out of `document.json`.
-- Broken reference diagnostics include runtime repair candidates ranked from target labels, anchors, `humanId`, and stable block IDs.
-- The References Activity panel supports explicit retarget and remove actions for broken references.
-- Unit and Playwright coverage verify retarget/remove behavior and confirm repair state is not serialized as panel/runtime state.
-- `docs/review-accept-reject-boundary.md` records accept/reject as canonical edit semantics, not stored review state.
-- `apps/web-playground/src/documentState.ts` derives runtime-only accept/reject action availability from semantic review items.
-- Unit coverage verifies action classification and broken-reference routing to the References repair workflow.
-- `@sdoc/diff` applies single-event accept/reject actions with stale-event protection for added, deleted, modified, and moved events.
-- `sdoc review <accept|reject>` exposes the headless review action path for developer/reviewer workflows without making Git mandatory.
-- The browser Review panel exposes per-event Accept/Reject actions for saved-baseline review, confirms each action, recomputes semantic diff, and keeps review action state out of `document.json`.
-- Batch accept/reject applies visible non-broken review events, recomputes diff between each event, and reports skipped stale events without serializing batch state.
-- The Diff tab renders side-by-side baseline/current block previews derived from `SDocDiffEvent` and stable block IDs while preserving the raw textual diff as the debug view.
-- The Review panel renders the latest batch result as runtime-only applied/skipped counts plus stale/conflict messages for partially applied batches.
+- Generated heading numbers and list labels should be render/export projections, not text injected into heading content.
+- Caption source text is authored content; generated labels such as `Figure 1` are derived from numbering policy.
+- Outline, figure list, and table list are runtime/export projections unless a later boundary defines authored list nodes.
 
-Open work:
+## Priority Slice 5: Publishing Style Profiles
 
-- Full inline word decoration and collaboration-grade reviewer workflows remain deferred beyond the current Review UX hardening scope.
+Status: planned after core authoring UX.
 
-## Slice 5: Enterprise Authoring And Publishing
+Make HTML/PDF/DOCX output configurable without turning `document.json` into a page-layout format.
 
-Status: large data grid minimal asset model, authored `keyColumns` row identity metadata, row-level CSV/JSON validation diagnostics, headless row diff projection, guarded row merge apply, row merge asset revision policy, browser row review readiness view-model, browser row accept/reject actions, browser row revision save-back, browser row event expansion/filtering, browser side-by-side cell review, browser added/deleted row payload preview with wide-row overflow summary, asset-only dirty-state tracking, CLI row merge wiring, row diff/merge boundary, controlled corporate HTML/PDF/DOCX template export, Word template package validation, Word template mapping diagnostics, external Word template body injection, Word template style mapping application, and basic approval/revision metadata placeholder injection implemented.
+Acceptance criteria:
 
-Advance asset-backed large data grids and corporate template export only after their boundary documents remain consistent with real pilot workflows. Both stay derived or asset-backed and must not turn `document.json` into a spreadsheet or page layout format.
+- Provide style/profile presets for captions and headings, such as IEEE, ISO/IEC, Modern, and Korean.
+- Support custom profile settings for HTML export CSS, logo, typography, and document chrome.
+- Store app/workspace profile selection outside canonical body content unless the value is document metadata.
+- Keep generated exports disposable and regenerable.
 
-Acceptance evidence:
+## Priority Slice 6: Draw.io Create Or Import Flow
 
-- `dataGrid` is supported as an asset-backed block node with required `sourceAssetId` and `format`.
-- `.sdoc` validation and pack/unpack include referenced CSV/JSON assets and reject missing source assets.
-- Markdown, HTML, PDF, slide, AI/RAG, and semantic diff expose semantic metadata and source labels without embedding raw grid rows in `document.json`.
-- HTML/PDF export renders bounded CSV/JSON preview rows from referenced assets when asset bytes are available.
-- Web playground imports CSV/JSON as `.sdoc/assets/` and inserts a compact `dataGrid` preview.
-- Unit and Playwright coverage verify canonical JSON excludes raw CSV content and round-trips asset references.
-- Headless data grid diagnostics inspect CSV/JSON asset bytes for row shape, parse, header, and missing-column issues while keeping raw rows out of `document.json`.
-- The Export panel shows data grid readiness counts and per-grid issues as runtime-only publishing feedback.
-- `docs/data-grid-row-diff-merge-boundary.md` defines row-level grid diff and merge as an asset-level review projection with reliable row keys, stale-event protection, and asset-only merge writes.
-- `createDataGridRowDiff` creates keyed CSV/JSON row diff events for added rows, deleted rows, modified cells, duplicate-key conflicts, and no-key fallback without mutating canonical JSON.
-- `applyDataGridRowMerge` recomputes row diffs, refuses stale current sources and conflicts, and returns updated CSV/JSON source text as an asset-layer change rather than a canonical row patch.
-- `applyDataGridAssetRevision` applies merged source through explicit `update` or `revision` policies; revision mode creates a new `.revN` asset and leaves canonical `sourceAssetId` updates to the caller.
-- `sdoc data-grid diff|apply` exposes row-level CSV/JSON asset source review and guarded apply for developer/reviewer workflows, including optional asset-policy output.
-- The browser Export panel projects saved-baseline dataGrid assets into runtime-only row review readiness, including ready, conflict, no-change, missing-asset, source-change, and format-change states.
-- The browser Export panel can accept individual ready row events by updating the saved-baseline asset snapshot while keeping the current asset and `document.json` unchanged.
-- The browser Export panel can reject individual ready row events back to the saved-baseline asset value using update-policy asset writes without mutating `document.json`.
-- The browser Export panel can reject individual ready row events as new revision assets, preserving previous asset bytes and updating only the reviewed `dataGrid.attrs.sourceAssetId` as a canonical document edit.
-- Browser save state treats asset-only row review writes as unsaved changes until the `.sdoc` package is saved.
-- `dataGrid.attrs.keyColumns` is accepted as authored semantic row identity metadata, validated against source columns by diagnostics, preserved through editor conversion, and used by browser row review before inferred keys.
-- The browser Export panel can expand each ready grid from a compact first-three row event view to the full runtime event list without storing panel state in `document.json`.
-- The browser Export panel can filter row events by row key, column, kind, source asset, message, and old/new values without storing filter state in `document.json`.
-- The browser Export panel shows compact side-by-side before/after cell values for row events from runtime diff data.
-- The browser Export panel shows added/deleted row payload previews from runtime `oldRow`/`newRow` diff event fields without storing row data in `document.json`.
-- Wide row payload previews cap visible columns and show hidden-column counts while keeping filters runtime-only over full payload data.
-- `exportHtml(..., { template: "controlled" })` renders controlled corporate header/footer/watermark chrome from explicit export metadata.
-- CLI `sdoc export --format html|pdf --template controlled` exposes the controlled template without storing export preferences in `document.json`.
-- `exportDocx(..., { template: "controlled" })` emits a derived OOXML Word document with editable text and controlled metadata without mutating `document.json`.
-- CLI `sdoc export --format docx --template controlled -o output.docx` exposes the Word handoff path.
-- `validateWordTemplatePackage` verifies `.docx/.dotx` ZIP structure and rejects macro-enabled parts, external relationships, remote targets, and blocked package parts before future template injection uses them.
-- `sdoc template validate <template.docx|template.dotx>` exposes this validation as a developer/reviewer CLI check.
-- `validateWordTemplateMapping` verifies required Word style IDs and content-control placeholders without rendering or mutating canonical document data.
-- `sdoc template validate-mapping <template.docx|template.dotx> --style nodeType=StyleId --placeholder tag` exposes mapping diagnostics for developer/reviewer workflows.
-- `exportDocx(..., { externalTemplate })` and `sdoc export --format docx --template-file company.dotx -o output.docx` validate an external template and replace the `sdoc-body` content-control body with editable Word XML derived from SDoc blocks.
-- `--template-style nodeType=StyleId` applies validated Word style IDs to matching rendered SDoc block types during DOCX export.
-- External Word template content controls named `sdoc-approval-table` and `sdoc-revision-history` are filled from export metadata when present, without storing template state in `document.json`.
+Status: planned after workspace/explorer cleanup.
 
-Open work:
+Improve Draw.io UX from a raw source import into an author-facing choice.
 
-- Tauri-native revision save-back and richer column pinning/grouped comparison for very wide CSV/JSON merge workflows.
-- richer external `.dotx` content-control rendering, strict pagination, approval workflow modeling, multi-row revision history management, and template management UI.
+Acceptance criteria:
+
+- Draw.io action asks whether to import an existing diagram or create a new one.
+- Import preserves editable Draw.io source in `.sdoc/assets/`.
+- Create new makes a source-preserving Draw.io asset, inserts a `diagram` node, and opens it through the desktop bridge when available.
+- Preview SVG/PNG remains non-canonical and regenerable.
+- Raw XML, temp paths, editor process state, and conflict state stay out of `document.json`.
+
+## Reprioritized Existing Work
+
+Already implemented foundations remain valuable but are no longer Phase 5's next visible product goal:
+
+- Tauri save/open bridge and workspace adapter remain the base for desktop entry and explorer work.
+- Review accept/reject, References, Traceability, and History should be retained but visually demoted.
+- Data-grid row review and merge remain advanced engineering workflows, shown only when relevant.
+- Corporate export/template work remains the base for publishing style profiles.
+- Git and unpacked-folder workflows remain hidden developer/reviewer paths.
 
 ## Validation Gates
 
@@ -240,11 +155,11 @@ UI changes also require:
 npm run test:e2e
 ```
 
-Desktop changes should additionally run the relevant Tauri command when Rust and native prerequisites are installed:
+Desktop workflow changes require:
 
 ```text
-npm run tauri dev
-npm run tauri build
+npm run typecheck:desktop
+npm run build:desktop
 ```
 
-If the local environment lacks Rust/Cargo, record that limitation and still run all Node-based validation.
+When interactive native UX changes, update `docs/desktop-native-smoke.md` and run a manual Tauri smoke pass.

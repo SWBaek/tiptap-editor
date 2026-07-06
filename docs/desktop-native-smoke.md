@@ -33,28 +33,39 @@ npm run dev:desktop
 
 ## Manual Scenarios
 
-1. Open `.sdoc`
+Automated coverage now includes a Playwright desktop-runtime simulation for the Start Screen and workspace-entry boundary. Manual Tauri smoke is still required because native dialogs and the packaged WebView cannot be fully proven by browser tests.
+
+1. Start Screen
+   - Launch the desktop app without an active workspace/document.
+   - Confirm it offers Open Folder, Open `.sdoc`, New `.sdoc`, and Recent Documents.
+   - Confirm it does not present a sample document as the user's active saved document.
+
+2. Workspace Explorer
+   - Choose a workspace folder containing multiple `.sdoc` files.
+   - Confirm the Files panel reads as a simple explorer and lists immediate `.sdoc` files.
+   - Confirm developer-only unpacked folder commands are not part of the default author path.
+
+3. Open `.sdoc`
    - Use the Files panel open action.
    - Select a valid `.sdoc`.
    - Confirm the document title/content load and the native path appears only as runtime file status.
 
-2. Save existing `.sdoc`
+4. Save existing `.sdoc`
    - Edit visible document content.
    - Save without choosing a new path.
    - Reopen the saved file and confirm the edit persists.
    - Inspect exported JSON and confirm cursor, selection, panel state, and native path are absent from `document.json`.
 
-3. Save As
+5. Save As
    - Choose Save As and select a new `.sdoc` path.
    - Confirm the app now treats the new path as the current native save target.
    - Reopen the new file and verify it is a complete single ZIP container.
 
-4. Workspace Folder
-   - Choose a workspace folder containing multiple `.sdoc` files.
-   - Confirm only immediate `.sdoc` files are listed by default.
-   - Open one listed file and verify the document loads through the native adapter.
+6. Authoring First Impression
+   - Confirm the default visible workflow emphasizes writing, outline/files, save, and deliverable export.
+   - Confirm Review, References, Traceability, raw JSON, AI/RAG, Data Grid, and CLI/debug tools are secondary or advanced surfaces.
 
-5. Browser Boundary Regression
+7. Browser Boundary Regression
    - Run `npm run dev:web`.
    - Confirm the browser Files panel does not claim native folder browsing, native path save-back, or external editor launch without a desktop bridge.
 

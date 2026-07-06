@@ -1,57 +1,106 @@
 # UI Shell Plan
 
 Created: 2026-07-02
+Realigned: 2026-07-06 after Tauri app user review
 
 ## Decision
 
-The final editor shell should follow a VS Code-like structure: a narrow left Activity Bar controls which side panel is visible, and the main editor remains focused on document authoring.
+The final shell still follows a VS Code-like structure, but the left rail must not make every feature look equally important. The product should open as a technical writing environment with a clear file/workspace entry point, document outline, editor body, and save/export workflow.
 
-The current left sidebar in `apps/web-playground` is a Phase 1-3 prototype panel. It exposes metadata, validation, review, reference, and file status quickly, but it is not the final product layout.
+Review, references, traceability, data-grid review, raw JSON, and CLI/debug tools are secondary surfaces. They must be reachable without defining the first-run experience.
 
-## Target Layout
+## Target Desktop Layout
 
-- `ActivityBar`: fixed icon rail on the far left.
-- `SidePanel`: toggled panel next to the Activity Bar.
+- `StartScreen`: shown in desktop mode when no workspace/document is active.
+- `ActivityBar`: narrow icon rail for major surfaces.
+- `ExplorerPanel`: file-first workspace panel next to the Activity Bar.
 - `EditorWorkspace`: primary writing surface.
-- `Inspector/Preview`: optional right-side panel for JSON, Markdown, Diff, History, References, and export previews.
+- `Outline/Inspector`: optional right or side surface for document structure, diagnostics, preview, or export status.
+- `Developer/Debug`: hidden or advanced surface for raw JSON, schema, AI/RAG outputs, CLI commands, and unpacked folder workflows.
 
-Recommended Activity Bar items:
+Desktop start screen actions:
 
-- `Files`: current document, recent documents, open/save actions, and later folder exploration.
-- `Review`: semantic diff, change review, and optional Git/unpacked workflow entry points.
-- `References`: target picker, broken reference diagnostics, stale label sync, and navigation.
-- `Traceability`: requirement IDs, duplicate/tag format warnings, coverage gaps, and requirement navigation.
-- `History`: local snapshots, rename/delete, and compare controls.
-- `Export`: `.sdoc`, Markdown, AI/RAG, HTML/PDF/slide exports as they become available.
-- `Settings`: document metadata, editor preferences, schema/version details, and advanced options.
+- Open Folder
+- Open `.sdoc`
+- New `.sdoc`
+- Recent Documents
 
-## File Explorer Scope
+Browser playground may still load sample content, but desktop product mode should not treat a sample document as the user's active work.
 
-Browser MVP should not pretend to have full filesystem access. In the browser, `Files` should start with recent documents, open/save buttons, and the current `.sdoc` filename. `apps/web-playground/src/documentFileRuntime.ts` keeps the save route explicit: browser runtime downloads a complete `.sdoc`, while Tauri detection switches capability to desktop native save/save-as without importing Tauri IPC into the web playground. `documentFileActions.ts` only performs native writes through an injected native adapter, and `documentNativeBridge.ts` discovers only an optional `window.__SDOC_NATIVE_SAVE_BRIDGE__` contract, so browser download remains explicit. Native file paths are runtime state only; they must be cleared for browser open/download flows and never written to `document.json`.
+## Activity Bar Priority
 
-Full file and folder exploration belongs to the Tauri desktop phase, where native filesystem APIs can support:
+Primary author surfaces:
 
-- opening `.sdoc` files directly,
-- managing recent files,
-- showing unpacked `.sdoc` folders for developer workflows,
-- round-tripping single-file `.sdoc` containers without exposing internal files to non-developer users.
+- `Files`: workspace folder, `.sdoc` files, current file, save state, New/Open/Save/Save As.
+- `Outline`: generated heading outline and later figure/table lists.
+- `Export`: deliverable exports such as Markdown, HTML, PDF, and DOCX.
+- `Settings`: document metadata and authoring/profile settings.
 
-`docs/unpacked-folder-workflow.md` records the browser, CLI, and future Tauri boundary for this workflow.
+Secondary or advanced surfaces:
 
-## UX Rules
+- `Review`: saved/current or file-to-file semantic diff; not unexplained live tracking.
+- `Diagnostics`: broken references, stale labels, traceability warnings, schema warnings, and repair actions.
+- `History`: local snapshots and compare/restore actions.
+- `Developer`: raw JSON, AI/RAG outputs, CLI commands, unpacked folders, and advanced debug data.
 
-- Git and unpacked-folder workflows must remain optional and hidden from normal authoring.
-- Side panel state is runtime UI state and must not be stored in `document.json`.
-- Metadata/status controls should move out of the permanent sidebar and into Settings or document info panels.
-- Activity Bar buttons should use icons with accessible labels and tooltips.
-- The editor must remain usable when the side panel is collapsed.
+Traceability and References should not be permanent top-level panels for ordinary authors. They can live under Diagnostics or become top-level only when a workspace/document profile enables requirement-management mode.
 
-`docs/git-integration-boundary.md` records the browser, CLI, and future Tauri boundary for Git-oriented review workflows.
+## Files / Explorer Rules
+
+- Files must look and behave like a simple explorer, not a mixed dashboard.
+- Show the active workspace folder and immediate `.sdoc` files clearly.
+- Show the current file and unsaved state in a compact header.
+- Move secondary operations to context menus or compact menus.
+- Keep unpack/pack, Git, raw path, and debug commands out of the default author path.
+- Recent files, workspace path, expanded folders, selected files, and sort order are runtime/user settings and never `document.json`.
+
+Browser mode must not pretend to browse arbitrary folders. Folder listing belongs to the Tauri adapter.
+
+## Toolbar Rules
+
+- The top toolbar should expose only common writing controls by default.
+- Group controls by task: text, blocks, insert, structure, review/developer.
+- Move advanced insertions such as Draw.io source, dataGrid, external editor read-back, and debug actions behind menus or contextual controls.
+- Add a selected-text bubble toolbar for inline marks such as bold, italic, underline, code, and link.
+- Avoid long rows of equal-weight icons.
+
+## Outline And Authoring Structure
+
+The Outline surface should become a primary authoring tool:
+
+- Generated from heading nodes.
+- Click-to-jump into the editor.
+- Configurable visible heading depth.
+- Later extended with figure list and table list after caption policy is implemented.
+
+Generated outline state is runtime/export state. It must not be stored as panel state in `document.json`.
+
+## Export Rules
+
+Export means producing deliverables. The default export surface should show:
+
+- Markdown
+- HTML
+- PDF
+- DOCX
+
+Save/Save As handles `.sdoc`. Raw `document.json`, chunks, outline JSON, references JSON, and other AI/RAG/debug outputs belong in Developer or AI export mode, not ordinary Export.
+
+## Review And Diagnostics Rules
+
+- Review should answer "what changed between these two document states/files?"
+- Visual diff should be readable without requiring users to understand stable block IDs.
+- Broken references and stale labels are diagnostics to assist authors, not chores the author must constantly manage.
+- Traceability remains optional and profile-driven.
+
+All review filters, selected events, repaired candidates, panel expansion, and diagnostic visibility remain runtime state.
 
 ## Implementation Order
 
-1. Introduce `ActivityBar` and `SidePanel` components without changing document behavior.
-2. Move current metadata/status controls into a `Settings` or `Document Info` panel.
-3. Move History and References content from preview tabs into activity panels.
-4. Add browser-safe `Files` panel with current file, open/save, recent files, and local history entry points.
-5. Add Tauri-only filesystem adapter later; keep web-core logic independent from Tauri IPC.
+1. Desktop `StartScreen` for Open Folder, Open `.sdoc`, New `.sdoc`, and Recent Documents.
+2. Explorer-first Files panel with real workspace `.sdoc` listing.
+3. Activity Bar cleanup: primary author surfaces first, advanced surfaces grouped.
+4. Outline panel with click-to-jump heading navigation.
+5. Export panel simplification and Developer/Debug split.
+6. Toolbar grouping and selected-text bubble toolbar.
+7. Diagnostics grouping for References and Traceability.

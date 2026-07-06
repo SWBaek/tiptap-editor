@@ -1210,7 +1210,8 @@ button {
   border-color: #85d5de;
 }
 
-.status-note {
+.status-note,
+.side-status-note {
   min-height: 34px;
   padding: 9px 10px;
   color: #d9e1e8;
@@ -1218,6 +1219,13 @@ button {
   border-radius: 6px;
   font-size: 12px;
   line-height: 1.35;
+}
+
+.validation-badge {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #ecf7ef;
 }
 
 .ok {
@@ -1258,7 +1266,7 @@ button {
 
 .workspace {
   display: grid;
-  grid-template-rows: 56px minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   min-width: 0;
   max-width: 100vw;
   min-height: 0;
@@ -1266,16 +1274,142 @@ button {
   background: #eef1f4;
 }
 
+.document-command-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 14px;
+  background: #f8fafb;
+  border-bottom: 1px solid #d9dee4;
+}
+
+.document-command-main {
+  display: grid;
+  grid-template-columns: minmax(180px, 360px) minmax(0, 1fr) minmax(140px, 300px);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.document-title-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.document-title-field span {
+  color: #657484;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.document-title-field input {
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  color: #17212b;
+  background: #ffffff;
+  border: 1px solid #cfd7df;
+  border-radius: 6px;
+  outline: none;
+}
+
+.document-title-field input:focus {
+  border-color: #4c95a3;
+  box-shadow: 0 0 0 3px rgba(76, 149, 163, 0.14);
+}
+
+.document-command-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.document-command-meta strong,
+.document-command-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-command-meta strong {
+  color: #17212b;
+  font-size: 14px;
+}
+
+.document-command-meta span {
+  color: #657484;
+  font-size: 12px;
+}
+
+.document-command-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.document-command-actions button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 34px;
+  padding: 0 11px;
+  color: #22313d;
+  background: #ffffff;
+  border: 1px solid #cfd7df;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.document-command-actions button:hover {
+  background: #eef3f6;
+  border-color: #b9c8d3;
+}
+
+.document-command-actions span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   min-width: 0;
   max-width: 100vw;
-  overflow-x: auto;
+  overflow: visible;
   padding: 10px 14px;
   background: #ffffff;
   border-bottom: 1px solid #d9dee4;
+}
+
+.toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.toolbar-group + .toolbar-group {
+  margin-left: 6px;
+  padding-left: 10px;
+  border-left: 1px solid #d9dee4;
+}
+
+.toolbar-group.advanced .tool-button {
+  color: #526171;
+  background: #fbfcfd;
 }
 
 .toolbar-spacer {
@@ -1319,6 +1453,10 @@ button {
   background: #d9dee4;
 }
 
+.editor-grid.preview-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .editor-pane,
 .preview-pane {
   min-width: 0;
@@ -1345,7 +1483,7 @@ button {
 
 .editor-surface {
   width: min(860px, 100%);
-  min-height: calc(100vh - 112px);
+  min-height: calc(100vh - 164px);
   margin: 0 auto;
   padding: 34px 40px;
   background: #ffffff;
@@ -2535,6 +2673,10 @@ button {
     grid-template-rows: minmax(520px, 1fr) minmax(360px, 0.75fr);
   }
 
+  .editor-grid.preview-collapsed {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
   .preview-pane {
     max-width: 100vw;
   }
@@ -2598,6 +2740,41 @@ button {
 
   .toolbar {
     overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .workspace {
+    grid-template-rows: auto 52px minmax(0, 1fr);
+  }
+
+  .document-command-bar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .document-command-main {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .document-command-main .status-note {
+    min-height: 30px;
+  }
+
+  .document-command-actions {
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .document-command-actions button {
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 0 9px;
+  }
+
+  .toolbar-group {
+    flex: 0 0 auto;
   }
 
   .editor-pane {

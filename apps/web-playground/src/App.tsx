@@ -212,9 +212,10 @@ const sdocExtensions = [
 ] as unknown as AnyExtension[];
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<PreviewTab>("json");
-  const [activePanel, setActivePanel] = useState<ActivityPanel>("settings");
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<PreviewTab>("markdown");
+  const [activePanel, setActivePanel] = useState<ActivityPanel>("files");
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [savedAt, setSavedAt] = useState<string>("Not saved");
   const [statusMessage, setStatusMessage] = useState<string>("Ready");
   const [documentId, setDocumentId] = useState<string>(initialDocument.attrs.id);
@@ -472,7 +473,8 @@ export function App() {
     setCurrentFilename(name);
     setCurrentNativePath(nativePath);
     addRecentFile(name, nextMetadata.title || name, "opened");
-    setActiveTab("json");
+    setActiveTab("markdown");
+    setIsPreviewOpen(false);
     markSaved(loaded.statusMessage);
   }
 
@@ -634,13 +636,13 @@ export function App() {
     }
 
     setSelectedHistoryId(entry.id);
-    setActiveTab("diff");
+    showPreview("diff");
     setStatusMessage(`Comparing with history snapshot: ${entry.title}`);
   }
 
   function compareSavedBaseline() {
     setSelectedHistoryId(null);
-    setActiveTab("diff");
+    showPreview("diff");
     setStatusMessage("Comparing with saved baseline");
   }
 
@@ -691,6 +693,11 @@ export function App() {
     setIsSidePanelOpen(true);
   }
 
+  function showPreview(tab: PreviewTab = activeTab) {
+    setActiveTab(tab);
+    setIsPreviewOpen(true);
+  }
+
   function requireValidDocument(action: string): boolean {
     const message = getValidationFailureMessage(validation, action);
     if (message) {
@@ -724,7 +731,8 @@ export function App() {
     setDrawioExternalEditConflict(null);
     setCurrentFilename(null);
     setCurrentNativePath(null);
-    setActiveTab("json");
+    setActiveTab("markdown");
+    setIsPreviewOpen(false);
     setSavedAt("Not saved");
     setStatusMessage("Created new document");
   }
@@ -1475,7 +1483,7 @@ export function App() {
             <span>{activePanelLabel}</span>
           </div>
 
-          <div className="status-note">{statusMessage}</div>
+          <div className="side-status-note">{statusMessage}</div>
           {drawioExternalEditConflict && (
             <section className="workspace-boundary" aria-label="Draw.io external edit conflict">
               <strong>Draw.io external edit conflict</strong>
@@ -1546,7 +1554,7 @@ export function App() {
               visualDiffFilter={visualDiffFilter}
               selectedVisualDiffId={selectedVisualDiffId}
               batchSummary={lastReviewBatchSummary}
-              onShowDiff={() => setActiveTab("diff")}
+              onShowDiff={() => showPreview("diff")}
               onCompareSavedBaseline={compareSavedBaseline}
               onApplyReviewAction={applyReviewAction}
               onApplyReviewBatch={applyVisibleReviewBatch}
@@ -1613,21 +1621,52 @@ export function App() {
       )}
 
       <section className="workspace">
+        <div className="document-command-bar" role="region" aria-label="Document workflow">
+          <div className="document-command-main">
+            <label className="document-title-field">
+              <span>Title</span>
+              <input value={metadata.title} onChange={(event) => setMetadata({ ...metadata, title: event.target.value })} />
+            </label>
+            <div className="document-command-meta">
+              <strong title={fileLabel}>{fileLabel}</strong>
+              <span>{savedLabel}</span>
+              <span className={validation.ok ? "validation-badge ok" : "validation-badge error"}>{validation.ok ? "Valid" : "Invalid"}</span>
+            </div>
+            <div className="status-note" aria-label="Current status">
+              {statusMessage}
+            </div>
+          </div>
+          <div className="document-command-actions">
+            <button type="button" onClick={createNewDocument}>
+              <FilePlus size={16} />
+              <span>New</span>
+            </button>
+            <button type="button" onClick={openDocumentAction}>
+              <FolderOpen size={16} />
+              <span>Open .sdoc</span>
+            </button>
+            <button type="button" onClick={downloadSdoc}>
+              <Download size={16} />
+              <span>{sdocSaveRoute.label}</span>
+            </button>
+            <button type="button" onClick={() => openActivityPanel("export")}>
+              <FileText size={16} />
+              <span>Export</span>
+            </button>
+            <button type="button" onClick={() => setIsPreviewOpen((open) => !open)}>
+              <Braces size={16} />
+              <span>{isPreviewOpen ? "Hide preview" : "Preview"}</span>
+            </button>
+          </div>
+        </div>
+
         <div className="toolbar" aria-label="Editor toolbar">
+          <div className="toolbar-group primary" aria-label="Basic writing tools">
           <ToolbarButton title="Heading 1" active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
             <Heading1 size={18} />
           </ToolbarButton>
           <ToolbarButton title="Heading 2" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
             <Heading2 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Fold section" onClick={foldSelectedSection}>
-            <ChevronRight size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Unfold section" onClick={unfoldSelectedSection}>
-            <ChevronDown size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Unfold all sections" active={collapsedHeadingIds.size > 0} onClick={unfoldAllSections}>
-            <List size={18} />
           </ToolbarButton>
           <ToolbarButton title="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
             <Bold size={18} />
@@ -1658,6 +1697,24 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={insertTable}>
             <TableIcon size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
+            <Info size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Warning callout" active={editor.isActive("callout", { kind: "warning" })} onClick={() => applyCallout("warning")}>
+            <AlertTriangle size={18} />
+          </ToolbarButton>
+          </div>
+
+          <div className="toolbar-group advanced" aria-label="Advanced authoring tools">
+          <ToolbarButton title="Fold section" onClick={foldSelectedSection}>
+            <ChevronRight size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Unfold section" onClick={unfoldSelectedSection}>
+            <ChevronDown size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Unfold all sections" active={collapsedHeadingIds.size > 0} onClick={unfoldAllSections}>
+            <List size={18} />
           </ToolbarButton>
           <ToolbarButton title="Insert data grid" active={editor.isActive("dataGrid")} onClick={() => dataGridInputRef.current?.click()}>
             <FileJson size={18} />
@@ -1710,18 +1767,13 @@ export function App() {
           <ToolbarButton title="Close Draw.io external edit" active={drawioBridgeSession !== null} onClick={closeDrawioExternalEdit}>
             <Trash2 size={18} />
           </ToolbarButton>
-          <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
-            <Info size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Warning callout" active={editor.isActive("callout", { kind: "warning" })} onClick={() => applyCallout("warning")}>
-            <AlertTriangle size={18} />
-          </ToolbarButton>
           <ToolbarButton title="Move block up" onClick={() => moveBlock("up")}>
             <ArrowUp size={18} />
           </ToolbarButton>
           <ToolbarButton title="Move block down" onClick={() => moveBlock("down")}>
             <ArrowDown size={18} />
           </ToolbarButton>
+          </div>
           <div className="toolbar-spacer" />
           <input
             ref={fileInputRef}
@@ -1787,7 +1839,7 @@ export function App() {
           <ToolbarButton title="Download Markdown" onClick={downloadMarkdown}>
             <FileText size={18} />
           </ToolbarButton>
-          <ToolbarButton title={sdocSaveRoute.label} onClick={downloadSdoc}>
+          <ToolbarButton title="Save current .sdoc" onClick={downloadSdoc}>
             <Download size={18} />
           </ToolbarButton>
           <ToolbarButton title="Mark saved" onClick={markCurrentAsBaseline}>
@@ -1795,7 +1847,7 @@ export function App() {
           </ToolbarButton>
         </div>
 
-        <div className="editor-grid">
+        <div className={isPreviewOpen ? "editor-grid" : "editor-grid preview-collapsed"}>
           <section className="editor-pane" ref={editorPaneRef}>
             {foldRuntimeCss && <style data-sdoc-fold-runtime>{foldRuntimeCss}</style>}
             {brokenReferenceRuntimeCss && <style data-sdoc-broken-reference-runtime>{brokenReferenceRuntimeCss}</style>}
@@ -1815,7 +1867,8 @@ export function App() {
             )}
           </section>
 
-          <section className="preview-pane">
+          {isPreviewOpen && (
+          <section className="preview-pane" aria-label="Preview and debug output">
             <div className="tabs" role="tablist">
               <TabButton label="JSON" value="json" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="Markdown" value="markdown" activeTab={activeTab} onSelect={setActiveTab} />
@@ -1833,6 +1886,7 @@ export function App() {
               <pre className="preview-output">{preview}</pre>
             )}
           </section>
+          )}
         </div>
       </section>
     </main>
@@ -1923,15 +1977,15 @@ function SettingsPanel({
       <section className="settings-section" aria-label="Document metadata">
         <h3>Metadata</h3>
         <label className="metadata-field">
-          <span>Title</span>
+          <span>Metadata title</span>
           <input value={metadata.title} onChange={(event) => onMetadataChange({ ...metadata, title: event.target.value })} />
         </label>
         <label className="metadata-field">
-          <span>Author</span>
+          <span>Metadata author</span>
           <input value={String(metadata.author ?? "")} onChange={(event) => onMetadataChange({ ...metadata, author: event.target.value })} />
         </label>
         <label className="metadata-field">
-          <span>Version</span>
+          <span>Metadata version</span>
           <input value={String(metadata.version ?? "")} onChange={(event) => onMetadataChange({ ...metadata, version: event.target.value })} />
         </label>
       </section>

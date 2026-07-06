@@ -15,6 +15,25 @@ Phase 5 turns the accepted MVP slices into product workflows for non-developer a
 - UI/runtime state stays outside `document.json`.
 - Stable `attrs.id` remains the internal identity key; `attrs.humanId` is human-facing metadata only.
 
+## Priority Slice: Author-First UX Review Gate
+
+Status: in progress on 2026-07-06.
+
+Before adding more Phase 5 feature depth, prepare the app for a first real-user review. The first-run experience must read as a technical document editor, not a schema/debug console or document management dashboard.
+
+Acceptance criteria:
+
+- Add `docs/author-first-ux-review-gate.md` and `docs/user-review-checklist.md`.
+- Default the web playground toward the writing surface, with side panels and debug previews secondary.
+- Keep New, Open `.sdoc`, Save/Download `.sdoc`, and Export visible in the normal authoring flow.
+- Prioritize basic writing controls ahead of advanced diagram, data-grid, review, and debug controls.
+- Preserve existing Review, Traceability, References, Export, Settings, and debug access without storing UI/runtime state in `document.json`.
+- Run `npm test`, `npm run build`, and `npm run test:e2e`.
+
+Stop rule:
+
+- After this slice passes validation, pause major feature work and collect 3-5 user reviews before changing Phase 5 priorities.
+
 ## Slice 1: Tauri Desktop Shell Foundation
 
 Status: initial foundation implemented on 2026-07-03; native save-back policy model, workspace writer entrypoint, browser/desktop save-route boundary, Tauri runtime capability detection, native path runtime state, route-based save action execution, web-safe native save/open bridge discovery, desktop-side native save bridge installer, and Rust initialization bootstrap hook added on 2026-07-04.

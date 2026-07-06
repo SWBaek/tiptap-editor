@@ -40,9 +40,13 @@ const blockToolbarCases: BlockToolbarCase[] = [
 
 test("loads the Phase 3 playground and exercises preview/export basics", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Phase 3 Playground")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Preview and debug output" })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Settings panel" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Files panel" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("region", { name: "Document workflow" })).toContainText("Playground Document.sdoc");
+  await expect(page.getByRole("button", { name: "New", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open .sdoc", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Preview" })).toBeVisible();
   await page.getByRole("button", { name: "Files panel" }).click();
   await expect(page.getByRole("complementary", { name: "Files side panel" })).toContainText("Current file");
   await page.getByRole("button", { name: "Files panel" }).click();
@@ -59,11 +63,11 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await expect(page.getByRole("button", { name: "Heading 1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download .sdoc" })).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("# System Overview {#overview}");
 
-  await page.getByLabel("Title").fill("Smoke Spec");
-  await page.locator(".tabs").getByRole("button", { name: "Diff" }).click();
+  await page.getByLabel("Title", { exact: true }).fill("Smoke Spec");
+  await selectPreviewTab(page, "Diff");
   await expect(page.locator(".diff-review-summary")).toContainText("Total");
   await expect(page.locator(".diff-review-summary")).toContainText("Metadata");
   const metadataSection = page.locator(".diff-review-section").filter({ hasText: "Metadata changes" });
@@ -85,11 +89,11 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
 
 test("uses the Review side panel for diff workflow controls", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("Title").fill("Review Panel Spec");
+  await page.getByLabel("Title", { exact: true }).fill("Review Panel Spec");
   await page.locator(".editor-surface p").first().click();
   await page.keyboard.press("End");
   await page.keyboard.type(" Updated.");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const beforeReviewSelection = await readPreviewDocument(page);
 
   await page.getByRole("button", { name: "Review panel" }).click();
@@ -113,14 +117,14 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(sideBySideDiff).toContainText("Modified");
   await expect(sideBySideDiff).toContainText("This document describes the initial SDoc editor shell.");
   await expect(sideBySideDiff).toContainText("Updated.");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   expect(await readPreviewDocument(page)).toEqual(beforeReviewSelection);
 
   const modifiedEvent = reviewPanel.locator(".review-event-list li").filter({ hasText: "Modified paragraph" });
   page.once("dialog", (dialog) => dialog.accept());
   await modifiedEvent.getByRole("button", { name: "Accept", exact: true }).click();
   await expect(page.locator(".status-note")).toContainText("Accepted modified blk_intro");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   expect(await readPreviewDocument(page)).toEqual(beforeReviewSelection);
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
 
@@ -132,14 +136,14 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   page.once("dialog", (dialog) => dialog.accept());
   await rejectedEvent.getByRole("button", { name: "Reject", exact: true }).click();
   await expect(page.locator(".status-note")).toContainText("Rejected modified blk_intro");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   expect(await readPreviewDocument(page)).toEqual(beforeReviewSelection);
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
 
   await page.locator(".editor-surface p").first().click();
   await page.keyboard.press("End");
   await page.keyboard.type(" Batch accepted.");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const batchAcceptedDocument = await readPreviewDocument(page);
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("Modified paragraph");
   page.once("dialog", (dialog) => dialog.accept());
@@ -147,7 +151,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(page.locator(".status-note")).toContainText("Accepted 1 review event.");
   await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Batch accept complete");
   await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Applied");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   expect(await readPreviewDocument(page)).toEqual(batchAcceptedDocument);
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
 
@@ -160,7 +164,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(page.locator(".status-note")).toContainText("Rejected 1 review event.");
   await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Batch reject complete");
   await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Skipped");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   expect(await readPreviewDocument(page)).toEqual(batchAcceptedDocument);
   await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
 
@@ -183,7 +187,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
 
 test("folds editor sections without storing runtime state in document.json", async ({ page }) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const beforeFold = await readPreviewDocument(page);
 
   await page.locator('.editor-surface [data-id="blk_overview"]').click();
@@ -197,7 +201,7 @@ test("folds editor sections without storing runtime state in document.json", asy
   expect(JSON.stringify(afterFold)).not.toContain("collapsed");
   expect(JSON.stringify(afterFold)).not.toContain("fold");
 
-  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("This document describes the initial SDoc editor shell.");
 
   await page.getByRole("button", { name: "Unfold all sections", exact: true }).click();
@@ -216,7 +220,7 @@ test("tracks browser recent files in the Files side panel", async ({ page }) => 
   await expect(filesPanel.getByLabel("Unpacked folder workflow")).toContainText("CLI/Tauri-only");
 
   await page.getByRole("button", { name: "Settings panel" }).click();
-  await page.getByLabel("Title").fill("Files Panel Spec");
+  await page.getByLabel("Title", { exact: true }).fill("Files Panel Spec");
   await page.getByRole("button", { name: "Files panel" }).click();
   await filesPanel.getByRole("button", { name: "Copy unpack command" }).click();
   await expect(page.locator(".status-note")).toContainText('npm run sdoc -- unpack "Files Panel Spec.sdoc" "Files Panel Spec.sdoc.d"');
@@ -237,7 +241,7 @@ test("tracks browser recent files in the Files side panel", async ({ page }) => 
 
 test("exports readable and AI/RAG outputs from the Export side panel", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("Title").fill("Export Panel Spec");
+  await page.getByLabel("Title", { exact: true }).fill("Export Panel Spec");
   await page.getByRole("button", { name: "Export panel" }).click();
   const exportPanel = page.getByRole("complementary", { name: "Export side panel" });
   await expect(exportPanel).toBeVisible();
@@ -298,7 +302,7 @@ test("stores local history snapshots and compares them with the current document
   await expect(historyItem.getByLabel("Snapshot name")).toHaveValue("Review Baseline");
 
   await page.getByRole("button", { name: "Settings panel" }).click();
-  await page.getByLabel("Title").fill("History Spec");
+  await page.getByLabel("Title", { exact: true }).fill("History Spec");
   await page.getByRole("button", { name: "History panel" }).click();
   const renamedHistoryItem = page.locator(".history-item");
   await expect(renamedHistoryItem.getByLabel("Snapshot name")).toHaveValue("Review Baseline");
@@ -323,7 +327,7 @@ test("stores local history snapshots and compares them with the current document
   await expect(page.locator(".status-note")).toContainText("Deleted history snapshot: Review Baseline");
   await expect(page.locator(".history-empty")).toContainText("No snapshots");
 
-  await page.locator(".tabs").getByRole("button", { name: "Diff" }).click();
+  await selectPreviewTab(page, "Diff");
   await expect(page.locator(".diff-review-base")).toContainText("Saved baseline");
   await expect(page.locator(".diff-review-summary")).toContainText("Total");
   await expect(page.locator(".diff-review-summary")).toContainText("1");
@@ -376,7 +380,7 @@ test("inserts cross references from the target picker", async ({ page }) => {
   await expect(page.locator(".status-note")).toContainText("Updated reference label: Platform Overview");
   await expect(page.locator(".reference-empty")).toContainText("All references resolve");
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const document = await readPreviewDocument(page);
   const reference = findFirstNodeByType(document, "crossReference");
   expect(reference.attrs?.targetId).toBe("blk_overview");
@@ -388,7 +392,7 @@ test("inserts cross references from the target picker", async ({ page }) => {
 
 test("sets requirement traceability IDs from the Traceability side panel", async ({ page }) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const beforeTag = await readPreviewDocument(page);
 
   await page.locator('.editor-surface [data-id="blk_intro"]').click();
@@ -465,7 +469,7 @@ test("detects broken cross references in the playground", async ({ page }, testI
   await expect(page.locator(".status-note")).toContainText("Focused reference Missing section");
   await expect(page.locator('.editor-node-highlight[data-highlighted-node-id="ref_missing"]')).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const document = await readPreviewDocument(page);
   expect(findFirstNodeByType(document, "crossReference").attrs?.targetId).toBe("blk_missing");
   expectUniqueIds(collectBlockIds(document));
@@ -473,7 +477,7 @@ test("detects broken cross references in the playground", async ({ page }, testI
   await brokenItem.getByRole("button", { name: /Retarget.*Overview/ }).click();
   await expect(page.locator(".status-note")).toContainText("Retargeted reference to Overview");
   await expect(page.locator(".reference-empty")).toContainText("All references resolve");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const retargetedDocument = await readPreviewDocument(page);
   const retargetedReference = findFirstNodeByType(retargetedDocument, "crossReference");
   expect(retargetedReference.attrs?.targetId).toBe("blk_overview");
@@ -485,7 +489,7 @@ test("detects broken cross references in the playground", async ({ page }, testI
   await reopenedBrokenItem.getByRole("button", { name: "Remove reference" }).click();
   await expect(page.locator(".status-note")).toContainText("Removed broken reference: Missing section");
   await expect(page.locator(".reference-empty")).toContainText("All references resolve");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const removedDocument = await readPreviewDocument(page);
   expect(JSON.stringify(removedDocument)).not.toContain("ref_missing");
   expect(findFirstNodeByTypeOrNull(removedDocument, "crossReference")).toBeNull();
@@ -497,9 +501,10 @@ test("detects broken cross references in the playground", async ({ page }, testI
 test("round-trips a downloaded .sdoc through the browser open flow", async ({ page }, testInfo) => {
   await page.goto("/");
 
-  await page.getByLabel("Title").fill("Round Trip E2E");
-  await page.getByLabel("Author").fill("QA");
-  await page.getByLabel("Version").fill("1.0");
+  await page.getByLabel("Title", { exact: true }).fill("Round Trip E2E");
+  await page.getByRole("button", { name: "Settings panel" }).click();
+  await page.getByLabel("Metadata author").fill("QA");
+  await page.getByLabel("Metadata version").fill("1.0");
 
   const sdocDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download .sdoc" }).click();
@@ -510,23 +515,27 @@ test("round-trips a downloaded .sdoc through the browser open flow", async ({ pa
   await sdocDownload.saveAs(sdocPath);
 
   await page.getByRole("button", { name: "New document" }).click();
-  await expect(page.getByLabel("Title")).toHaveValue("Untitled");
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Untitled");
 
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Round Trip E2E.sdoc");
-  await expect(page.getByLabel("Title")).toHaveValue("Round Trip E2E");
-  await expect(page.getByLabel("Author")).toHaveValue("QA");
-  await expect(page.getByLabel("Version")).toHaveValue("1.0");
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Round Trip E2E");
+  await page.getByRole("button", { name: "Settings panel" }).click();
+  if ((await page.getByLabel("Metadata author").count()) === 0) {
+    await page.getByRole("button", { name: "Settings panel" }).click();
+  }
+  await expect(page.getByLabel("Metadata author")).toHaveValue("QA");
+  await expect(page.getByLabel("Metadata version")).toHaveValue("1.0");
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   await expect(page.locator(".preview-output")).toContainText('"id": "blk_overview"');
   await expect(page.locator(".preview-output")).toContainText('"anchor": "overview"');
 });
 
 test("inserts an image figure and round-trips .sdoc assets", async ({ page }, testInfo) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   const imagePath = testInfo.outputPath("architecture-diagram.png");
   await writeFile(
@@ -553,7 +562,7 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("_Figure: architecture diagram_");
   await expect(page.locator(".preview-output")).toContainText("](assets/");
 
@@ -569,7 +578,7 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   await expect(page.locator('.editor-surface figure[data-type="figure"] img')).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("architecture diagram");
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const reopenedDocument = await readPreviewDocument(page);
   const reopenedFigure = findFirstNodeByType(reopenedDocument, "figure");
   expect(reopenedFigure.attrs?.assetId).toBe(insertedFigure.attrs?.assetId);
@@ -579,7 +588,7 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
 
 test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testInfo) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   const csvPath = testInfo.outputPath("pinout.csv");
   await writeFile(csvPath, "pin,signal\n1,VCC\n2,GND\n");
@@ -610,7 +619,7 @@ test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testIn
   await expect(gridDiagnostics).toContainText("2 rows");
   await expect(gridDiagnostics).toContainText("2 columns");
 
-  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("> Data grid: pinout");
   await expect(page.locator(".preview-output")).toContainText("> Source: assets/");
   await expect(page.locator(".preview-output")).not.toContainText("pin,signal");
@@ -626,7 +635,7 @@ test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testIn
   await expect(page.locator(".status-note")).toContainText("Opened Data Grid Round Trip.sdoc");
   await expect(page.locator('.editor-surface div[data-type="dataGrid"]')).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const reopenedDocument = await readPreviewDocument(page);
   const reopenedGrid = findFirstNodeByType(reopenedDocument, "dataGrid");
   expect(reopenedGrid.attrs?.sourceAssetId).toBe(insertedGrid.attrs?.sourceAssetId);
@@ -636,7 +645,7 @@ test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testIn
 
 test("inserts a simple table and round-trips through .sdoc", async ({ page }, testInfo) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
@@ -654,7 +663,7 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("| Name | Status |");
   await expect(page.locator(".preview-output")).toContainText("| API | Ready |");
 
@@ -670,7 +679,7 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   await expect(page.locator(".editor-surface table")).toBeVisible();
   await expect(page.locator(".editor-surface table")).toContainText("Ready");
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const reopenedDocument = await readPreviewDocument(page);
   const reopenedTable = findFirstNodeByType(reopenedDocument, "table");
   expect(reopenedTable.attrs?.id).toBe(findFirstNodeByType(insertedDocument, "table").attrs?.id);
@@ -679,7 +688,7 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
 
 test("uses advanced table controls without storing transient table UI state", async ({ page }) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
@@ -712,13 +721,13 @@ test("uses advanced table controls without storing transient table UI state", as
   expect(JSON.stringify(table)).not.toContain("selectedCell");
   expectUniqueIds(collectBlockIds(document));
 
-  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText(":---:");
 });
 
 test("inserts inline and block equations and round-trips through .sdoc", async ({ page }, testInfo) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
@@ -746,7 +755,7 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("Energy $E=mc^2$");
   await expect(page.locator(".preview-output")).toContainText("$$\na^2+b^2=c^2\n$$");
 
@@ -762,7 +771,7 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   await expect(page.locator(".editor-surface .sdoc-inline-equation .katex")).toBeVisible();
   await expect(page.locator(".editor-surface .sdoc-equation-block .katex")).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const reopenedDocument = await readPreviewDocument(page);
   expect(findFirstNodeByType(reopenedDocument, "equation").attrs?.latex).toBe("E=mc^2");
   expect(findFirstNodeByType(reopenedDocument, "equationBlock").attrs?.latex).toBe("a^2+b^2=c^2");
@@ -771,7 +780,7 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
 
 test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page }, testInfo) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
@@ -792,7 +801,7 @@ test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page },
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("```mermaid");
   await expect(page.locator(".preview-output")).toContainText("A[Start] --> B[Done]");
 
@@ -807,7 +816,7 @@ test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page },
   await expect(page.locator(".status-note")).toContainText("Opened Diagram Round Trip.sdoc");
   await expect(page.locator(".editor-surface .sdoc-diagram svg")).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const reopenedDocument = await readPreviewDocument(page);
   const reopenedDiagram = findFirstNodeByType(reopenedDocument, "diagram");
   expect(reopenedDiagram.attrs?.source).toBe("flowchart TD\nA[Start] --> B[Done]");
@@ -817,7 +826,7 @@ test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page },
 
 test("imports a Draw.io source asset and round-trips through .sdoc", async ({ page }, testInfo) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
@@ -838,7 +847,7 @@ test("imports a Draw.io source asset and round-trips through .sdoc", async ({ pa
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
-  await page.locator(".tabs").getByRole("button", { name: "Markdown" }).click();
+  await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("Draw.io diagram: source asset");
 
   const sdocDownloadPromise = page.waitForEvent("download");
@@ -852,7 +861,7 @@ test("imports a Draw.io source asset and round-trips through .sdoc", async ({ pa
   await expect(page.locator(".status-note")).toContainText("Opened Drawio Round Trip.sdoc");
   await expect(page.locator(".editor-surface .sdoc-diagram pre")).toContainText("Draw.io diagram source:");
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const reopenedDocument = await readPreviewDocument(page);
   const reopenedDiagram = findFirstNodeByType(reopenedDocument, "diagram");
   expect(reopenedDiagram.attrs?.kind).toBe("drawio");
@@ -901,7 +910,8 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
   });
 
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
+  await page.getByRole("button", { name: "Settings panel" }).click();
   await page.getByLabel("Draw.io executable").fill("C:\\Program Files\\draw.io\\draw.io.exe");
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
@@ -926,7 +936,7 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
   await page.getByRole("button", { name: "Save as revision" }).click();
   await expect(page.locator(".status-note")).toContainText("Saved Draw.io external edit as");
 
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const revisedDocument = await readPreviewDocument(page);
   const revisedDiagram = findFirstNodeByType(revisedDocument, "diagram");
   expect(revisedDiagram.attrs?.kind).toBe("drawio");
@@ -958,7 +968,7 @@ test("reports unsupported files without replacing the current document", async (
 
 test("preserves unique block ids across split undo and redo", async ({ page }) => {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   const initialIds = collectBlockIds(await readPreviewDocument(page));
   expect(initialIds).toContain("blk_intro");
@@ -974,9 +984,11 @@ test("preserves unique block ids across split undo and redo", async ({ page }) =
   expectUniqueIds(splitIds);
   expect(splitIds).toEqual(expect.arrayContaining(initialIds));
 
+  await placeCursorAtEndOfFirstParagraph(page);
   await page.keyboard.press("Control+Z");
   await expect.poll(async () => collectBlockIds(await readPreviewDocument(page)).join("|")).toBe(initialIds.join("|"));
 
+  await placeCursorAtEndOfFirstParagraph(page);
   await page.keyboard.press("Control+Y");
   await expect
     .poll(async () => collectBlockIds(await readPreviewDocument(page)).length)
@@ -991,7 +1003,7 @@ test("preserves unique block ids across split undo and redo", async ({ page }) =
 test("repairs duplicate block ids from pasted editor HTML", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:6280" });
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   const initialIds = collectBlockIds(await readPreviewDocument(page));
   expect(initialIds).toContain("blk_intro");
@@ -1046,12 +1058,12 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await expect(page.getByText("Phase 3 Playground")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open .sdoc or document.json" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Document workflow" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open .sdoc", exact: true })).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
 
   const fitsViewport = await page.evaluate(() => {
-    const selectors = [".app-shell", ".toolbar", ".editor-surface", ".preview-pane"];
+    const selectors = [".app-shell", ".toolbar", ".editor-surface"];
     return selectors.every((selector) => {
       const element = document.querySelector(selector);
       if (!element) {
@@ -1067,7 +1079,15 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   expect(screenshot.length).toBeGreaterThan(1_000);
 });
 
+async function selectPreviewTab(page: Page, tab: "JSON" | "Markdown" | "Diff"): Promise<void> {
+  if ((await page.locator(".tabs").count()) === 0) {
+    await page.getByRole("button", { name: "Preview" }).click();
+  }
+  await page.locator(".tabs").getByRole("button", { name: tab }).click();
+}
+
 async function readPreviewDocument(page: Page): Promise<JsonNode> {
+  await selectPreviewTab(page, "JSON");
   return JSON.parse(await page.locator(".preview-output").innerText()) as JsonNode;
 }
 
@@ -1111,7 +1131,7 @@ async function readClipboardHtml(page: Page): Promise<string> {
 
 async function assertInlineToolbarCommands(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   await page.locator(".editor-surface p").first().click({ clickCount: 3 });
   for (const command of inlineToolbarCommands) {
@@ -1128,7 +1148,7 @@ async function assertInlineToolbarCommands(page: Page): Promise<void> {
 
 async function assertBlockToolbarCommand(page: Page, toolbarCase: BlockToolbarCase): Promise<void> {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   const text = `Toolbar ${toolbarCase.button}`;
   await createSingleParagraphDocument(page, text);
   await page.locator(".editor-surface p").first().click({ clickCount: 3 });
@@ -1145,14 +1165,14 @@ async function assertBlockToolbarCommand(page: Page, toolbarCase: BlockToolbarCa
 
 async function assertMoveToolbarActions(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
 
   const initialIds = collectTopLevelIds(await readPreviewDocument(page));
   expect(initialIds.slice(0, 3)).toEqual(["blk_overview", "blk_intro", "blk_note"]);
 
   await page.locator(".editor-surface h1").click();
   await page.getByRole("button", { name: "Move block down" }).click();
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).slice(0, 3).join("|")).toBe("blk_intro|blk_overview|blk_note");
 
   const movedIds = collectTopLevelIds(await readPreviewDocument(page));
@@ -1161,14 +1181,14 @@ async function assertMoveToolbarActions(page: Page): Promise<void> {
 
   await page.locator(".editor-surface h1").click();
   await page.getByRole("button", { name: "Move block up" }).click();
-  await page.locator(".tabs").getByRole("button", { name: "JSON" }).click();
+  await selectPreviewTab(page, "JSON");
   await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).slice(0, initialIds.length).join("|")).toBe(initialIds.join("|"));
   await expect(page.getByText("Valid")).toBeVisible();
 }
 
 async function createSingleParagraphDocument(page: Page, text: string): Promise<void> {
   await page.getByRole("button", { name: "New document" }).click();
-  await expect(page.getByLabel("Title")).toHaveValue("Untitled");
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Untitled");
   await page.locator(".editor-surface").click();
   await page.keyboard.type(text);
   await expect(page.locator(".editor-surface")).toContainText(text);

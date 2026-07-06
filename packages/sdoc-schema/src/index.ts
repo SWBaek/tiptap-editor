@@ -305,6 +305,11 @@ function validateNode(
   }
 
   if (typedNode.type === "table") {
+    const caption = typedNode.attrs?.caption;
+    if (caption !== undefined && (typeof caption !== "string" || caption.trim().length === 0)) {
+      issues.push({ path: `${path}.attrs.caption`, message: "table caption must be a non-empty string when present" });
+    }
+
     validateRequiredChildTypes(typedNode, path, issues, "table", ["tableRow"]);
   }
 

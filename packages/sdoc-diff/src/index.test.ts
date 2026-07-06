@@ -224,6 +224,17 @@ describe("diffDocuments", () => {
     expect(modified?.kind === "modified" ? modified.changes : []).toContain('cell 2,2 alignment changed "" -> "right"');
   });
 
+  it("summarizes authored table caption changes at the table block", () => {
+    const oldTableDocument = createTableDocument("Ready", { caption: "API readiness" });
+    const newTableDocument = createTableDocument("Ready", { caption: "Release readiness" });
+    const modified = diffDocuments(oldTableDocument, newTableDocument).find(
+      (event) => event.kind === "modified" && event.id === "blk_table"
+    );
+
+    expect(modified?.kind).toBe("modified");
+    expect(modified?.kind === "modified" ? modified.changes : []).toContain('caption changed "API readiness" -> "Release readiness"');
+  });
+
   it("summarizes block equation source changes", () => {
     const oldEquationDocument = createEquationDocument("E=mc^2");
     const newEquationDocument = createEquationDocument("F=ma");
@@ -500,7 +511,7 @@ describe("applyDiffEventAction", () => {
 
 function createTableDocument(
   status: string,
-  options: { statusAlign?: "left" | "center" | "right"; firstBodyCellType?: "tableCell" | "tableHeader" } = {}
+  options: { statusAlign?: "left" | "center" | "right"; firstBodyCellType?: "tableCell" | "tableHeader"; caption?: string } = {}
 ): SDocDocument {
   return {
     schemaVersion: 1,
@@ -509,7 +520,7 @@ function createTableDocument(
     content: [
       {
         type: "table",
-        attrs: { id: "blk_table" },
+        attrs: options.caption ? { id: "blk_table", caption: options.caption } : { id: "blk_table" },
         content: [
           {
             type: "tableRow",

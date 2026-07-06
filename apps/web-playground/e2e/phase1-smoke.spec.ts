@@ -757,19 +757,29 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   await fillTableCell(page, "th", 1, "Status");
   await fillTableCell(page, "td", 0, "API");
   await fillTableCell(page, "td", 1, "Ready");
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toBe("Table caption");
+    await dialog.accept("API readiness matrix");
+  });
+  await page.getByRole("button", { name: "Edit table caption" }).click();
+  await expect(page.locator(".status-note")).toContainText("Updated table caption");
+  await expect(page.locator(".editor-surface table")).toHaveAttribute("data-caption", "API readiness matrix");
+
   await page.getByRole("button", { name: "Outline panel" }).click();
   const tableList = page.getByRole("complementary", { name: "Outline side panel" }).getByLabel("Table list");
   await expect(tableList).toContainText("Table 1");
-  await expect(tableList).toContainText("Name, Status");
+  await expect(tableList).toContainText("API readiness matrix");
 
   await expect.poll(async () => findFirstNodeByType(await readPreviewDocument(page), "table").attrs?.id).toEqual(expect.any(String));
   const insertedDocument = await readPreviewDocument(page);
+  expect(findFirstNodeByType(insertedDocument, "table").attrs?.caption).toBe("API readiness matrix");
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
   await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("| Name | Status |");
   await expect(page.locator(".preview-output")).toContainText("| API | Ready |");
+  await expect(page.locator(".preview-output")).toContainText("_Table: API readiness matrix_");
 
   const sdocDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download .sdoc" }).click();
@@ -787,6 +797,7 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   const reopenedDocument = await readPreviewDocument(page);
   const reopenedTable = findFirstNodeByType(reopenedDocument, "table");
   expect(reopenedTable.attrs?.id).toBe(findFirstNodeByType(insertedDocument, "table").attrs?.id);
+  expect(reopenedTable.attrs?.caption).toBe("API readiness matrix");
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 

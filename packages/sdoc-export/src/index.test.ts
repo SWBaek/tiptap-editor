@@ -132,6 +132,13 @@ describe("exportMarkdown", () => {
     expect(exportMarkdown(withTable)).toContain("| Name | Status |\n| --- | --- |\n| API | Ready |");
   });
 
+  it("exports authored table captions to Markdown and HTML", () => {
+    const withCaption = createTableDocument("Ready", undefined, "API readiness matrix");
+
+    expect(exportMarkdown(withCaption)).toContain("_Table: API readiness matrix_");
+    expect(exportHtml(withCaption)).toContain("<caption>API readiness matrix</caption>");
+  });
+
   it("exports table cell alignment to Markdown and HTML", () => {
     const withAlignedTable = createTableDocument("Ready", "center");
 
@@ -903,7 +910,7 @@ function createEquationDocument(inlineLatex: string, blockLatex: string): SDocDo
   };
 }
 
-function createTableDocument(status: string, statusAlign?: "left" | "center" | "right"): SDocDocument {
+function createTableDocument(status: string, statusAlign?: "left" | "center" | "right", caption?: string): SDocDocument {
   return {
     schemaVersion: 1,
     type: "doc",
@@ -911,7 +918,7 @@ function createTableDocument(status: string, statusAlign?: "left" | "center" | "
     content: [
       {
         type: "table",
-        attrs: { id: "blk_table" },
+        attrs: caption ? { id: "blk_table", caption } : { id: "blk_table" },
         content: [
           {
             type: "tableRow",

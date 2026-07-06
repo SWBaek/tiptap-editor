@@ -331,6 +331,12 @@ export function App() {
   );
 
   useEffect(() => {
+    if (editor) {
+      syncEditorTableCaptionProjection(editor, document);
+    }
+  }, [document, editor]);
+
+  useEffect(() => {
     setCollapsedHeadingIds((current) => pruneCollapsedHeadingIds(current, sectionFoldRanges));
   }, [sectionFoldRanges]);
 
@@ -858,6 +864,40 @@ export function App() {
     const inserted = insertSimpleTable(editor);
     setActiveTab("json");
     setStatusMessage(inserted ? "Inserted table" : "Cannot insert table");
+  }
+
+  function editSelectedTableCaptionFromPrompt() {
+    const target = getSelectedTableTarget(editor);
+    if (!target) {
+      setStatusMessage("Select a table to edit caption");
+      return;
+    }
+
+    const currentCaption = typeof target.attrs.caption === "string" ? target.attrs.caption : "";
+    const rawCaption = window.prompt("Table caption", currentCaption);
+    if (rawCaption === null) {
+      setStatusMessage("Canceled table caption");
+      return;
+    }
+
+    const nextCaption = rawCaption.trim();
+    if (nextCaption === currentCaption) {
+      setStatusMessage("Canceled table caption");
+      return;
+    }
+
+    const nextAttrs: Record<string, unknown> = { ...target.attrs };
+    if (nextCaption) {
+      nextAttrs.caption = nextCaption;
+    } else {
+      delete nextAttrs.caption;
+    }
+
+    const transaction = editor.state.tr.setNodeMarkup(target.position, undefined, nextAttrs);
+    editor.view.dispatch(transaction.scrollIntoView());
+    editor.view.focus();
+    setActiveTab("json");
+    setStatusMessage(nextCaption ? "Updated table caption" : "Removed table caption");
   }
 
   async function insertDataGridFile(file: File) {
@@ -1926,6 +1966,9 @@ export function App() {
           </ToolbarButton>
           <ToolbarButton title="Toggle header row" active={editor.isActive("table")} onClick={() => runTableCommand("toggleHeaderRow", "Toggled header row")}>
             <TableIcon size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Edit table caption" active={editor.isActive("table")} onClick={editSelectedTableCaptionFromPrompt}>
+            <FileText size={18} />
           </ToolbarButton>
           <ToolbarButton title="Toggle header column" active={editor.isActive("table")} onClick={() => runTableCommand("toggleHeaderColumn", "Toggled header column")}>
             <TableIcon size={18} />
@@ -3866,11 +3909,41 @@ function createAuthorTableItems(document: SDocDocument): AuthorTableItem[] {
     count += 1;
     const rows = node.content ?? [];
     const columnCount = rows.reduce((max, row) => Math.max(max, row.content?.length ?? 0), 0);
+    const caption = typeof node.attrs?.caption === "string" ? node.attrs.caption.trim() : "";
     const headerText = rows[0]?.content?.map((cell) => getSdocNodeText(cell).trim()).filter(Boolean).join(", ");
-    const title = headerText ? headerText : `${rows.length} row${rows.length === 1 ? "" : "s"}`;
+    const title = caption || headerText || `${rows.length} row${rows.length === 1 ? "" : "s"}`;
     const detail = `${rows.length} row${rows.length === 1 ? "" : "s"} x ${columnCount} column${columnCount === 1 ? "" : "s"}`;
     return [{ id, number: `Table ${count}`, title, detail }];
   });
+}
+
+function syncEditorTableCaptionProjection(editor: Editor, document: SDocDocument) {
+  const captions = new Map<string, string>();
+  collectTableCaptions(document.content, captions);
+
+  editor.view.dom.querySelectorAll<HTMLElement>("table[data-id]").forEach((element) => {
+    const id = element.getAttribute("data-id");
+    const caption = id ? captions.get(id) : undefined;
+    if (caption) {
+      element.setAttribute("data-caption", caption);
+    } else {
+      element.removeAttribute("data-caption");
+    }
+  });
+}
+
+function collectTableCaptions(nodes: SDocNode[] | undefined, captions: Map<string, string>) {
+  for (const node of nodes ?? []) {
+    if (node.type === "table") {
+      const id = getSdocNodeId(node);
+      const caption = typeof node.attrs?.caption === "string" ? node.attrs.caption.trim() : "";
+      if (id && caption) {
+        captions.set(id, caption);
+      }
+    }
+
+    collectTableCaptions(node.content, captions);
+  }
 }
 
 function getSdocNodeId(node: SDocNode): string | null {
@@ -3887,6 +3960,18 @@ function getSdocNodeText(node: SDocNode): string {
   }
 
   return "";
+}
+
+function getSelectedTableTarget(editor: Editor): { position: number; attrs: Record<string, unknown> } | null {
+  const { $from } = editor.state.selection;
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (node.type.name === "table") {
+      return { position: $from.before(depth), attrs: node.attrs };
+    }
+  }
+
+  return null;
 }
 
 function getSelectedEquationPosition(editor: Editor): number | null {

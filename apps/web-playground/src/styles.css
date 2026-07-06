@@ -2059,6 +2059,17 @@ button {
   table-layout: fixed;
 }
 
+.editor-surface table[data-caption]::after {
+  display: table-caption;
+  caption-side: bottom;
+  padding-top: 8px;
+  color: #526273;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+  content: attr(data-caption);
+}
+
 .editor-surface th,
 .editor-surface td {
   min-width: 80px;

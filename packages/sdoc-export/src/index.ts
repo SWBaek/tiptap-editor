@@ -571,7 +571,7 @@ function renderDocxBlock(node: SDocNode, context: DocxRenderContext): string[] {
         return renderDocxParagraph(`${prefix}${getPlainText(child)}`, getMappedDocxStyle(context, node.type));
       });
     case "table":
-      return [renderDocxTable(extractTableRows(node), false)];
+      return [...renderDocxTableCaption(node, context), renderDocxTable(extractTableRows(node), false)];
     case "figure":
       return [renderDocxParagraph(`Figure: ${getPlainText(node).trim() || String(node.attrs?.assetId ?? "")}`, getMappedDocxStyle(context, "figure"))];
     case "diagram":
@@ -613,6 +613,11 @@ function extractTableRows(node: SDocNode): string[][] {
         .map((cell) => getPlainText(cell).trim())
     )
     .filter((row) => row.length > 0);
+}
+
+function renderDocxTableCaption(node: SDocNode, context: DocxRenderContext): string[] {
+  const caption = getTableCaption(node);
+  return caption ? [renderDocxParagraph(`Table: ${caption}`, getMappedDocxStyle(context, "tableCaption", "Caption"))] : [];
 }
 
 function renderDocxDocument(body: string): string {
@@ -1106,6 +1111,21 @@ function renderPptxBlock(slide: PptxSlide, node: SDocNode, options: PptxExportOp
 }
 
 function renderPptxTable(slide: PptxSlide, node: SDocNode, y: number): number {
+  const caption = getTableCaption(node);
+  if (caption) {
+    slide.addText(`Table: ${caption}`, {
+      x: 0.65,
+      y,
+      w: 11.95,
+      h: 0.24,
+      fontFace: "Aptos",
+      fontSize: 9,
+      color: "526273",
+      italic: true
+    });
+    y += 0.32;
+  }
+
   const rows = (node.content ?? []).filter((child) => child.type === "tableRow");
   const tableRows = rows.map((row) =>
     (row.content ?? [])
@@ -1581,8 +1601,11 @@ function renderHtmlTable(node: SDocNode, references: Map<string, ReferenceTarget
     })
     .join("\n");
 
+  const caption = getTableCaption(node);
+  const captionHtml = caption ? `<caption>${escapeHtml(caption)}</caption>\n` : "";
+
   return `<table>
-<tbody>
+${captionHtml}<tbody>
 ${htmlRows}
 </tbody>
 </table>`;
@@ -1606,7 +1629,13 @@ function renderMarkdownTable(node: SDocNode, references: Map<string, ReferenceTa
   const separator = Array.from({ length: columnCount }, (_value, columnIndex) =>
     markdownAlignmentSeparator(getColumnAlign(tableCells, columnIndex))
   );
-  return [header, separator, ...body].map((row) => `| ${row.join(" | ")} |`).join("\n");
+  const tableMarkdown = [header, separator, ...body].map((row) => `| ${row.join(" | ")} |`).join("\n");
+  const caption = getTableCaption(node);
+  return caption ? `${tableMarkdown}\n\n_Table: ${caption}_` : tableMarkdown;
+}
+
+function getTableCaption(node: SDocNode): string {
+  return typeof node.attrs?.caption === "string" ? node.attrs.caption.trim() : "";
 }
 
 function renderMarkdownDataGrid(node: SDocNode): string {

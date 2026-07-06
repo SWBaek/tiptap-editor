@@ -427,7 +427,21 @@ export const DataGridNode = Node.create({
   }
 });
 
-export const TableNode = Table.configure({
+export const TableNode = Table.extend({
+  addAttributes() {
+    return {
+      ...(this.parent?.() ?? {}),
+      caption: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-caption"),
+        renderHTML: (attributes) => {
+          const caption = typeof attributes.caption === "string" ? attributes.caption.trim() : "";
+          return caption ? { "data-caption": caption } : {};
+        }
+      }
+    };
+  }
+}).configure({
   resizable: false,
   HTMLAttributes: {
     "data-type": "table"

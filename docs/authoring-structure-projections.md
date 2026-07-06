@@ -20,9 +20,11 @@ Phase 5 authoring UX adds visible document structure without turning `document.j
 
 ## Tables
 
-- v1 tables do not yet have a canonical caption field.
-- The current table list is a projection from table block IDs, row/column count, and first-row header text.
-- Do not add table caption storage without updating `docs/editor-schema.md`, validation, serialization, diff, export, and tests.
+- v1 table captions are authored semantic metadata stored as optional `table.attrs.caption`.
+- `caption` must be a non-empty string when present. Empty captions should remove the attr instead of storing blank text.
+- Generated labels such as `Table 1` are projections derived from document order and must not be stored.
+- The table list uses authored captions when present, then falls back to first-row header text and row/column summaries.
+- Table captions participate in validation, deterministic serialization, semantic diff, Markdown/HTML/DOCX/PPTX exports, and tests.
 
 ## Equations
 

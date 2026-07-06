@@ -1,8 +1,8 @@
 ---
 title: "Phase 5 Author-First Productization Goal"
 status: in_progress
-progress_percent: 70
-current_slice: core-authoring-ux
+progress_percent: 80
+current_slice: publishing-style-profiles
 created_at: 2026-07-06
 started_at: 2026-07-06
 completed_at:
@@ -20,8 +20,8 @@ completed_slices:
   - desktop-workspace-entry
   - explorer-first-files-panel
   - information-architecture-cleanup
-remaining_slices:
   - core-authoring-ux
+remaining_slices:
   - publishing-style-profiles
   - drawio-create-or-import-flow
 progress_log:
@@ -46,6 +46,9 @@ progress_log:
   - date: 2026-07-06
     progress_percent: 70
     note: "core-authoring-ux structure projection sub-slice implemented with figure list projection from authored figure captions, table list projection from table structure, and equation edit flow for inline/block latex. Remaining Core Authoring UX work is canonical table caption policy before moving to publishing style profiles."
+  - date: 2026-07-06
+    progress_percent: 80
+    note: "core-authoring-ux completed with canonical table captions in table.attrs.caption, editor caption editing, table list caption projection, validation, semantic diff, Markdown/HTML/DOCX/PPTX export coverage, and browser .sdoc round-trip E2E evidence."
 done_rule: "When this goal is fully completed, update status to done, progress_percent to 100, completed_at to the completion date, and record final evidence in progress_log."
 ---
 

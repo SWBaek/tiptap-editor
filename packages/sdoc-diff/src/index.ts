@@ -886,6 +886,12 @@ function summarizeTableChanges(oldNode: SDocNode, newNode: SDocNode): string[] {
   const changes: string[] = [];
   const oldColumnCount = getMaxColumnCount(oldRows);
   const newColumnCount = getMaxColumnCount(newRows);
+  const oldCaption = getStringAttr(oldNode, "caption");
+  const newCaption = getStringAttr(newNode, "caption");
+
+  if (oldCaption !== newCaption) {
+    changes.push(`caption changed ${quote(oldCaption)} -> ${quote(newCaption)}`);
+  }
 
   if (oldRows.length !== newRows.length) {
     changes.push(`rows changed ${oldRows.length} -> ${newRows.length}`);

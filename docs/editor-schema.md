@@ -25,7 +25,7 @@ SDoc schema는 Tiptap/ProseMirror 편집 상태를 제품 포맷으로 정규화
 | `equationBlock` | yes | Phase 2 block math; `latex` source required |
 | `diagram` | yes | Mermaid source diagram or Draw.io asset-backed diagram |
 | `dataGrid` | yes | Asset-backed CSV/JSON dataset block; `sourceAssetId` and `format` required |
-| `table` | yes | Phase 2 simple table container |
+| `table` | yes | Phase 2 simple table container with optional authored caption |
 | `tableRow` | yes | Table row; children are `tableCell` or `tableHeader` |
 | `tableCell` | yes | Table body cell; contains block content |
 | `tableHeader` | yes | Header cell; contains block content |
@@ -134,12 +134,12 @@ Large engineering datasets use `dataGrid` instead of expanding into canonical sp
 
 ## Phase 2 Table Shape
 
-Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tableCell` nodes. Each table node still carries a stable `attrs.id`; semantic diff reports cell text changes at the table block. `tableCell` and `tableHeader` may store semantic text alignment in `attrs.align` with `left`, `center`, or `right`. Column widths, selection, hover, and resize state are editor runtime state and must not be stored.
+Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tableCell` nodes. Each table node still carries a stable `attrs.id`; semantic diff reports caption and cell changes at the table block. A table may store an authored semantic caption in `attrs.caption`; it must be a non-empty string when present. Generated labels such as `Table 1` are runtime/export projections and must not be stored. `tableCell` and `tableHeader` may store semantic text alignment in `attrs.align` with `left`, `center`, or `right`. Column widths, selection, hover, and resize state are editor runtime state and must not be stored.
 
 ```json
 {
   "type": "table",
-  "attrs": { "id": "blk_table" },
+  "attrs": { "id": "blk_table", "caption": "API readiness matrix" },
   "content": [
     {
       "type": "tableRow",

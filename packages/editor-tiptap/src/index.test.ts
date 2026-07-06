@@ -196,7 +196,7 @@ describe("SDoc conversion", () => {
         content: [
           {
             type: "table",
-            attrs: { id: "blk_table" },
+            attrs: { id: "blk_table", caption: "API readiness matrix" },
             content: [
               {
                 type: "tableRow",
@@ -227,7 +227,7 @@ describe("SDoc conversion", () => {
       content: [
         {
           type: "table",
-          attrs: { id: "blk_table" },
+          attrs: { id: "blk_table", caption: "API readiness matrix" },
           content: [
             {
               type: "tableRow",

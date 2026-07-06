@@ -156,6 +156,66 @@ describe("validateDocument", () => {
     expect(validateDocument(document).ok).toBe(true);
   });
 
+  it("accepts optional authored table captions", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_table_caption" },
+      content: [
+        {
+          type: "table",
+          attrs: { id: "blk_table", caption: "API readiness matrix" },
+          content: [
+            {
+              type: "tableRow",
+              attrs: { id: "blk_row" },
+              content: [
+                {
+                  type: "tableCell",
+                  attrs: { id: "blk_cell" },
+                  content: [{ type: "paragraph", attrs: { id: "blk_cell_text" }, content: [{ type: "text", text: "Ready" }] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
+  it("rejects blank table captions", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_table_caption_bad" },
+      content: [
+        {
+          type: "table",
+          attrs: { id: "blk_table", caption: "   " },
+          content: [
+            {
+              type: "tableRow",
+              attrs: { id: "blk_row" },
+              content: [
+                {
+                  type: "tableCell",
+                  attrs: { id: "blk_cell" },
+                  content: [{ type: "paragraph", attrs: { id: "blk_cell_text" }, content: [{ type: "text", text: "Ready" }] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("table caption must be a non-empty string"))).toBe(true);
+  });
+
   it("rejects unsupported table cell alignment", () => {
     const document = {
       schemaVersion: 1,

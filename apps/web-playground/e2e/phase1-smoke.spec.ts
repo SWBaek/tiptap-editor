@@ -125,11 +125,16 @@ test("applies selected text formatting through the bubble toolbar", async ({ pag
   const bubble = page.getByLabel("Selected text formatting");
   await expect(bubble).toBeVisible();
   await bubble.getByRole("button", { name: "Bold selection" }).click();
+  await expect(bubble).toBeVisible();
+  await bubble.getByRole("button", { name: "Strike selection" }).click();
 
   await selectPreviewTab(page, "JSON");
   const document = await readPreviewDocument(page);
   const paragraph = document.content?.find((node) => node.type === "paragraph");
   expect(JSON.stringify(paragraph)).toContain('"type":"bold"');
+  expect(JSON.stringify(paragraph)).toContain('"type":"strike"');
+  await selectPreviewTab(page, "Markdown");
+  await expect(page.locator(".preview-output")).toContainText("~~");
 });
 
 test("uses viewport-safe runtime editor and table context menus", async ({ page }) => {

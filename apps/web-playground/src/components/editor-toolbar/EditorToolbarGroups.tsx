@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Rows3,
   Sigma,
+  Strikethrough,
   Table,
   Trash2,
   Underline,
@@ -109,6 +110,9 @@ export function EditorToolbarGroups({
         </ToolbarButton>
         <ToolbarButton title="Underline" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
           <Underline size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Strike" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
+          <Strikethrough size={18} />
         </ToolbarButton>
         <ToolbarButton title="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
           <List size={18} />

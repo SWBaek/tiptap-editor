@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 49
-current_slice: author-header-and-command-hierarchy
+progress_percent: 52
+current_slice: writing-essentials
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -18,8 +18,8 @@ planning_docs:
 completed_slices:
   - planning-baseline
   - shell-extraction
-remaining_slices:
   - author-header-and-command-hierarchy
+remaining_slices:
   - writing-essentials
   - technical-content-editors
   - runtime-navigation
@@ -78,6 +78,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 49
     note: "Viewport-safe runtime editor context menu added with clicked-selection restoration, insertion commands, contextual table actions, and equation edit entry. npm test (268), npm run build, and npm run test:e2e (32) passed."
+  - date: 2026-07-18
+    progress_percent: 52
+    note: "Author-header-and-command-hierarchy completed. Writing essentials started by adding canonical strike controls to the common toolbar and selection-preserving Bubble Menu with JSON/Markdown E2E assertions. npm test (268), npm run build, and npm run test:e2e (32) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

@@ -124,6 +124,12 @@ Context-menu progress on 2026-07-18:
 - Active tables expose caption and guarded row/column actions; selected equations expose the existing edit command.
 - Outside pointer input and Escape close the menu, and context-menu state never enters canonical JSON.
 
+Bubble-menu progress on 2026-07-18:
+
+- Strike joins bold, italic, underline, and code in both the common toolbar and selected-text Bubble Menu.
+- The Bubble Menu continues to mutate the captured ProseMirror range so toolbar focus does not collapse the selection.
+- Normal link and sub/superscript controls follow with their canonical mark support in the writing-essentials slice.
+
 ## Outline And Authoring Structure
 
 The Outline surface should become a primary authoring tool:

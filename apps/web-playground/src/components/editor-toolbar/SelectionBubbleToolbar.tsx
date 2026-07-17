@@ -1,8 +1,8 @@
 import type { Editor } from "@tiptap/core";
-import { Bold, Code2, Italic, Link2, Underline } from "lucide-react";
+import { Bold, Code2, Italic, Link2, Strikethrough, Underline } from "lucide-react";
 import { ToolbarButton } from "./ToolbarButton";
 
-export type BubbleSelectionCommand = "bold" | "italic" | "underline" | "code";
+export type BubbleSelectionCommand = "bold" | "italic" | "underline" | "strike" | "code";
 
 export interface BubbleToolbarPosition {
   top: number;
@@ -41,6 +41,12 @@ export function SelectionBubbleToolbar({ editor, position, onRunCommand, onInser
         onRunCommand("underline");
       }} onClick={() => undefined}>
         <Underline size={16} />
+      </ToolbarButton>
+      <ToolbarButton title="Strike selection" active={editor.isActive("strike")} onMouseDown={(event) => {
+        event.preventDefault();
+        onRunCommand("strike");
+      }} onClick={() => undefined}>
+        <Strikethrough size={16} />
       </ToolbarButton>
       <ToolbarButton title="Code selection" active={editor.isActive("code")} onMouseDown={(event) => {
         event.preventDefault();

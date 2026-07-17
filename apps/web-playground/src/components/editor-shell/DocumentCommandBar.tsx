@@ -2,6 +2,8 @@ import { Braces, Download, FilePlus, FileText, FolderOpen } from "lucide-react";
 
 export interface DocumentCommandBarProps {
   title: string;
+  author: string;
+  version: string;
   fileLabel: string;
   savedLabel: string;
   isValid: boolean;
@@ -9,6 +11,8 @@ export interface DocumentCommandBarProps {
   saveLabel: string;
   isPreviewOpen: boolean;
   onTitleChange: (title: string) => void;
+  onAuthorChange: (author: string) => void;
+  onVersionChange: (version: string) => void;
   onNewDocument: () => void;
   onOpenDocument: () => void;
   onSaveDocument: () => void;
@@ -18,6 +22,8 @@ export interface DocumentCommandBarProps {
 
 export function DocumentCommandBar({
   title,
+  author,
+  version,
   fileLabel,
   savedLabel,
   isValid,
@@ -25,6 +31,8 @@ export function DocumentCommandBar({
   saveLabel,
   isPreviewOpen,
   onTitleChange,
+  onAuthorChange,
+  onVersionChange,
   onNewDocument,
   onOpenDocument,
   onSaveDocument,
@@ -34,10 +42,20 @@ export function DocumentCommandBar({
   return (
     <div className="document-command-bar" role="region" aria-label="Document workflow">
       <div className="document-command-main">
-        <label className="document-title-field">
-          <span>Title</span>
-          <input value={title} onChange={(event) => onTitleChange(event.target.value)} />
-        </label>
+        <div className="document-identity-fields" aria-label="Document identity">
+          <label className="document-title-field">
+            <span>Title</span>
+            <input value={title} onChange={(event) => onTitleChange(event.target.value)} />
+          </label>
+          <label className="document-core-field">
+            <span>Author</span>
+            <input value={author} placeholder="Add author" onChange={(event) => onAuthorChange(event.target.value)} />
+          </label>
+          <label className="document-core-field document-version-field">
+            <span>Version</span>
+            <input value={version} placeholder="0.1" onChange={(event) => onVersionChange(event.target.value)} />
+          </label>
+        </div>
         <div className="document-command-meta">
           <strong title={fileLabel}>{fileLabel}</strong>
           <span>{savedLabel}</span>

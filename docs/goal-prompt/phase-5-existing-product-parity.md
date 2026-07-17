@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 40
+progress_percent: 43
 current_slice: author-header-and-command-hierarchy
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -69,6 +69,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 40
     note: "Enclosing editor toolbar, hidden file inputs, and document actions moved into components/editor-toolbar; App retains refs and behavior callbacks. npm test (268), npm run build, and npm run test:e2e (31) passed, completing the shell-extraction slice."
+  - date: 2026-07-18
+    progress_percent: 43
+    note: "Author header now edits canonical title, author, and version directly and responsively; browser round-trip coverage uses the header. An initial build caught optional legacy metadata values, which are now displayed as empty fields. Final npm test (268), npm run build, and npm run test:e2e (31) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

@@ -1817,6 +1817,8 @@ export function App() {
           <>
         <DocumentCommandBar
           title={metadata.title}
+          author={metadata.author ?? ""}
+          version={metadata.version ?? ""}
           fileLabel={fileLabel}
           savedLabel={savedLabel}
           isValid={validation.ok}
@@ -1824,6 +1826,8 @@ export function App() {
           saveLabel={sdocSaveRoute.label}
           isPreviewOpen={isPreviewOpen}
           onTitleChange={(title) => setMetadata({ ...metadata, title })}
+          onAuthorChange={(author) => setMetadata({ ...metadata, author })}
+          onVersionChange={(version) => setMetadata({ ...metadata, version })}
           onNewDocument={createNewDocument}
           onOpenDocument={() => void openDocumentAction()}
           onSaveDocument={() => void downloadSdoc()}

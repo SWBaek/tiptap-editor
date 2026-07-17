@@ -32,7 +32,7 @@ The current implementation was checked against `apps/web-playground/src/App.tsx`
 
 | Area / previous-product feature | Decision | Current implementation state | Phase 5.1 acceptance evidence |
 |---|---|---|---|
-| Fixed document header with inline title/author/version | Adapt | Partial. Title is in the command bar; author/version are only in Settings. | A dedicated author-facing header edits title and core metadata; save/reopen E2E proves metadata round trip without writing UI state. |
+| Fixed document header with inline title/author/version | Adapt | Implemented in the shared command bar: title, author, and version are immediately editable; Settings retains the same canonical metadata fields as a secondary surface. | Browser save/reopen E2E edits all three fields in the author header and proves metadata round trip without writing UI state. |
 | Activity Bar plus toggle panels | Adopt | Implemented for Files, Outline, Export, Settings and advanced Review/Diagnostics/History/Developer. | Existing panel navigation E2E remains green after shell extraction. |
 | Editor-first fixed shell and isolated body scrolling | Adapt | Partial in the monolithic `App.tsx`; visual hierarchy still mixes workflow, toolbar, panels, and preview. | Shell components are separated, editor remains primary at desktop and browser widths, and E2E covers panel/preview toggles. |
 | Slim common toolbar with advanced insert menu | Adapt | Partial. Groups exist, but dozens of Advanced buttons remain equally visible. | Default toolbar exposes common text/list/image/table controls; advanced content and table operations are discoverable from menus/context. |

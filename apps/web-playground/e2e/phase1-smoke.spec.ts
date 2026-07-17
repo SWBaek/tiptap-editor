@@ -603,9 +603,8 @@ test("round-trips a downloaded .sdoc through the browser open flow", async ({ pa
   await page.goto("/");
 
   await page.getByLabel("Title", { exact: true }).fill("Round Trip E2E");
-  await page.getByRole("button", { name: "Settings panel" }).click();
-  await page.getByLabel("Metadata author").fill("QA");
-  await page.getByLabel("Metadata version").fill("1.0");
+  await page.getByLabel("Author", { exact: true }).fill("QA");
+  await page.getByLabel("Version", { exact: true }).fill("1.0");
 
   const sdocDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download .sdoc" }).click();
@@ -621,6 +620,8 @@ test("round-trips a downloaded .sdoc through the browser open flow", async ({ pa
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Round Trip E2E.sdoc");
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Round Trip E2E");
+  await expect(page.getByLabel("Author", { exact: true })).toHaveValue("QA");
+  await expect(page.getByLabel("Version", { exact: true })).toHaveValue("1.0");
   await page.getByRole("button", { name: "Settings panel" }).click();
   if ((await page.getByLabel("Metadata author").count()) === 0) {
     await page.getByRole("button", { name: "Settings panel" }).click();

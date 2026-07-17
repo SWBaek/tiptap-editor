@@ -102,6 +102,13 @@ Extraction progress on 2026-07-18:
 - Component props preserve the existing callbacks, accessible labels, and CSS class contract.
 - Prompt-based authoring workflows remain in `App.tsx`; the technical-content slice will replace them with typed dialog/inspector components rather than extracting obsolete prompts.
 
+Author-header progress on 2026-07-18:
+
+- The fixed `DocumentCommandBar` now exposes title, author, and version together as ordinary author fields while file/save/validation state stays adjacent.
+- These inputs edit existing `.sdoc` metadata only; no runtime shell state is added to `document.json`.
+- Settings continues to expose the same metadata as a secondary configuration surface, not the only path for routine authorship.
+- Responsive layout keeps title full-width and author/version compact on narrow viewports.
+
 ## Outline And Authoring Structure
 
 The Outline surface should become a primary authoring tool:

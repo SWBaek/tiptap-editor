@@ -6,8 +6,6 @@ import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
   AlertTriangle,
-  Bold,
-  Code2,
   Download,
   FileJson,
   FilePlus,
@@ -15,14 +13,12 @@ import {
   FolderOpen,
   History as HistoryIcon,
   Info,
-  Italic,
   Link2,
   RefreshCw,
   Save,
   Search,
   Settings,
-  Trash2,
-  Underline as UnderlineIcon
+  Trash2
 } from "lucide-react";
 import {
   applyDiffEventAcceptanceToBaseline,
@@ -145,6 +141,7 @@ import { PreviewTabButton as TabButton } from "./components/editor-shell/Preview
 import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry } from "./components/editor-shell/types";
 import { ToolbarButton } from "./components/editor-toolbar/ToolbarButton";
 import { EditorToolbarGroups } from "./components/editor-toolbar/EditorToolbarGroups";
+import { SelectionBubbleToolbar, type BubbleToolbarPosition, type BubbleSelectionCommand } from "./components/editor-toolbar/SelectionBubbleToolbar";
 
 type CalloutKind = "note" | "warning";
 type DerivedOutputName = "plain.md" | "chunks.jsonl" | "outline.json" | "references.json";
@@ -154,10 +151,6 @@ interface EditorHighlightOverlay {
   left: number;
   width: number;
   height: number;
-}
-interface BubbleToolbarPosition {
-  top: number;
-  left: number;
 }
 interface HeadingNumberingSettings {
   enabled: boolean;
@@ -339,7 +332,7 @@ export function App() {
     setBubbleToolbarPosition({ left, top });
   }, [editor, editorRevision, selectionRevision]);
 
-  function runBubbleSelectionCommand(command: "bold" | "italic" | "underline" | "code") {
+  function runBubbleSelectionCommand(command: BubbleSelectionCommand) {
     const range = bubbleSelectionRangeRef.current;
     const markType = editor.state.schema.marks[command];
     if (!range || !markType) {
@@ -1978,40 +1971,12 @@ export function App() {
             {brokenReferenceRuntimeCss && <style data-sdoc-broken-reference-runtime>{brokenReferenceRuntimeCss}</style>}
             {visualDiffRuntimeCss && <style data-sdoc-diff-overlay-runtime>{visualDiffRuntimeCss}</style>}
             {bubbleToolbarPosition && (
-              <div
-                className="selection-bubble-toolbar"
-                style={{ top: bubbleToolbarPosition.top, left: bubbleToolbarPosition.left }}
-                aria-label="Selected text formatting"
-                onMouseDown={(event) => event.preventDefault()}
-              >
-                <ToolbarButton title="Bold selection" active={editor.isActive("bold")} onMouseDown={(event) => {
-                  event.preventDefault();
-                  runBubbleSelectionCommand("bold");
-                }} onClick={() => undefined}>
-                  <Bold size={16} />
-                </ToolbarButton>
-                <ToolbarButton title="Italic selection" active={editor.isActive("italic")} onMouseDown={(event) => {
-                  event.preventDefault();
-                  runBubbleSelectionCommand("italic");
-                }} onClick={() => undefined}>
-                  <Italic size={16} />
-                </ToolbarButton>
-                <ToolbarButton title="Underline selection" active={editor.isActive("underline")} onMouseDown={(event) => {
-                  event.preventDefault();
-                  runBubbleSelectionCommand("underline");
-                }} onClick={() => undefined}>
-                  <UnderlineIcon size={16} />
-                </ToolbarButton>
-                <ToolbarButton title="Code selection" active={editor.isActive("code")} onMouseDown={(event) => {
-                  event.preventDefault();
-                  runBubbleSelectionCommand("code");
-                }} onClick={() => undefined}>
-                  <Code2 size={16} />
-                </ToolbarButton>
-                <ToolbarButton title="Insert reference for selection" active={editor.isActive("crossReference")} onClick={openReferencePicker}>
-                  <Link2 size={16} />
-                </ToolbarButton>
-              </div>
+              <SelectionBubbleToolbar
+                editor={editor}
+                position={bubbleToolbarPosition}
+                onRunCommand={runBubbleSelectionCommand}
+                onInsertReference={openReferencePicker}
+              />
             )}
             <EditorContent editor={editor} />
             {highlightOverlay && (

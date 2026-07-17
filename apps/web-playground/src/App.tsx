@@ -6,43 +6,23 @@ import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
   AlertTriangle,
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  ArrowDown,
-  ArrowUp,
   Bold,
-  ChevronDown,
-  ChevronRight,
-  Braces,
   Code2,
-  Columns3,
   Download,
-  ExternalLink,
   FileJson,
   FilePlus,
   FileText,
   FolderOpen,
-  Heading1,
-  Heading2,
   History as HistoryIcon,
-  Image as ImageIcon,
   Info,
   Italic,
   Link2,
-  List,
-  ListOrdered,
-  Quote,
   RefreshCw,
-  Rows3,
   Save,
   Search,
   Settings,
-  Sigma,
-  Table as TableIcon,
   Trash2,
-  Underline as UnderlineIcon,
-  Workflow
+  Underline as UnderlineIcon
 } from "lucide-react";
 import {
   applyDiffEventAcceptanceToBaseline,
@@ -164,6 +144,7 @@ import { DocumentCommandBar } from "./components/editor-shell/DocumentCommandBar
 import { PreviewTabButton as TabButton } from "./components/editor-shell/PreviewTabButton";
 import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry } from "./components/editor-shell/types";
 import { ToolbarButton } from "./components/editor-toolbar/ToolbarButton";
+import { EditorToolbarGroups } from "./components/editor-toolbar/EditorToolbarGroups";
 
 type CalloutKind = "note" | "warning";
 type DerivedOutputName = "plain.md" | "chunks.jsonl" | "outline.json" | "references.json";
@@ -1896,139 +1877,31 @@ export function App() {
         />
 
         <div className="toolbar" aria-label="Editor toolbar">
-          <div className="toolbar-group primary" aria-label="Basic writing tools">
-          <span className="toolbar-group-label">Text</span>
-          <ToolbarButton title="Heading 1" active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
-            <Heading1 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Heading 2" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-            <Heading2 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Heading 3" active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-            <Heading2 size={16} />
-          </ToolbarButton>
-          <ToolbarButton title="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
-            <Bold size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
-            <Italic size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Underline" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
-            <UnderlineIcon size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-            <List size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Ordered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-            <ListOrdered size={18} />
-          </ToolbarButton>
-          </div>
-
-          <div className="toolbar-group primary" aria-label="Insert tools">
-          <span className="toolbar-group-label">Insert</span>
-          <ToolbarButton title="Blockquote" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
-            <Quote size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Code block" active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
-            <Code2 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Insert image" active={editor.isActive("figure")} onClick={() => imageInputRef.current?.click()}>
-            <ImageIcon size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Insert reference" active={editor.isActive("crossReference")} onClick={openReferencePicker}>
-            <Link2 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={insertTable}>
-            <TableIcon size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => applyCallout("note")}>
-            <Info size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Warning callout" active={editor.isActive("callout", { kind: "warning" })} onClick={() => applyCallout("warning")}>
-            <AlertTriangle size={18} />
-          </ToolbarButton>
-          </div>
-
-          <div className="toolbar-group advanced" aria-label="Structure tools">
-          <span className="toolbar-group-label">Structure</span>
-          <ToolbarButton title="Fold section" onClick={foldSelectedSection}>
-            <ChevronRight size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Unfold section" onClick={unfoldSelectedSection}>
-            <ChevronDown size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Unfold all sections" active={collapsedHeadingIds.size > 0} onClick={unfoldAllSections}>
-            <List size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Insert data grid" active={editor.isActive("dataGrid")} onClick={() => dataGridInputRef.current?.click()}>
-            <FileJson size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Move block up" onClick={() => moveBlock("up")}>
-            <ArrowUp size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Move block down" onClick={() => moveBlock("down")}>
-            <ArrowDown size={18} />
-          </ToolbarButton>
-          </div>
-
-          <div className="toolbar-group advanced" aria-label="Table and advanced insertion tools">
-          <span className="toolbar-group-label">Advanced</span>
-          <ToolbarButton title="Add row after" active={editor.isActive("table")} onClick={() => runTableCommand("addRowAfter", "Added table row")}>
-            <Rows3 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Add column after" active={editor.isActive("table")} onClick={() => runTableCommand("addColumnAfter", "Added table column")}>
-            <Columns3 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Delete row" active={editor.isActive("table")} onClick={() => runTableCommand("deleteRow", "Deleted table row")}>
-            <Rows3 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Delete column" active={editor.isActive("table")} onClick={() => runTableCommand("deleteColumn", "Deleted table column")}>
-            <Columns3 size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Toggle header row" active={editor.isActive("table")} onClick={() => runTableCommand("toggleHeaderRow", "Toggled header row")}>
-            <TableIcon size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Edit table caption" active={editor.isActive("table")} onClick={editSelectedTableCaptionFromPrompt}>
-            <FileText size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Toggle header column" active={editor.isActive("table")} onClick={() => runTableCommand("toggleHeaderColumn", "Toggled header column")}>
-            <TableIcon size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Align table cell left" active={editor.isActive("tableCell", { align: "left" }) || editor.isActive("tableHeader", { align: "left" })} onClick={() => alignTableCells("left")}>
-            <AlignLeft size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Align table cell center" active={editor.isActive("tableCell", { align: "center" }) || editor.isActive("tableHeader", { align: "center" })} onClick={() => alignTableCells("center")}>
-            <AlignCenter size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Align table cell right" active={editor.isActive("tableCell", { align: "right" }) || editor.isActive("tableHeader", { align: "right" })} onClick={() => alignTableCells("right")}>
-            <AlignRight size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Insert inline equation" active={editor.isActive("equation")} onClick={insertInlineEquationFromPrompt}>
-            <Sigma size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Insert equation block" active={editor.isActive("equationBlock")} onClick={insertEquationBlockFromPrompt}>
-            <Sigma size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Edit selected equation" active={editor.isActive("equation") || editor.isActive("equationBlock")} onClick={editSelectedEquationFromPrompt}>
-            <Sigma size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Insert Mermaid diagram" active={editor.isActive("diagram")} onClick={insertMermaidDiagramFromPrompt}>
-            <Workflow size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Insert Draw.io diagram" active={editor.isActive("diagram", { kind: "drawio" })} onClick={startDrawioInsertFlow}>
-            <FileJson size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Open Draw.io external editor" active={drawioBridgeSession !== null} onClick={openSelectedDrawioExternalEditor}>
-            <ExternalLink size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Read Draw.io external edit" active={drawioBridgeSession !== null} onClick={readDrawioExternalEdit}>
-            <RefreshCw size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Close Draw.io external edit" active={drawioBridgeSession !== null} onClick={closeDrawioExternalEdit}>
-            <Trash2 size={18} />
-          </ToolbarButton>
-          </div>
-          <div className="toolbar-spacer" />
+          <EditorToolbarGroups
+            editor={editor}
+            hasCollapsedSections={collapsedHeadingIds.size > 0}
+            hasDrawioSession={drawioBridgeSession !== null}
+            onInsertImage={() => imageInputRef.current?.click()}
+            onInsertReference={openReferencePicker}
+            onInsertTable={insertTable}
+            onApplyCallout={applyCallout}
+            onFoldSection={foldSelectedSection}
+            onUnfoldSection={unfoldSelectedSection}
+            onUnfoldAllSections={unfoldAllSections}
+            onInsertDataGrid={() => dataGridInputRef.current?.click()}
+            onMoveBlock={moveBlock}
+            onRunTableCommand={runTableCommand}
+            onEditTableCaption={editSelectedTableCaptionFromPrompt}
+            onAlignTableCells={alignTableCells}
+            onInsertInlineEquation={insertInlineEquationFromPrompt}
+            onInsertEquationBlock={insertEquationBlockFromPrompt}
+            onEditEquation={editSelectedEquationFromPrompt}
+            onInsertMermaid={insertMermaidDiagramFromPrompt}
+            onInsertDrawio={startDrawioInsertFlow}
+            onOpenDrawioEditor={() => void openSelectedDrawioExternalEditor()}
+            onReadDrawioEdit={() => void readDrawioExternalEdit()}
+            onCloseDrawioEdit={() => void closeDrawioExternalEdit()}
+          />
           <input
             ref={fileInputRef}
             className="file-input"

@@ -88,8 +88,9 @@ The web app remains the single frontend. `apps/desktop` adds only typed native a
 Extraction progress on 2026-07-18:
 
 - `ActivityBar`, desktop start screen, document command bar, preview tab button, toolbar button, and shared shell types moved under `components/editor-shell/` and `components/editor-toolbar/`.
+- Existing Text, Insert, Structure, and Advanced button groups moved into a typed `EditorToolbarGroups` component; editor/file input ownership remains in `App.tsx` until the command hierarchy slice changes UX.
 - Component props preserve the existing callbacks, accessible labels, and CSS class contract.
-- Panel bodies, the composite editor toolbar, and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
+- Panel bodies, hidden file inputs/document actions, Bubble Menu, and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
 
 ## Outline And Authoring Structure
 

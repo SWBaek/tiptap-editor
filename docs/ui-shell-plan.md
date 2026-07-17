@@ -97,8 +97,9 @@ Extraction progress on 2026-07-18:
 - History moved under `components/panels/HistoryPanel.tsx`; snapshot rename draft state stays inside each card while snapshot persistence and comparison remain `App` callbacks.
 - Diagnostics moved under `components/panels/DiagnosticsPanel.tsx` together with its Reference and Traceability views; filter state stays local while diagnostic derivation and editor mutations remain `App` callbacks.
 - Developer moved under `components/panels/DeveloperPanel.tsx` together with data-grid row review and derived-output presentation; canonical export actions and asset mutations remain `App` callbacks, keeping these advanced surfaces outside default authoring UX.
+- Review moved under `components/panels/ReviewPanel.tsx` together with the side-by-side Diff preview; review model derivation, acceptance/rejection, and baseline ownership remain in `App`.
 - Component props preserve the existing callbacks, accessible labels, and CSS class contract.
-- Review, hidden file inputs/document actions, and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
+- Hidden file inputs/document actions and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
 
 ## Outline And Authoring Structure
 

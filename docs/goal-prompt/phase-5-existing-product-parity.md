@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 36
+progress_percent: 38
 current_slice: shell-extraction
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -63,6 +63,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 36
     note: "Developer panel, data-grid row review view, and derived-output presentation moved into components/panels; canonical export and asset mutations remain App-owned. npm test (268), npm run build, and npm run test:e2e (31) passed."
+  - date: 2026-07-18
+    progress_percent: 38
+    note: "Review panel and side-by-side Diff preview moved into components/panels; review derivation, mutation, and baseline state remain App-owned. npm test (268), npm run build, and npm run test:e2e (31) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

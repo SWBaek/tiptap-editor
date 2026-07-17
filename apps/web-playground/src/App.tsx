@@ -5,12 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
-  Download,
   FileJson,
-  FilePlus,
-  FileText,
-  FolderOpen,
-  Save,
   Settings
 } from "lucide-react";
 import {
@@ -123,8 +118,7 @@ import { DesktopStartScreen } from "./components/editor-shell/DesktopStartScreen
 import { DocumentCommandBar } from "./components/editor-shell/DocumentCommandBar";
 import { PreviewTabButton as TabButton } from "./components/editor-shell/PreviewTabButton";
 import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry } from "./components/editor-shell/types";
-import { ToolbarButton } from "./components/editor-toolbar/ToolbarButton";
-import { EditorToolbarGroups } from "./components/editor-toolbar/EditorToolbarGroups";
+import { EditorToolbar } from "./components/editor-toolbar/EditorToolbar";
 import { SelectionBubbleToolbar, type BubbleToolbarPosition, type BubbleSelectionCommand } from "./components/editor-toolbar/SelectionBubbleToolbar";
 import { SettingsPanel, type HeadingNumberingSettings } from "./components/panels/SettingsPanel";
 import { OutlinePanel, type AuthorFigureItem, type AuthorOutlineItem, type AuthorTableItem } from "./components/panels/OutlinePanel";
@@ -1837,100 +1831,46 @@ export function App() {
           onTogglePreview={() => setIsPreviewOpen((open) => !open)}
         />
 
-        <div className="toolbar" aria-label="Editor toolbar">
-          <EditorToolbarGroups
-            editor={editor}
-            hasCollapsedSections={collapsedHeadingIds.size > 0}
-            hasDrawioSession={drawioBridgeSession !== null}
-            onInsertImage={() => imageInputRef.current?.click()}
-            onInsertReference={openReferencePicker}
-            onInsertTable={insertTable}
-            onApplyCallout={applyCallout}
-            onFoldSection={foldSelectedSection}
-            onUnfoldSection={unfoldSelectedSection}
-            onUnfoldAllSections={unfoldAllSections}
-            onInsertDataGrid={() => dataGridInputRef.current?.click()}
-            onMoveBlock={moveBlock}
-            onRunTableCommand={runTableCommand}
-            onEditTableCaption={editSelectedTableCaptionFromPrompt}
-            onAlignTableCells={alignTableCells}
-            onInsertInlineEquation={insertInlineEquationFromPrompt}
-            onInsertEquationBlock={insertEquationBlockFromPrompt}
-            onEditEquation={editSelectedEquationFromPrompt}
-            onInsertMermaid={insertMermaidDiagramFromPrompt}
-            onInsertDrawio={startDrawioInsertFlow}
-            onOpenDrawioEditor={() => void openSelectedDrawioExternalEditor()}
-            onReadDrawioEdit={() => void readDrawioExternalEdit()}
-            onCloseDrawioEdit={() => void closeDrawioExternalEdit()}
-          />
-          <input
-            ref={fileInputRef}
-            className="file-input"
-            type="file"
-            aria-label="Open document file"
-            accept=".sdoc,.json,application/json"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                void openFile(file);
-              }
-            }}
-          />
-          <input
-            ref={imageInputRef}
-            className="file-input"
-            type="file"
-            aria-label="Insert image file"
-            accept="image/*"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                void insertImageFile(file);
-              }
-            }}
-          />
-          <input
-            ref={dataGridInputRef}
-            className="file-input"
-            type="file"
-            aria-label="Insert data grid file"
-            accept=".csv,.json,text/csv,application/json"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                void insertDataGridFile(file);
-              }
-            }}
-          />
-          <input
-            ref={drawioInputRef}
-            className="file-input"
-            type="file"
-            aria-label="Import Draw.io source file"
-            accept=".drawio,.drawio.xml,application/xml,text/xml"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                void insertDrawioFile(file);
-              }
-            }}
-          />
-          <ToolbarButton title="New document" onClick={createNewDocument}>
-            <FilePlus size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Open .sdoc or document.json" onClick={openDocumentAction}>
-            <FolderOpen size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Download Markdown" onClick={downloadMarkdown}>
-            <FileText size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Save current .sdoc" onClick={downloadSdoc}>
-            <Download size={18} />
-          </ToolbarButton>
-          <ToolbarButton title="Mark saved" onClick={markCurrentAsBaseline}>
-            <Save size={18} />
-          </ToolbarButton>
-        </div>
+        <EditorToolbar
+          groups={{
+            editor,
+            hasCollapsedSections: collapsedHeadingIds.size > 0,
+            hasDrawioSession: drawioBridgeSession !== null,
+            onInsertImage: () => imageInputRef.current?.click(),
+            onInsertReference: openReferencePicker,
+            onInsertTable: insertTable,
+            onApplyCallout: applyCallout,
+            onFoldSection: foldSelectedSection,
+            onUnfoldSection: unfoldSelectedSection,
+            onUnfoldAllSections: unfoldAllSections,
+            onInsertDataGrid: () => dataGridInputRef.current?.click(),
+            onMoveBlock: moveBlock,
+            onRunTableCommand: runTableCommand,
+            onEditTableCaption: editSelectedTableCaptionFromPrompt,
+            onAlignTableCells: alignTableCells,
+            onInsertInlineEquation: insertInlineEquationFromPrompt,
+            onInsertEquationBlock: insertEquationBlockFromPrompt,
+            onEditEquation: editSelectedEquationFromPrompt,
+            onInsertMermaid: insertMermaidDiagramFromPrompt,
+            onInsertDrawio: startDrawioInsertFlow,
+            onOpenDrawioEditor: () => void openSelectedDrawioExternalEditor(),
+            onReadDrawioEdit: () => void readDrawioExternalEdit(),
+            onCloseDrawioEdit: () => void closeDrawioExternalEdit()
+          }}
+          fileInputRef={fileInputRef}
+          imageInputRef={imageInputRef}
+          dataGridInputRef={dataGridInputRef}
+          drawioInputRef={drawioInputRef}
+          onOpenFile={(file) => void openFile(file)}
+          onInsertImageFile={(file) => void insertImageFile(file)}
+          onInsertDataGridFile={(file) => void insertDataGridFile(file)}
+          onInsertDrawioFile={(file) => void insertDrawioFile(file)}
+          onNewDocument={createNewDocument}
+          onOpenDocument={() => void openDocumentAction()}
+          onDownloadMarkdown={downloadMarkdown}
+          onSaveSdoc={() => void downloadSdoc()}
+          onMarkSaved={markCurrentAsBaseline}
+        />
 
         <div className={isPreviewOpen ? "editor-grid" : "editor-grid preview-collapsed"}>
           <section className="editor-pane" ref={editorPaneRef} onDoubleClick={handleEditorPaneDoubleClick}>

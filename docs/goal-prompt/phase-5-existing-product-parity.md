@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 38
-current_slice: shell-extraction
+progress_percent: 40
+current_slice: author-header-and-command-hierarchy
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -17,8 +17,8 @@ planning_docs:
   - docs/desktop-native-smoke.md
 completed_slices:
   - planning-baseline
-remaining_slices:
   - shell-extraction
+remaining_slices:
   - author-header-and-command-hierarchy
   - writing-essentials
   - technical-content-editors
@@ -66,6 +66,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 38
     note: "Review panel and side-by-side Diff preview moved into components/panels; review derivation, mutation, and baseline state remain App-owned. npm test (268), npm run build, and npm run test:e2e (31) passed."
+  - date: 2026-07-18
+    progress_percent: 40
+    note: "Enclosing editor toolbar, hidden file inputs, and document actions moved into components/editor-toolbar; App retains refs and behavior callbacks. npm test (268), npm run build, and npm run test:e2e (31) passed, completing the shell-extraction slice."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

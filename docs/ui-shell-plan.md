@@ -88,7 +88,8 @@ The web app remains the single frontend. `apps/desktop` adds only typed native a
 Extraction progress on 2026-07-18:
 
 - `ActivityBar`, desktop start screen, document command bar, preview tab button, toolbar button, and shared shell types moved under `components/editor-shell/` and `components/editor-toolbar/`.
-- Existing Text, Insert, Structure, and Advanced button groups moved into a typed `EditorToolbarGroups` component; editor/file input ownership remains in `App.tsx` until the command hierarchy slice changes UX.
+- Existing Text, Insert, Structure, and Advanced button groups moved into a typed `EditorToolbarGroups` component.
+- The enclosing toolbar, hidden document/image/data-grid/Draw.io file inputs, and document actions moved into `EditorToolbar`; `App` retains refs and behavior callbacks until the command hierarchy slice changes UX.
 - The selected-text Bubble Menu moved into `SelectionBubbleToolbar`, with its selection-preserving mouse behavior and command union explicit in component props.
 - Settings moved under `components/panels/SettingsPanel.tsx`; metadata callbacks and runtime-only heading/outline settings remain owned by `App`.
 - Outline moved under `components/panels/OutlinePanel.tsx`; heading, figure, and table projection types are explicit while projection generation remains in `App`.
@@ -99,7 +100,7 @@ Extraction progress on 2026-07-18:
 - Developer moved under `components/panels/DeveloperPanel.tsx` together with data-grid row review and derived-output presentation; canonical export actions and asset mutations remain `App` callbacks, keeping these advanced surfaces outside default authoring UX.
 - Review moved under `components/panels/ReviewPanel.tsx` together with the side-by-side Diff preview; review model derivation, acceptance/rejection, and baseline ownership remain in `App`.
 - Component props preserve the existing callbacks, accessible labels, and CSS class contract.
-- Hidden file inputs/document actions and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
+- Prompt-based authoring workflows remain in `App.tsx`; the technical-content slice will replace them with typed dialog/inspector components rather than extracting obsolete prompts.
 
 ## Outline And Authoring Structure
 

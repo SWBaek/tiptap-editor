@@ -158,20 +158,15 @@ import {
   type VisualDiffFilterKind,
   type VisualDiffOverlayItem
 } from "./documentState";
+import { ActivityBar } from "./components/editor-shell/ActivityBar";
+import { DesktopStartScreen, formatRecentFileTime } from "./components/editor-shell/DesktopStartScreen";
+import { DocumentCommandBar } from "./components/editor-shell/DocumentCommandBar";
+import { PreviewTabButton as TabButton } from "./components/editor-shell/PreviewTabButton";
+import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry } from "./components/editor-shell/types";
+import { ToolbarButton } from "./components/editor-toolbar/ToolbarButton";
 
-type PreviewTab = "json" | "markdown" | "diff";
-type ActivityPanel = "files" | "outline" | "export" | "settings" | "review" | "diagnostics" | "history" | "developer";
 type CalloutKind = "note" | "warning";
-type RecentFileAction = "opened" | "saved";
 type DerivedOutputName = "plain.md" | "chunks.jsonl" | "outline.json" | "references.json";
-interface RecentFileEntry {
-  id: string;
-  name: string;
-  title: string;
-  action: RecentFileAction;
-  updatedAt: string;
-  nativePath?: string;
-}
 interface EditorHighlightOverlay {
   nodeId: string;
   top: number;
@@ -1884,44 +1879,21 @@ export function App() {
           />
         ) : (
           <>
-        <div className="document-command-bar" role="region" aria-label="Document workflow">
-          <div className="document-command-main">
-            <label className="document-title-field">
-              <span>Title</span>
-              <input value={metadata.title} onChange={(event) => setMetadata({ ...metadata, title: event.target.value })} />
-            </label>
-            <div className="document-command-meta">
-              <strong title={fileLabel}>{fileLabel}</strong>
-              <span>{savedLabel}</span>
-              <span className={validation.ok ? "validation-badge ok" : "validation-badge error"}>{validation.ok ? "Valid" : "Invalid"}</span>
-            </div>
-            <div className="status-note" aria-label="Current status">
-              {statusMessage}
-            </div>
-          </div>
-          <div className="document-command-actions">
-            <button type="button" onClick={createNewDocument}>
-              <FilePlus size={16} />
-              <span>New</span>
-            </button>
-            <button type="button" onClick={openDocumentAction}>
-              <FolderOpen size={16} />
-              <span>Open .sdoc</span>
-            </button>
-            <button type="button" onClick={downloadSdoc}>
-              <Download size={16} />
-              <span>{sdocSaveRoute.label}</span>
-            </button>
-            <button type="button" onClick={() => openActivityPanel("export")}>
-              <FileText size={16} />
-              <span>Export</span>
-            </button>
-            <button type="button" onClick={() => setIsPreviewOpen((open) => !open)}>
-              <Braces size={16} />
-              <span>{isPreviewOpen ? "Hide preview" : "Preview"}</span>
-            </button>
-          </div>
-        </div>
+        <DocumentCommandBar
+          title={metadata.title}
+          fileLabel={fileLabel}
+          savedLabel={savedLabel}
+          isValid={validation.ok}
+          statusMessage={statusMessage}
+          saveLabel={sdocSaveRoute.label}
+          isPreviewOpen={isPreviewOpen}
+          onTitleChange={(title) => setMetadata({ ...metadata, title })}
+          onNewDocument={createNewDocument}
+          onOpenDocument={() => void openDocumentAction()}
+          onSaveDocument={() => void downloadSdoc()}
+          onOpenExport={() => openActivityPanel("export")}
+          onTogglePreview={() => setIsPreviewOpen((open) => !open)}
+        />
 
         <div className="toolbar" aria-label="Editor toolbar">
           <div className="toolbar-group primary" aria-label="Basic writing tools">
@@ -2208,139 +2180,6 @@ export function App() {
         )}
       </section>
     </main>
-  );
-}
-
-function DesktopStartScreen({
-  recentFiles,
-  isWorkspaceLoading,
-  onNewDocument,
-  onOpenDocument,
-  onChooseWorkspaceDirectory,
-  onOpenRecentFile
-}: {
-  recentFiles: RecentFileEntry[];
-  isWorkspaceLoading: boolean;
-  onNewDocument: () => void;
-  onOpenDocument: () => void;
-  onChooseWorkspaceDirectory: () => void;
-  onOpenRecentFile: (entry: RecentFileEntry) => void;
-}) {
-  return (
-    <div className="desktop-start-screen" aria-label="Desktop start screen">
-      <section className="desktop-start-main">
-        <div className="desktop-start-heading">
-          <FileText size={28} />
-          <div>
-            <h1>SDoc Editor</h1>
-            <p>Open a workspace or create a technical document.</p>
-          </div>
-        </div>
-
-        <div className="desktop-start-actions" aria-label="Start actions">
-          <button type="button" onClick={onChooseWorkspaceDirectory} disabled={isWorkspaceLoading}>
-            <FolderOpen size={18} />
-            <span>{isWorkspaceLoading ? "Opening folder..." : "Open Folder"}</span>
-          </button>
-          <button type="button" onClick={onOpenDocument}>
-            <FileText size={18} />
-            <span>Open .sdoc</span>
-          </button>
-          <button type="button" onClick={onNewDocument}>
-            <FilePlus size={18} />
-            <span>New .sdoc</span>
-          </button>
-        </div>
-      </section>
-
-      <section className="desktop-start-recent" aria-label="Recent Documents">
-        <h2>Recent Documents</h2>
-        {recentFiles.length === 0 ? (
-          <p>No recent documents yet.</p>
-        ) : (
-          <ul>
-            {recentFiles.map((entry) => (
-              <li key={entry.id}>
-                <button type="button" onClick={() => onOpenRecentFile(entry)}>
-                  <strong>{entry.name}</strong>
-                  <span>
-                    {entry.action} {entry.title} - {formatRecentFileTime(entry.updatedAt)}
-                  </span>
-                  {entry.nativePath && <small title={entry.nativePath}>{entry.nativePath}</small>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function ActivityBar({
-  activePanel,
-  isOpen,
-  onSelect
-}: {
-  activePanel: ActivityPanel;
-  isOpen: boolean;
-  onSelect: (panel: ActivityPanel) => void;
-}) {
-  return (
-    <nav className="activity-bar" aria-label="Primary">
-      <span className="activity-group-label">Write</span>
-      <ActivityButton active={activePanel === "files" && isOpen} label="Files" onClick={() => onSelect("files")}>
-        <FolderOpen size={20} />
-      </ActivityButton>
-      <ActivityButton active={activePanel === "outline" && isOpen} label="Outline" onClick={() => onSelect("outline")}>
-        <List size={20} />
-      </ActivityButton>
-      <ActivityButton active={activePanel === "export" && isOpen} label="Export" onClick={() => onSelect("export")}>
-        <Download size={20} />
-      </ActivityButton>
-      <ActivityButton active={activePanel === "settings" && isOpen} label="Settings" onClick={() => onSelect("settings")}>
-        <Settings size={20} />
-      </ActivityButton>
-      <span className="activity-group-label advanced">Review</span>
-      <ActivityButton active={activePanel === "review" && isOpen} label="Review" onClick={() => onSelect("review")}>
-        <Workflow size={20} />
-      </ActivityButton>
-      <ActivityButton active={activePanel === "diagnostics" && isOpen} label="Diagnostics" onClick={() => onSelect("diagnostics")}>
-        <Search size={20} />
-      </ActivityButton>
-      <ActivityButton active={activePanel === "history" && isOpen} label="History" onClick={() => onSelect("history")}>
-        <HistoryIcon size={20} />
-      </ActivityButton>
-      <div className="activity-spacer" />
-      <ActivityButton active={activePanel === "developer" && isOpen} label="Developer" onClick={() => onSelect("developer")}>
-        <Braces size={20} />
-      </ActivityButton>
-    </nav>
-  );
-}
-
-function ActivityButton({
-  active,
-  label,
-  onClick,
-  children
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      className={active ? "activity-button active" : "activity-button"}
-      type="button"
-      aria-label={`${label} panel`}
-      aria-pressed={active}
-      title={`${label} panel`}
-      onClick={onClick}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -4145,44 +3984,6 @@ function measureEditorHighlightOverlay(element: HTMLElement, editorPane: HTMLEle
   };
 }
 
-function ToolbarButton({
-  title,
-  active = false,
-  onClick,
-  onMouseDown,
-  children
-}: {
-  title: string;
-  active?: boolean;
-  onClick: () => void;
-  onMouseDown?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button className={active ? "tool-button active" : "tool-button"} title={title} aria-label={title} type="button" onMouseDown={onMouseDown} onClick={onClick}>
-      {children}
-    </button>
-  );
-}
-
-function TabButton({
-  label,
-  value,
-  activeTab,
-  onSelect
-}: {
-  label: string;
-  value: PreviewTab;
-  activeTab: PreviewTab;
-  onSelect: (value: PreviewTab) => void;
-}) {
-  return (
-    <button className={activeTab === value ? "tab active" : "tab"} type="button" onClick={() => onSelect(value)}>
-      {label}
-    </button>
-  );
-}
-
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -4287,15 +4088,6 @@ function isRecentFileEntry(value: unknown): value is RecentFileEntry {
 
 function upsertRecentFile(entries: RecentFileEntry[], entry: RecentFileEntry): RecentFileEntry[] {
   return [entry, ...entries.filter((current) => current.id !== entry.id)].slice(0, RECENT_FILES_LIMIT);
-}
-
-function formatRecentFileTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
 }
 
 function formatWorkspaceEntryMeta(entry: WindowSdocWorkspaceEntry): string {

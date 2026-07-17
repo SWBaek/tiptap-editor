@@ -85,6 +85,12 @@ Phase 5.1 completion sharpens these rules:
 
 The web app remains the single frontend. `apps/desktop` adds only typed native adapters and Rust commands; it must not mirror React components.
 
+Extraction progress on 2026-07-18:
+
+- `ActivityBar`, desktop start screen, document command bar, preview tab button, toolbar button, and shared shell types moved under `components/editor-shell/` and `components/editor-toolbar/`.
+- Component props preserve the existing callbacks, accessible labels, and CSS class contract.
+- Panel bodies, the composite editor toolbar, and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
+
 ## Outline And Authoring Structure
 
 The Outline surface should become a primary authoring tool:

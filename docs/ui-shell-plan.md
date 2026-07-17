@@ -92,8 +92,9 @@ Extraction progress on 2026-07-18:
 - The selected-text Bubble Menu moved into `SelectionBubbleToolbar`, with its selection-preserving mouse behavior and command union explicit in component props.
 - Settings moved under `components/panels/SettingsPanel.tsx`; metadata callbacks and runtime-only heading/outline settings remain owned by `App`.
 - Outline moved under `components/panels/OutlinePanel.tsx`; heading, figure, and table projection types are explicit while projection generation remains in `App`.
+- Export moved under `components/panels/ExportPanel.tsx` together with its reusable export action and CLI command formatting; actual exports and profile state remain `App` callbacks.
 - Component props preserve the existing callbacks, accessible labels, and CSS class contract.
-- Files, Export, Review, Diagnostics, History, Developer, hidden file inputs/document actions, and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
+- Files, Review, Diagnostics, History, Developer, hidden file inputs/document actions, and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
 
 ## Outline And Authoring Structure
 

@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 22
+progress_percent: 24
 current_slice: shell-extraction
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -42,6 +42,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 22
     note: "Selected-text Bubble Menu moved into SelectionBubbleToolbar with typed commands and preserved mouse/selection behavior; npm test (268), npm run build, and npm run test:e2e (31) passed."
+  - date: 2026-07-18
+    progress_percent: 24
+    note: "Settings panel moved into components/panels with typed metadata, validation, and runtime authoring settings props; npm test (268), npm run build, and npm run test:e2e (31) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

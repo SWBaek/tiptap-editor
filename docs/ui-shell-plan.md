@@ -90,8 +90,9 @@ Extraction progress on 2026-07-18:
 - `ActivityBar`, desktop start screen, document command bar, preview tab button, toolbar button, and shared shell types moved under `components/editor-shell/` and `components/editor-toolbar/`.
 - Existing Text, Insert, Structure, and Advanced button groups moved into a typed `EditorToolbarGroups` component; editor/file input ownership remains in `App.tsx` until the command hierarchy slice changes UX.
 - The selected-text Bubble Menu moved into `SelectionBubbleToolbar`, with its selection-preserving mouse behavior and command union explicit in component props.
+- Settings moved under `components/panels/SettingsPanel.tsx`; metadata callbacks and runtime-only heading/outline settings remain owned by `App`.
 - Component props preserve the existing callbacks, accessible labels, and CSS class contract.
-- Panel bodies, hidden file inputs/document actions, and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
+- Files, Outline, Export, Review, Diagnostics, History, Developer, hidden file inputs/document actions, and authoring dialogs remain in `App.tsx` for subsequent behavior-preserving sub-slices.
 
 ## Outline And Authoring Structure
 

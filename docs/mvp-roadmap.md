@@ -106,3 +106,28 @@
 - visual semantic diff review UX
 - requirement tagging, traceability diagnostics, broken reference repair UX
 - asset-backed large data grid minimal model, row-level grid headless/CLI workflows, and controlled corporate HTML/PDF/DOCX template export 완료; strict pagination은 후속 slice
+
+## Phase 5.1: Existing Product Experience Parity
+
+상태: 진행 중. 세부 분류와 acceptance evidence는 `docs/existing-product-parity-plan.md`를 기준으로 한다.
+
+목표는 이전 Structured Doc Editor에서 검증된 작성 UX를 현재 SDoc 포맷과 단일 frontend/Tauri adapter 구조에 맞게 계승하여 2차 실제 사용자 리뷰 gate를 준비하는 것이다.
+
+포함:
+
+- editor shell/component 분리와 author-facing title/metadata header
+- 축소된 기본 toolbar, Bubble Menu, insert/node context menu
+- task list, strike, text alignment, link, subscript/superscript, clipboard image paste, heading Tab/Shift-Tab
+- prompt를 대체하는 수식/Mermaid/이미지/표 dialog와 inspector
+- runtime-only zoom과 cursor history
+- typed nested desktop explorer, create/rename/trash/refresh/watcher
+- 저장/외부 변경/Draw.io 충돌 recovery UX와 Tauri 최소 권한
+- Tauri smoke 및 3-5명 사용자 리뷰 체크리스트
+
+명시적 제외/거부:
+
+- plain JSON `.sdoc`, 위치/텍스트 기반 ID, frontend 미러 복제
+- Git/raw JSON/schema/AI/RAG를 전제로 한 일반 사용자 흐름
+- user-review gate 이전의 새로운 enterprise/review 기능 확장
+
+완료 기준은 모든 자동 검증과 desktop 수동 smoke 준비를 마친 뒤 기능 확장을 멈추고 `user review required`로 보고하는 것이다.

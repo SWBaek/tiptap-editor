@@ -2,6 +2,7 @@
 
 Created: 2026-07-03
 Realigned: 2026-07-06 after first Tauri app user review
+Realigned: 2026-07-18 for existing-product experience parity
 
 ## Goal
 
@@ -30,6 +31,25 @@ Accepted changes:
 - Git, unpacked folders, raw JSON, schema details, CLI commands, and AI/RAG exports are optional developer/reviewer workflows.
 - Data-grid features appear only when a document actually contains asset-backed data grids.
 - Style/profile settings may affect rendering and export, but must not store UI state in canonical body nodes.
+
+## Phase 5.1 Existing Product Experience Parity
+
+Status: in progress. The authoritative feature classification, current evidence, ordered slices, and stop rule are in `docs/existing-product-parity-plan.md`.
+
+Phase 5.1 does not clone the previous product. It adopts or adapts author-facing interactions that improve writing while rejecting the previous plain JSON `.sdoc`, derived/position-based identity, frontend mirrors, and developer-first defaults.
+
+Ordered slices:
+
+1. Extract the monolithic app shell, toolbar, panels, and dialogs while preserving behavior.
+2. Put title and core metadata in the writing surface; reduce the default toolbar and add contextual insert/format controls.
+3. Add task list, strike, text alignment, normal links, subscript/superscript, clipboard images, and heading Tab/Shift-Tab.
+4. Replace authoring prompts with validated equation, Mermaid, image, and table dialogs/inspectors.
+5. Add runtime-only zoom and cursor history.
+6. Extend the typed Tauri explorer for nested folders, create/rename/trash/refresh/watcher behavior.
+7. Add recoverable save/external-change/Draw.io conflict feedback and minimize Tauri CSP/capabilities.
+8. Run the full review gate, update native smoke and 3-5-user scenarios, then stop for user review.
+
+Every slice requires docs, implementation, tests, `npm test`, `npm run build`, and `npm run test:e2e`, followed by a separate commit and push. Desktop slices additionally require `npm run typecheck:desktop` and `npm run build:desktop`.
 
 ## Priority Slice 1: Desktop Workspace Entry
 

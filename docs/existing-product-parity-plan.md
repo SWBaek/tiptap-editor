@@ -1,0 +1,100 @@
+# Existing Product Experience Parity Plan
+
+Created: 2026-07-18
+Source: `EXISTING_PRODUCT.md` (user-provided, read-only)
+Target: Phase 5.1 second real-user review gate
+
+## Purpose
+
+This plan carries forward proven authoring UX from the previous Structured Doc Editor without restoring its incompatible storage or frontend architecture. Parity means an ordinary technical author can recognize and complete the useful workflow; it does not mean source-level cloning.
+
+The current implementation was checked against `apps/web-playground/src/App.tsx`, `apps/web-playground/src/styles.css`, `packages/editor-tiptap/src/index.ts`, `apps/desktop/src/`, `apps/desktop/src-tauri/`, unit tests, and `apps/web-playground/e2e/phase1-smoke.spec.ts`. A feature is not marked complete from product notes alone.
+
+## Non-Negotiable Boundary
+
+- Canonical authored content remains normalized `.sdoc/document.json`.
+- `.sdoc` remains the user-facing single ZIP container.
+- Every block-level node keeps a stable immutable `attrs.id`; position-derived IDs are forbidden.
+- UI state, selection, cursor history, zoom, dialogs, native paths, watcher state, and conflicts stay out of `document.json`.
+- Images and editable Draw.io source remain `.sdoc/assets/`; previews are derived.
+- Browser mode never claims native folder access, save-back, watcher, trash, or external-editor support.
+- Git, raw JSON, schema/debug, AI/RAG, unpacked folders, and CLI workflows are optional advanced surfaces.
+- The previous plain-JSON `.sdoc`, position-derived/slug-derived identity, and duplicated frontend mirror are not compatibility targets.
+
+## Classification Rules
+
+- **Adopt**: preserve the previous interaction essentially as-is because it fits current architecture.
+- **Adapt**: preserve the user outcome while changing data flow, placement, or native boundary.
+- **Defer**: valuable but not required for the Phase 5.1 user-review gate.
+- **Reject**: conflicts with canonical format, stable IDs, browser/native separation, or author-first product direction.
+
+## Experience Parity Matrix
+
+| Area / previous-product feature | Decision | Current implementation state | Phase 5.1 acceptance evidence |
+|---|---|---|---|
+| Fixed document header with inline title/author/version | Adapt | Partial. Title is in the command bar; author/version are only in Settings. | A dedicated author-facing header edits title and core metadata; save/reopen E2E proves metadata round trip without writing UI state. |
+| Activity Bar plus toggle panels | Adopt | Implemented for Files, Outline, Export, Settings and advanced Review/Diagnostics/History/Developer. | Existing panel navigation E2E remains green after shell extraction. |
+| Editor-first fixed shell and isolated body scrolling | Adapt | Partial in the monolithic `App.tsx`; visual hierarchy still mixes workflow, toolbar, panels, and preview. | Shell components are separated, editor remains primary at desktop and browser widths, and E2E covers panel/preview toggles. |
+| Slim common toolbar with advanced insert menu | Adapt | Partial. Groups exist, but dozens of Advanced buttons remain equally visible. | Default toolbar exposes common text/list/image/table controls; advanced content and table operations are discoverable from menus/context. |
+| Selected-text Bubble Menu | Adapt | Partial. Bold, italic, underline, code, and cross-reference exist via a hand-positioned toolbar. | Strike, normal link, and the common inline marks work on selection; focus/selection is preserved and covered by E2E. |
+| Editor background insertion context menu | Adopt | Missing. | Right-click/keyboard invocation opens a viewport-safe insert menu and inserts at the intended selection. |
+| Image context menu and inspector | Adapt | Missing as a coherent surface; image insertion exists. | Selected image exposes replace, alt/caption/alignment, and delete through typed state; source bytes remain in assets. |
+| Table context menu and inspector | Adapt | Partial. Table commands and caption prompt exist as toolbar buttons. | Selected table exposes rows/columns/header/alignment/caption in contextual UI with validation and tests. |
+| Equation and Mermaid hybrid editor with preview | Adapt | Partial. Rendering and double-click equation edit exist, but edit/insert use `window.prompt`; Mermaid insert also uses `prompt`. | Dialogs validate input, show preview/error state, preserve cancel semantics, and E2E proves insert/edit. |
+| Zoom slider, 60-200%, persisted locally | Adopt | Missing. | Runtime-only zoom changes editor presentation, persists in local storage, and does not change serialized document bytes. |
+| Cursor back/forward history, mouse and Alt+arrow | Adapt | Missing. | Runtime-only cursor stack navigates valid positions after edits; keyboard coverage and serialization non-interference tests pass. |
+| Section folding and outline navigation | Adopt | Implemented initially. Fold state and outline depth are runtime-only. | Existing fold/outline E2E stays green after component extraction; no fold state appears in `document.json`. |
+| Task list | Adopt | Missing; TaskList/TaskItem extensions are not registered. | Toolbar/menu insertion, check toggle, canonical conversion, export, and round-trip tests pass with stable block IDs. |
+| Strike | Adopt | Runtime mark is available through StarterKit but has no author-facing control. | Toolbar/Bubble Menu toggles strike and round-trip/export tests pass. |
+| Paragraph/heading text alignment | Adapt | Missing for normal text; current alignment commands apply only to table cells. | Left/center/right commands affect supported text blocks and serialize only semantic `textAlign`. |
+| Normal hyperlinks | Adopt | Missing as an author workflow; current UI inserts SDoc cross-reference nodes only. | Link dialog supports add/edit/remove with URL validation and distinct cross-reference behavior. |
+| Subscript and superscript | Adopt | Missing extensions and controls. | Selection controls toggle marks and format/export round trips preserve them. |
+| Clipboard image paste | Adapt | Missing. File-picker image insertion already stores bytes in assets. | Pasted image bytes are named through a dialog, stored in `.sdoc/assets/`, inserted as a stable-ID figure, and covered by E2E. |
+| Heading Tab / Shift-Tab level change | Adopt | Missing. | Keyboard behavior changes heading level within supported bounds, keeps the block ID, and does not hijack Tab elsewhere. |
+| Figure captions/list and table captions/list | Adopt | Implemented initially, including canonical table caption and Outline projections. | Existing semantic/export/round-trip tests remain green; inspector replaces prompt-only caption editing. |
+| Cross-reference picker and diagnostics | Adapt | Implemented as a custom node/picker and advanced diagnostics, rather than plain link text rewritten on save. | Stable-ID references remain valid; normal links and internal references are clearly separated in UI. |
+| Draw.io create/import and external edit | Adapt | Implemented initially with asset-backed source and explicit conflict actions. | Contextual inspector/dialog replaces toolbar clutter; desktop smoke verifies external changes and conflict messaging. |
+| New/Open/Save/Save As and deliverable Export | Adopt | Implemented initially; browser download and desktop save-back routes are separated. | Natural new-save-reopen-export scenarios pass browser E2E and manual Tauri smoke. |
+| Desktop welcome/start screen and recent files | Adopt | Implemented initially. | Existing desktop-runtime E2E remains green; native recent reopen is included in manual smoke. |
+| Nested workspace explorer | Adapt | Missing. Adapter lists immediate `.sdoc` files only. | Typed recursive entries support expand/collapse without exposing broad filesystem access to browser mode. |
+| New document/folder, rename, trash delete/undo, refresh | Adapt | Missing except document-level New and manual refresh. | Typed commands validate workspace-relative targets; delete uses OS trash; destructive actions have feedback and tests. |
+| Workspace/file watcher | Adapt | Missing. | Tauri watcher emits typed scoped events, refreshes explorer, and surfaces dirty-document conflicts instead of overwriting. |
+| Save failure and external-change feedback | Adapt | Partial. Failures are status strings; no durable recovery/conflict surface. | Failed save retains dirty state and offers retry/Save As; external changes present reload/keep/compare choices. |
+| Draw.io conflict feedback | Adopt | Partial. Confirm dialogs and status messages exist. | A dedicated conflict dialog explains source/revision choices and never stores conflict state canonically. |
+| Native menu bar and status bar | Defer | Status information exists in the web shell; no native menu bar. | Reconsider after user review; not required if commands remain discoverable and accessible. |
+| TOC fold/unfold hierarchy and richer LOF/LOT controls | Defer | Initial outline/figure/table lists exist. | Collect user-review evidence before adding hierarchy-specific controls. |
+| VS Code custom editor distribution | Defer | Not present in this repository architecture. | Reconsider only after desktop authoring workflow is accepted. |
+| `.sdocbook` multi-document project | Defer | Not implemented. | Requires a separate canonical/project-format decision and is outside this gate. |
+| AsciiDoc/slides/PDF breadth from the old product | Defer | Current exports already include broader derived formats, but parity work does not deepen them. | Existing export tests stay green; user review decides future surface priority. |
+| Plain JSON `.sdoc` / `.tiptap.json` as user source | Reject | Current `.sdoc` ZIP and normalized `document.json` are implemented and tested. | Pack/unpack and deterministic serialization tests continue to pass; no legacy writer is added. |
+| Position-, text-slug-, or save-time-derived block identity | Reject | Stable block IDs and repair lifecycle are implemented. | ID lifecycle tests prove edits, split/merge/copy/paste/undo/redo do not replace surviving IDs. |
+| Duplicated webview/Tauri frontend mirror | Reject | Desktop already reuses the web playground frontend. | New UI components remain in the shared web app; desktop contains typed native adapters only. |
+| Git/raw JSON/schema/AI as normal-user prerequisites | Reject | Already visually demoted to Developer/advanced surfaces. | Default review scenarios complete without visiting Developer or understanding Git/JSON. |
+| Broad Tauri CSP disablement or wildcard asset scope | Reject | CSP is currently `null`, so hardening is required. | A documented non-null CSP and minimum capability set pass desktop build and native smoke. |
+
+## Ordered Delivery Slices
+
+1. **Planning baseline**: this matrix, Phase 5.1 plan alignment, progress record.
+2. **Shell extraction**: split `App.tsx` shell, toolbar, panels, dialogs without changing behavior.
+3. **Author header and command hierarchy**: inline title/core metadata, reduced default toolbar, insert menu, Bubble/context menus.
+4. **Writing essentials**: task list, strike, text alignment, normal link, sub/superscript, clipboard image paste, heading Tab/Shift-Tab.
+5. **Technical content editors**: validated equation, Mermaid, image, and table dialogs/inspectors; remove authoring `prompt()` flows.
+6. **Runtime navigation**: zoom and cursor history with explicit non-canonical tests.
+7. **Desktop explorer**: recursive typed adapter, create/rename/trash/refresh/watcher.
+8. **Recovery and security**: save/external/Draw.io conflict feedback, CSP and capability minimization.
+9. **Review gate**: full automated validation, manual Tauri checklist, and 3-5 user review checklist; stop feature expansion.
+
+Each slice updates its boundary docs and tests, then runs `npm test`, `npm run build`, and `npm run test:e2e`. Desktop slices also run `npm run typecheck:desktop` and `npm run build:desktop`. Each validated slice receives a separate commit and push.
+
+## Gate Evidence
+
+Phase 5.1 is ready for review only when:
+
+- a new document can be titled, authored, saved, reopened, and exported without Developer surfaces;
+- image, table, equation, and Mermaid creation/editing use visible validated UI rather than browser prompts;
+- common writing controls are immediately visible and advanced controls are contextual;
+- browser/native filesystem boundaries and canonical/stable-ID tests remain green;
+- desktop nested explorer, recovery feedback, watcher behavior, CSP, and capabilities have automated evidence plus a manual Tauri checklist;
+- the 3-5 user scenarios in `docs/author-first-ux-review-gate.md` are updated for the second review.
+
+At this point implementation stops and the goal is reported as **user review required**.

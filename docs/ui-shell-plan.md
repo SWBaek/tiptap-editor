@@ -2,6 +2,7 @@
 
 Created: 2026-07-02
 Realigned: 2026-07-06 after Tauri app user review
+Realigned: 2026-07-18 for Phase 5.1 existing-product experience parity
 
 ## Decision
 
@@ -64,6 +65,26 @@ Browser mode must not pretend to browse arbitrary folders. Folder listing belong
 - Add a selected-text bubble toolbar for inline marks such as bold, italic, underline, code, and link. Initial bubble toolbar is implemented for common marks and reference entry.
 - Avoid long rows of equal-weight icons.
 
+Phase 5.1 completion sharpens these rules:
+
+- Keep headings, common inline marks, lists, image, table, and one Insert entry immediately visible.
+- Move equation, Mermaid, Draw.io, data grid, section, table-structure, and external-editor operations into menus or node-contextual controls.
+- Distinguish normal hyperlinks from stable-ID SDoc cross-references.
+- Bubble/context menus must preserve selection and remain inside viewport bounds.
+- Authoring dialogs and inspectors must validate before applying; `window.prompt()` is not an accepted final editing surface.
+
+## Phase 5.1 Component Boundary
+
+`App.tsx` currently owns product state and approximately 4,600 lines of shell, toolbar, panels, dialogs, and helper UI. Split it incrementally without changing canonical conversion or desktop adapter ownership:
+
+- `components/editor-shell/`: document header, command bar, Activity Bar, side/preview layout, status.
+- `components/editor-toolbar/`: common toolbar, Insert menu, Bubble Menu, node context menus.
+- `components/panels/`: Files, Outline, Export, Settings, Review, Diagnostics, History, Developer.
+- `components/dialogs/`: link, image, table, equation, Mermaid, Draw.io choice/conflict, external-change/save recovery.
+- `hooks/` or small runtime models: zoom, cursor history, dialog/context-menu state, typed workspace event state.
+
+The web app remains the single frontend. `apps/desktop` adds only typed native adapters and Rust commands; it must not mirror React components.
+
 ## Outline And Authoring Structure
 
 The Outline surface should become a primary authoring tool:
@@ -109,3 +130,9 @@ All review filters, selected events, repaired candidates, panel expansion, and d
 9. Canonical table caption policy. Implemented.
 10. Publishing style profile selection for derived HTML/PDF exports. Implemented for v1 presets.
 11. Draw.io create/import choice with source-preserving assets. Implemented.
+12. Phase 5.1 shell/component extraction with behavior parity.
+13. Author header, reduced toolbar, Bubble Menu, insert and node context menus.
+14. Writing essentials and validated technical-content dialogs/inspectors.
+15. Runtime-only zoom/cursor navigation.
+16. Nested typed desktop explorer, recovery feedback, watcher, and security hardening.
+17. Second Tauri/manual user-review gate; stop feature work pending feedback.

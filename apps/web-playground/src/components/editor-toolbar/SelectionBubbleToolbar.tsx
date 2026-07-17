@@ -13,10 +13,11 @@ export interface SelectionBubbleToolbarProps {
   editor: Editor;
   position: BubbleToolbarPosition;
   onRunCommand: (command: BubbleSelectionCommand) => void;
+  onEditLink: () => void;
   onInsertReference: () => void;
 }
 
-export function SelectionBubbleToolbar({ editor, position, onRunCommand, onInsertReference }: SelectionBubbleToolbarProps) {
+export function SelectionBubbleToolbar({ editor, position, onRunCommand, onEditLink, onInsertReference }: SelectionBubbleToolbarProps) {
   return (
     <div
       className="selection-bubble-toolbar"
@@ -53,6 +54,9 @@ export function SelectionBubbleToolbar({ editor, position, onRunCommand, onInser
         onRunCommand("code");
       }} onClick={() => undefined}>
         <Code2 size={16} />
+      </ToolbarButton>
+      <ToolbarButton title="Edit link for selection" active={editor.isActive("link")} onClick={onEditLink}>
+        <Link2 size={16} />
       </ToolbarButton>
       <ToolbarButton title="Insert reference for selection" active={editor.isActive("crossReference")} onClick={onInsertReference}>
         <Link2 size={16} />

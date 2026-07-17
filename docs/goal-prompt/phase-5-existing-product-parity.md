@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 52
+progress_percent: 55
 current_slice: writing-essentials
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -81,6 +81,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 52
     note: "Author-header-and-command-hierarchy completed. Writing essentials started by adding canonical strike controls to the common toolbar and selection-preserving Bubble Menu with JSON/Markdown E2E assertions. npm test (268), npm run build, and npm run test:e2e (32) passed."
+  - date: 2026-07-18
+    progress_percent: 55
+    note: "Normal hyperlink dialog now supports validated add/edit/remove separately from stable-ID references. Focused tests exposed Tiptap runtime defaults leaking into link marks, so canonical conversion now retains only href and strips null/default attrs. npm test (271), npm run build, and npm run test:e2e (33) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

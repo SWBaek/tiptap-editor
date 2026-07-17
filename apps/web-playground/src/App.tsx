@@ -129,6 +129,7 @@ import { HistoryPanel } from "./components/panels/HistoryPanel";
 import { DiagnosticsPanel } from "./components/panels/DiagnosticsPanel";
 import { DeveloperPanel, type DerivedOutputName } from "./components/panels/DeveloperPanel";
 import { DiffReview, ReviewPanel } from "./components/panels/ReviewPanel";
+import { LinkDialog } from "./components/dialogs/LinkDialog";
 
 type CalloutKind = "note" | "warning";
 interface EditorHighlightOverlay {
@@ -144,6 +145,11 @@ interface DrawioExternalEditConflict {
   sourceBytes: Uint8Array;
   sourceHash?: string;
   message: string;
+}
+interface LinkDialogState {
+  from: number;
+  to: number;
+  href: string;
 }
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
@@ -203,6 +209,7 @@ export function App() {
   const [publishingStyleProfile, setPublishingStyleProfile] = useState<PublishingStyleProfileName>("modern");
   const [bubbleToolbarPosition, setBubbleToolbarPosition] = useState<BubbleToolbarPosition | null>(null);
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
+  const [linkDialog, setLinkDialog] = useState<LinkDialogState | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -316,6 +323,55 @@ export function App() {
     editor.view.dispatch(transaction.scrollIntoView());
     editor.view.focus();
     setStatusMessage(`Formatted selection: ${command}`);
+  }
+
+  function openLinkDialog() {
+    const { from, to } = editor.state.selection;
+    if (from === to) {
+      setStatusMessage("Select text to add or edit a link");
+      return;
+    }
+
+    const href = typeof editor.getAttributes("link").href === "string" ? editor.getAttributes("link").href : "";
+    setLinkDialog({ from, to, href });
+    setStatusMessage(href ? "Editing external link" : "Adding external link");
+  }
+
+  function applyLink(href: string) {
+    if (!linkDialog) {
+      return;
+    }
+
+    const linkType = editor.state.schema.marks.link;
+    if (!linkType) {
+      setLinkDialog(null);
+      setStatusMessage("Link mark is unavailable");
+      return;
+    }
+
+    const transaction = editor.state.tr
+      .removeMark(linkDialog.from, linkDialog.to, linkType)
+      .addMark(linkDialog.from, linkDialog.to, linkType.create({ href }));
+    editor.view.dispatch(transaction.scrollIntoView());
+    editor.view.focus();
+    setLinkDialog(null);
+    setActiveTab("json");
+    setStatusMessage(`Applied external link: ${href}`);
+  }
+
+  function removeLink() {
+    if (!linkDialog) {
+      return;
+    }
+
+    const linkType = editor.state.schema.marks.link;
+    if (linkType) {
+      editor.view.dispatch(editor.state.tr.removeMark(linkDialog.from, linkDialog.to, linkType).scrollIntoView());
+      editor.view.focus();
+    }
+    setLinkDialog(null);
+    setActiveTab("json");
+    setStatusMessage("Removed external link");
   }
 
   const validation = validateDocument(document);
@@ -1873,6 +1929,7 @@ export function App() {
             hasCollapsedSections: collapsedHeadingIds.size > 0,
             hasDrawioSession: drawioBridgeSession !== null,
             onInsertImage: () => imageInputRef.current?.click(),
+            onEditLink: openLinkDialog,
             onInsertReference: openReferencePicker,
             onInsertTable: insertTable,
             onApplyCallout: applyCallout,
@@ -1919,6 +1976,7 @@ export function App() {
                 editor={editor}
                 position={bubbleToolbarPosition}
                 onRunCommand={runBubbleSelectionCommand}
+                onEditLink={openLinkDialog}
                 onInsertReference={openReferencePicker}
               />
             )}
@@ -1979,6 +2037,18 @@ export function App() {
           </>
         )}
       </section>
+      {linkDialog && (
+        <LinkDialog
+          initialHref={linkDialog.href}
+          onApply={applyLink}
+          onRemove={removeLink}
+          onCancel={() => {
+            setLinkDialog(null);
+            editor.view.focus();
+            setStatusMessage("Canceled external link edit");
+          }}
+        />
+      )}
     </main>
   );
 }

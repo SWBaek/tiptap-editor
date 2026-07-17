@@ -137,6 +137,43 @@ test("applies selected text formatting through the bubble toolbar", async ({ pag
   await expect(page.locator(".preview-output")).toContainText("~~");
 });
 
+test("adds, edits, validates, and removes normal links separately from references", async ({ page }) => {
+  await page.goto("/");
+  const firstParagraph = page.locator(".editor-surface p").first();
+  await firstParagraph.click({ clickCount: 3 });
+  await page.getByLabel("Selected text formatting").getByRole("button", { name: "Edit link for selection" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Add link" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("URL").fill("javascript:alert(1)");
+  await expect(dialog.getByText("Use an http, https, or mailto URL")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Apply link" })).toBeDisabled();
+  await dialog.getByLabel("URL").fill("https://example.com/spec");
+  await dialog.getByRole("button", { name: "Apply link" }).click();
+  await expect(page.locator(".status-note")).toContainText("Applied external link");
+
+  let document = await readPreviewDocument(page);
+  expect(JSON.stringify(document)).toContain('"type":"link","attrs":{"href":"https://example.com/spec"}');
+  expect(JSON.stringify(document)).not.toContain("crossReference");
+  await selectPreviewTab(page, "Markdown");
+  await expect(page.locator(".preview-output")).toContainText("](https://example.com/spec)");
+
+  await firstParagraph.click({ clickCount: 3 });
+  await page.getByRole("button", { name: "Link", exact: true }).click();
+  const editDialog = page.getByRole("dialog", { name: "Edit link" });
+  await expect(editDialog.getByLabel("URL")).toHaveValue("https://example.com/spec");
+  await editDialog.getByLabel("URL").fill("https://example.com/revised");
+  await editDialog.getByRole("button", { name: "Apply link" }).click();
+  document = await readPreviewDocument(page);
+  expect(JSON.stringify(document)).toContain("https://example.com/revised");
+
+  await firstParagraph.click({ clickCount: 3 });
+  await page.getByRole("button", { name: "Link", exact: true }).click();
+  await page.getByRole("dialog", { name: "Edit link" }).getByRole("button", { name: "Remove link" }).click();
+  document = await readPreviewDocument(page);
+  expect(JSON.stringify(document)).not.toContain('"type":"link"');
+});
+
 test("uses viewport-safe runtime editor and table context menus", async ({ page }) => {
   await page.goto("/");
   await selectPreviewTab(page, "JSON");

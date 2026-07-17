@@ -1142,10 +1142,10 @@ function toSdocNode(node: JSONContent): SDocNode {
   }
 
   if (node.marks && node.marks.length > 0) {
-    sdocNode.marks = node.marks.map((mark) => ({
-      type: mark.type,
-      attrs: mark.attrs as Record<string, never> | undefined
-    }));
+    sdocNode.marks = node.marks.map((mark) => {
+      const attrs = getCanonicalMarkAttrs(mark.type, mark.attrs);
+      return attrs ? { type: mark.type, attrs } : { type: mark.type };
+    });
   }
 
   if (node.content && node.content.length > 0) {
@@ -1205,6 +1205,20 @@ function getCanonicalAttrs(node: JSONContent): Record<string, JsonValue> | undef
     }
   }
   return attrs;
+}
+
+function getCanonicalMarkAttrs(type: string, markAttrs: Record<string, any> | undefined): Record<string, JsonValue> | undefined {
+  if (!markAttrs) {
+    return undefined;
+  }
+
+  if (type === "link") {
+    const href = markAttrs.href;
+    return typeof href === "string" && href.length > 0 ? { href } : undefined;
+  }
+
+  const attrs = Object.fromEntries(Object.entries(markAttrs).filter(([, value]) => value !== null && value !== undefined)) as Record<string, JsonValue>;
+  return Object.keys(attrs).length > 0 ? attrs : undefined;
 }
 
 function getEditorAttrs(node: SDocNode, assetSources: Record<string, string>): Record<string, JsonValue> | undefined {

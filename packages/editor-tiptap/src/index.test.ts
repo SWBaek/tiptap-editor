@@ -119,6 +119,42 @@ describe("SDoc conversion", () => {
     });
   });
 
+  it("normalizes link marks without editor-runtime defaults or null attrs", () => {
+    const document = toSdocDocument(
+      {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            attrs: { id: "blk_link" },
+            content: [
+              {
+                type: "text",
+                text: "Specification",
+                marks: [
+                  {
+                    type: "link",
+                    attrs: {
+                      href: "https://example.com/spec",
+                      target: "_blank",
+                      rel: "noopener noreferrer nofollow",
+                      class: null,
+                      title: null
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "doc_link"
+    );
+
+    expect(document.content[0].content?.[0].marks).toEqual([{ type: "link", attrs: { href: "https://example.com/spec" } }]);
+    expect(JSON.stringify(document)).not.toContain("null");
+  });
+
   it("preserves callout kind across SDoc conversion", () => {
     const document = toSdocDocument(
       {

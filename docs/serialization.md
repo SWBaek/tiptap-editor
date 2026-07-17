@@ -13,6 +13,7 @@ SDoc serialization은 같은 semantic document가 항상 같은 canonical `docum
 - object key는 deterministic order로 정렬한다.
 - `document.json`의 루트는 `schemaVersion`, `type`, `attrs`, `content`를 가진다.
 - `attrs`의 `undefined`와 `null`은 저장하지 않는다.
+- Mark attrs follow the same rule. Editor-runtime defaults are removed during normalization; a v1 `link` mark stores its authored `href` rather than Tiptap defaults such as `target`, `rel`, `class`, or null `title`.
 - 빈 문자열은 의미 있는 값일 수 있으므로 보존한다.
 - runtime-only state는 저장하지 않는다.
 
@@ -49,4 +50,3 @@ Phase 1 Tiptap 통합 시 중복 ID 해결 정책은 다음으로 고정한다.
 - block-level ID 존재와 중복 없음
 - v1에서 허용한 node/mark만 사용
 - cross-reference의 `targetId` 존재 여부는 diff/export 단계에서 별도 점검
-

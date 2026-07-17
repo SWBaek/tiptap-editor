@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Editor } from "@tiptap/core";
 import type { AdvancedTableCommand, BlockMoveDirection, TableCellAlignment } from "@sdoc/editor-tiptap";
 import {
@@ -23,6 +24,7 @@ import {
   Link2,
   List,
   ListOrdered,
+  Menu,
   Quote,
   RefreshCw,
   Rows3,
@@ -30,7 +32,8 @@ import {
   Table,
   Trash2,
   Underline,
-  Workflow
+  Workflow,
+  Wrench
 } from "lucide-react";
 import { ToolbarButton } from "./ToolbarButton";
 
@@ -115,22 +118,25 @@ export function EditorToolbarGroups({
         </ToolbarButton>
       </div>
 
-      <div className="toolbar-group primary" aria-label="Insert tools">
+      <div className="toolbar-group primary" aria-label="Common insert tools">
         <span className="toolbar-group-label">Insert</span>
+        <ToolbarButton title="Insert image" active={editor.isActive("figure")} onClick={onInsertImage}>
+          <Image size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={onInsertTable}>
+          <Table size={18} />
+        </ToolbarButton>
+      </div>
+
+      <ToolbarMenu label="More insert" icon={<Menu size={17} />}>
         <ToolbarButton title="Blockquote" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
           <Quote size={18} />
         </ToolbarButton>
         <ToolbarButton title="Code block" active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
           <Code2 size={18} />
         </ToolbarButton>
-        <ToolbarButton title="Insert image" active={editor.isActive("figure")} onClick={onInsertImage}>
-          <Image size={18} />
-        </ToolbarButton>
         <ToolbarButton title="Insert reference" active={editor.isActive("crossReference")} onClick={onInsertReference}>
           <Link2 size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={onInsertTable}>
-          <Table size={18} />
         </ToolbarButton>
         <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => onApplyCallout("note")}>
           <Info size={18} />
@@ -138,61 +144,8 @@ export function EditorToolbarGroups({
         <ToolbarButton title="Warning callout" active={editor.isActive("callout", { kind: "warning" })} onClick={() => onApplyCallout("warning")}>
           <AlertTriangle size={18} />
         </ToolbarButton>
-      </div>
-
-      <div className="toolbar-group advanced" aria-label="Structure tools">
-        <span className="toolbar-group-label">Structure</span>
-        <ToolbarButton title="Fold section" onClick={onFoldSection}>
-          <ChevronRight size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Unfold section" onClick={onUnfoldSection}>
-          <ChevronDown size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Unfold all sections" active={hasCollapsedSections} onClick={onUnfoldAllSections}>
-          <List size={18} />
-        </ToolbarButton>
         <ToolbarButton title="Insert data grid" active={editor.isActive("dataGrid")} onClick={onInsertDataGrid}>
           <FileJson size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Move block up" onClick={() => onMoveBlock("up")}>
-          <ArrowUp size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Move block down" onClick={() => onMoveBlock("down")}>
-          <ArrowDown size={18} />
-        </ToolbarButton>
-      </div>
-
-      <div className="toolbar-group advanced" aria-label="Table and advanced insertion tools">
-        <span className="toolbar-group-label">Advanced</span>
-        <ToolbarButton title="Add row after" active={editor.isActive("table")} onClick={() => onRunTableCommand("addRowAfter", "Added table row")}>
-          <Rows3 size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Add column after" active={editor.isActive("table")} onClick={() => onRunTableCommand("addColumnAfter", "Added table column")}>
-          <Columns3 size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Delete row" active={editor.isActive("table")} onClick={() => onRunTableCommand("deleteRow", "Deleted table row")}>
-          <Rows3 size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Delete column" active={editor.isActive("table")} onClick={() => onRunTableCommand("deleteColumn", "Deleted table column")}>
-          <Columns3 size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Toggle header row" active={editor.isActive("table")} onClick={() => onRunTableCommand("toggleHeaderRow", "Toggled header row")}>
-          <Table size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Edit table caption" active={editor.isActive("table")} onClick={onEditTableCaption}>
-          <FileText size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Toggle header column" active={editor.isActive("table")} onClick={() => onRunTableCommand("toggleHeaderColumn", "Toggled header column")}>
-          <Table size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Align table cell left" active={editor.isActive("tableCell", { align: "left" }) || editor.isActive("tableHeader", { align: "left" })} onClick={() => onAlignTableCells("left")}>
-          <AlignLeft size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Align table cell center" active={editor.isActive("tableCell", { align: "center" }) || editor.isActive("tableHeader", { align: "center" })} onClick={() => onAlignTableCells("center")}>
-          <AlignCenter size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Align table cell right" active={editor.isActive("tableCell", { align: "right" }) || editor.isActive("tableHeader", { align: "right" })} onClick={() => onAlignTableCells("right")}>
-          <AlignRight size={18} />
         </ToolbarButton>
         <ToolbarButton title="Insert inline equation" active={editor.isActive("equation")} onClick={onInsertInlineEquation}>
           <Sigma size={18} />
@@ -209,17 +162,111 @@ export function EditorToolbarGroups({
         <ToolbarButton title="Insert Draw.io diagram" active={editor.isActive("diagram", { kind: "drawio" })} onClick={onInsertDrawio}>
           <FileJson size={18} />
         </ToolbarButton>
-        <ToolbarButton title="Open Draw.io external editor" active={hasDrawioSession} onClick={onOpenDrawioEditor}>
-          <ExternalLink size={18} />
+      </ToolbarMenu>
+
+      <ToolbarMenu label="Structure" icon={<Wrench size={17} />} active={hasCollapsedSections}>
+        <ToolbarButton title="Fold section" onClick={onFoldSection}>
+          <ChevronRight size={18} />
         </ToolbarButton>
-        <ToolbarButton title="Read Draw.io external edit" active={hasDrawioSession} onClick={onReadDrawioEdit}>
-          <RefreshCw size={18} />
+        <ToolbarButton title="Unfold section" onClick={onUnfoldSection}>
+          <ChevronDown size={18} />
         </ToolbarButton>
-        <ToolbarButton title="Close Draw.io external edit" active={hasDrawioSession} onClick={onCloseDrawioEdit}>
-          <Trash2 size={18} />
+        <ToolbarButton title="Unfold all sections" active={hasCollapsedSections} onClick={onUnfoldAllSections}>
+          <List size={18} />
         </ToolbarButton>
-      </div>
+        <ToolbarButton title="Move block up" onClick={() => onMoveBlock("up")}>
+          <ArrowUp size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Move block down" onClick={() => onMoveBlock("down")}>
+          <ArrowDown size={18} />
+        </ToolbarButton>
+      </ToolbarMenu>
+
+      {editor.isActive("table") && (
+        <ToolbarMenu label="Table tools" icon={<Table size={17} />} active>
+          <ToolbarButton title="Add row after" active onClick={() => onRunTableCommand("addRowAfter", "Added table row")}>
+            <Rows3 size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Add column after" active onClick={() => onRunTableCommand("addColumnAfter", "Added table column")}>
+            <Columns3 size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Delete row" active onClick={() => onRunTableCommand("deleteRow", "Deleted table row")}>
+            <Rows3 size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Delete column" active onClick={() => onRunTableCommand("deleteColumn", "Deleted table column")}>
+            <Columns3 size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Toggle header row" active onClick={() => onRunTableCommand("toggleHeaderRow", "Toggled header row")}>
+            <Table size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Toggle header column" active onClick={() => onRunTableCommand("toggleHeaderColumn", "Toggled header column")}>
+            <Table size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Edit table caption" active onClick={onEditTableCaption}>
+            <FileText size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Align table cell left" active={editor.isActive("tableCell", { align: "left" }) || editor.isActive("tableHeader", { align: "left" })} onClick={() => onAlignTableCells("left")}>
+            <AlignLeft size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Align table cell center" active={editor.isActive("tableCell", { align: "center" }) || editor.isActive("tableHeader", { align: "center" })} onClick={() => onAlignTableCells("center")}>
+            <AlignCenter size={18} />
+          </ToolbarButton>
+          <ToolbarButton title="Align table cell right" active={editor.isActive("tableCell", { align: "right" }) || editor.isActive("tableHeader", { align: "right" })} onClick={() => onAlignTableCells("right")}>
+            <AlignRight size={18} />
+          </ToolbarButton>
+        </ToolbarMenu>
+      )}
+
+      {(editor.isActive("diagram", { kind: "drawio" }) || hasDrawioSession) && (
+        <ToolbarMenu label="Draw.io tools" icon={<Workflow size={17} />} active>
+          <ToolbarButton title="Open Draw.io external editor" active onClick={onOpenDrawioEditor}>
+            <ExternalLink size={18} />
+          </ToolbarButton>
+          {hasDrawioSession && (
+            <>
+              <ToolbarButton title="Read Draw.io external edit" active onClick={onReadDrawioEdit}>
+                <RefreshCw size={18} />
+              </ToolbarButton>
+              <ToolbarButton title="Close Draw.io external edit" active onClick={onCloseDrawioEdit}>
+                <Trash2 size={18} />
+              </ToolbarButton>
+            </>
+          )}
+        </ToolbarMenu>
+      )}
+
       <div className="toolbar-spacer" />
     </>
+  );
+}
+
+interface ToolbarMenuProps {
+  label: string;
+  icon: ReactNode;
+  active?: boolean;
+  children: ReactNode;
+}
+
+function ToolbarMenu({ label, icon, active = false, children }: ToolbarMenuProps) {
+  return (
+    <details className={active ? "toolbar-menu active" : "toolbar-menu"}>
+      <summary title={label} aria-label={`${label} menu`}>
+        {icon}
+        <span>{label}</span>
+        <ChevronDown size={14} />
+      </summary>
+      <div
+        className="toolbar-menu-popover"
+        role="group"
+        aria-label={`${label} commands`}
+        onClick={(event) => {
+          if (event.target instanceof Element && event.target.closest("button")) {
+            event.currentTarget.parentElement?.removeAttribute("open");
+          }
+        }}
+      >
+        {children}
+      </div>
+    </details>
   );
 }

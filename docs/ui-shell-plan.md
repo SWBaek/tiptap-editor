@@ -109,6 +109,14 @@ Author-header progress on 2026-07-18:
 - Settings continues to expose the same metadata as a secondary configuration surface, not the only path for routine authorship.
 - Responsive layout keeps title full-width and author/version compact on narrow viewports.
 
+Command-hierarchy progress on 2026-07-18:
+
+- The default toolbar keeps heading, emphasis, lists, image, and table commands immediately visible.
+- `More insert` contains blockquote, code block, stable-ID cross-reference, callout, data-grid, equation, Mermaid, and Draw.io creation commands with visible text labels.
+- `Structure` contains fold/unfold and stable-ID-preserving block movement.
+- `Table tools` appears only while a table is active; `Draw.io tools` appears for a selected Draw.io node or active external-edit session.
+- Menu open/closed state is DOM/runtime state and is never serialized.
+
 ## Outline And Authoring Structure
 
 The Outline surface should become a primary authoring tool:

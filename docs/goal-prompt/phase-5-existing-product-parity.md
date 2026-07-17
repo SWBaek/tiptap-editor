@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 46
+progress_percent: 49
 current_slice: author-header-and-command-hierarchy
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -75,6 +75,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 46
     note: "Default toolbar was reduced to common writing/image/table controls; technical insert, structure, table, and Draw.io commands moved into labeled runtime-only menus. E2E exposed overlay interception, so command selection now closes menus automatically. Final npm test (268), npm run build, and npm run test:e2e (31) passed."
+  - date: 2026-07-18
+    progress_percent: 49
+    note: "Viewport-safe runtime editor context menu added with clicked-selection restoration, insertion commands, contextual table actions, and equation edit entry. npm test (268), npm run build, and npm run test:e2e (32) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

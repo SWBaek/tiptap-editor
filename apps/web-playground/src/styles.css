@@ -1933,6 +1933,53 @@ button {
   white-space: nowrap;
 }
 
+.editor-context-menu {
+  position: fixed;
+  z-index: 70;
+  display: grid;
+  gap: 2px;
+  width: 222px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #c7d1da;
+  border-radius: 8px;
+  box-shadow: 0 14px 36px rgba(24, 38, 51, 0.24);
+}
+
+.editor-context-menu button {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  padding: 5px 8px;
+  color: #263643;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.editor-context-menu button:hover,
+.editor-context-menu button:focus-visible {
+  background: #edf3f6;
+  outline: none;
+}
+
+.editor-context-menu button.danger {
+  color: #a43f3f;
+}
+
+.editor-context-menu button span {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .toolbar-spacer {
   flex: 1 1 auto;
 }

@@ -117,6 +117,13 @@ Command-hierarchy progress on 2026-07-18:
 - `Table tools` appears only while a table is active; `Draw.io tools` appears for a selected Draw.io node or active external-edit session.
 - Menu open/closed state is DOM/runtime state and is never serialized.
 
+Context-menu progress on 2026-07-18:
+
+- Right-click inside the editor restores the clicked ProseMirror selection before opening a viewport-clamped runtime menu.
+- Background content exposes image, table, reference, equation, and Mermaid insertion.
+- Active tables expose caption and guarded row/column actions; selected equations expose the existing edit command.
+- Outside pointer input and Escape close the menu, and context-menu state never enters canonical JSON.
+
 ## Outline And Authoring Structure
 
 The Outline surface should become a primary authoring tool:

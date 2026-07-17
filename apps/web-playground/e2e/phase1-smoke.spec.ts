@@ -132,6 +132,43 @@ test("applies selected text formatting through the bubble toolbar", async ({ pag
   expect(JSON.stringify(paragraph)).toContain('"type":"bold"');
 });
 
+test("uses viewport-safe runtime editor and table context menus", async ({ page }) => {
+  await page.goto("/");
+  await selectPreviewTab(page, "JSON");
+  const beforeMenu = await readPreviewDocument(page);
+
+  await page.locator(".editor-surface p").first().click({ button: "right" });
+  const insertMenu = page.getByRole("menu", { name: "Insert context menu" });
+  await expect(insertMenu).toBeVisible();
+  const menuBox = await insertMenu.boundingBox();
+  expect(menuBox).not.toBeNull();
+  expect(menuBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+  expect(menuBox?.y ?? -1).toBeGreaterThanOrEqual(0);
+  expect((menuBox?.x ?? 0) + (menuBox?.width ?? 0)).toBeLessThanOrEqual(1280);
+  expect((menuBox?.y ?? 0) + (menuBox?.height ?? 0)).toBeLessThanOrEqual(720);
+
+  await page.keyboard.press("Escape");
+  await expect(insertMenu).toBeHidden();
+  expect(await readPreviewDocument(page)).toEqual(beforeMenu);
+
+  await page.locator(".editor-surface p").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Insert table" }).click();
+  await expect(page.locator(".status-note")).toContainText("Inserted table");
+  await expect(insertMenu).toBeHidden();
+
+  await page.locator(".editor-surface th").first().click({ button: "right" });
+  const tableMenu = page.getByRole("menu", { name: "Table context menu" });
+  await expect(tableMenu).toBeVisible();
+  await tableMenu.getByRole("menuitem", { name: "Add row after" }).click();
+  await expect(page.locator(".status-note")).toContainText("Added table row");
+  await expect(tableMenu).toBeHidden();
+
+  const document = await readPreviewDocument(page);
+  expect(findFirstNodeByType(document, "table").content).toHaveLength(4);
+  expect(JSON.stringify(document)).not.toContain("contextMenu");
+  expectUniqueIds(collectBlockIds(document));
+});
+
 test("uses the Review side panel for diff workflow controls", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Title", { exact: true }).fill("Review Panel Spec");

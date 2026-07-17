@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -119,6 +119,7 @@ import { DocumentCommandBar } from "./components/editor-shell/DocumentCommandBar
 import { PreviewTabButton as TabButton } from "./components/editor-shell/PreviewTabButton";
 import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry } from "./components/editor-shell/types";
 import { EditorToolbar } from "./components/editor-toolbar/EditorToolbar";
+import { EditorContextMenu, type EditorContextMenuKind, type EditorContextMenuState } from "./components/editor-toolbar/EditorContextMenu";
 import { SelectionBubbleToolbar, type BubbleToolbarPosition, type BubbleSelectionCommand } from "./components/editor-toolbar/SelectionBubbleToolbar";
 import { SettingsPanel, type HeadingNumberingSettings } from "./components/panels/SettingsPanel";
 import { OutlinePanel, type AuthorFigureItem, type AuthorOutlineItem, type AuthorTableItem } from "./components/panels/OutlinePanel";
@@ -201,6 +202,7 @@ export function App() {
   const [outlineDepth, setOutlineDepth] = useState(3);
   const [publishingStyleProfile, setPublishingStyleProfile] = useState<PublishingStyleProfileName>("modern");
   const [bubbleToolbarPosition, setBubbleToolbarPosition] = useState<BubbleToolbarPosition | null>(null);
+  const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -1561,6 +1563,36 @@ export function App() {
     }
   }
 
+  function handleEditorPaneContextMenu(event: ReactMouseEvent<HTMLElement>) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target || !target.closest(".editor-surface")) {
+      return;
+    }
+
+    const equationElement = target.closest<HTMLElement>("[data-type='equation'], [data-type='equationBlock']");
+    const kind: EditorContextMenuKind = equationElement ? "equation" : target.closest("table") ? "table" : "editor";
+    if (equationElement) {
+      const position = findEquationPositionFromElement(editor, equationElement);
+      if (position !== null) {
+        editor.commands.setNodeSelection(position);
+      }
+    } else {
+      const position = editor.view.posAtCoords({ left: event.clientX, top: event.clientY });
+      if (position) {
+        editor.commands.setTextSelection(position.pos);
+      }
+    }
+
+    event.preventDefault();
+    const menuWidth = 230;
+    const menuHeight = kind === "editor" ? 250 : kind === "table" ? 210 : 50;
+    setEditorContextMenu({
+      kind,
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8))
+    });
+  }
+
   function insertMermaidDiagramFromPrompt() {
     const source = window.prompt("Mermaid diagram", "flowchart TD\nA[Start] --> B[Done]")?.trim();
     if (!source) {
@@ -1877,7 +1909,7 @@ export function App() {
         />
 
         <div className={isPreviewOpen ? "editor-grid" : "editor-grid preview-collapsed"}>
-          <section className="editor-pane" ref={editorPaneRef} onDoubleClick={handleEditorPaneDoubleClick}>
+          <section className="editor-pane" ref={editorPaneRef} onDoubleClick={handleEditorPaneDoubleClick} onContextMenu={handleEditorPaneContextMenu}>
             {foldRuntimeCss && <style data-sdoc-fold-runtime>{foldRuntimeCss}</style>}
             {headingNumberRuntimeCss && <style data-sdoc-heading-number-runtime>{headingNumberRuntimeCss}</style>}
             {brokenReferenceRuntimeCss && <style data-sdoc-broken-reference-runtime>{brokenReferenceRuntimeCss}</style>}
@@ -1888,6 +1920,24 @@ export function App() {
                 position={bubbleToolbarPosition}
                 onRunCommand={runBubbleSelectionCommand}
                 onInsertReference={openReferencePicker}
+              />
+            )}
+            {editorContextMenu && (
+              <EditorContextMenu
+                state={editorContextMenu}
+                onClose={() => setEditorContextMenu(null)}
+                onInsertImage={() => imageInputRef.current?.click()}
+                onInsertReference={openReferencePicker}
+                onInsertTable={insertTable}
+                onInsertInlineEquation={insertInlineEquationFromPrompt}
+                onInsertEquationBlock={insertEquationBlockFromPrompt}
+                onInsertMermaid={insertMermaidDiagramFromPrompt}
+                onEditEquation={editSelectedEquationFromPrompt}
+                onEditTableCaption={editSelectedTableCaptionFromPrompt}
+                onAddTableRow={() => runTableCommand("addRowAfter", "Added table row")}
+                onAddTableColumn={() => runTableCommand("addColumnAfter", "Added table column")}
+                onDeleteTableRow={() => runTableCommand("deleteRow", "Deleted table row")}
+                onDeleteTableColumn={() => runTableCommand("deleteColumn", "Deleted table column")}
               />
             )}
             <EditorContent editor={editor} />

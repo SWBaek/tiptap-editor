@@ -11,13 +11,11 @@ import {
   FilePlus,
   FileText,
   FolderOpen,
-  History as HistoryIcon,
   Info,
   Link2,
   Save,
   Search,
-  Settings,
-  Trash2
+  Settings
 } from "lucide-react";
 import {
   applyDiffEventAcceptanceToBaseline,
@@ -145,6 +143,7 @@ import { SettingsPanel, type HeadingNumberingSettings } from "./components/panel
 import { OutlinePanel, type AuthorFigureItem, type AuthorOutlineItem, type AuthorTableItem } from "./components/panels/OutlinePanel";
 import { ExportAction, ExportPanel } from "./components/panels/ExportPanel";
 import { FilesPanel } from "./components/panels/FilesPanel";
+import { HistoryPanel } from "./components/panels/HistoryPanel";
 
 type CalloutKind = "note" | "warning";
 type DerivedOutputName = "plain.md" | "chunks.jsonl" | "outline.json" | "references.json";
@@ -2576,129 +2575,6 @@ function DiffReview({
   );
 }
 
-function HistoryPanel({
-  entries,
-  selectedId,
-  onSaveSnapshot,
-  onCompareSnapshot,
-  onDeleteSnapshot,
-  onRenameSnapshot,
-  onCompareSavedBaseline
-}: {
-  entries: LocalHistoryEntry[];
-  selectedId: string | null;
-  onSaveSnapshot: () => void;
-  onCompareSnapshot: (entryId: string) => void;
-  onDeleteSnapshot: (entryId: string) => void;
-  onRenameSnapshot: (entryId: string, title: string) => void;
-  onCompareSavedBaseline: () => void;
-}) {
-  return (
-    <div className="history-panel">
-      <div className="history-toolbar">
-        <button className="history-primary" type="button" onClick={onSaveSnapshot} aria-label="Save history snapshot">
-          <Save size={16} />
-          <span>Save snapshot</span>
-        </button>
-        <button className="history-secondary" type="button" onClick={onCompareSavedBaseline}>
-          Saved baseline
-        </button>
-      </div>
-
-      {entries.length === 0 ? (
-        <div className="history-empty">
-          <HistoryIcon size={22} />
-          <span>No snapshots</span>
-        </div>
-      ) : (
-        <div className="history-list">
-          {entries.map((entry) => (
-            <HistoryEntryCard
-              entry={entry}
-              key={entry.id}
-              selected={entry.id === selectedId}
-              onCompareSnapshot={onCompareSnapshot}
-              onDeleteSnapshot={onDeleteSnapshot}
-              onRenameSnapshot={onRenameSnapshot}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function HistoryEntryCard({
-  entry,
-  selected,
-  onCompareSnapshot,
-  onDeleteSnapshot,
-  onRenameSnapshot
-}: {
-  entry: LocalHistoryEntry;
-  selected: boolean;
-  onCompareSnapshot: (entryId: string) => void;
-  onDeleteSnapshot: (entryId: string) => void;
-  onRenameSnapshot: (entryId: string, title: string) => void;
-}) {
-  const [draftTitle, setDraftTitle] = useState(entry.title);
-  const skipCommitRef = useRef(false);
-
-  useEffect(() => {
-    setDraftTitle(entry.title);
-  }, [entry.id, entry.title]);
-
-  function commitRename() {
-    if (skipCommitRef.current) {
-      skipCommitRef.current = false;
-      return;
-    }
-
-    if (draftTitle !== entry.title) {
-      onRenameSnapshot(entry.id, draftTitle);
-    }
-  }
-
-  return (
-    <article className={selected ? "history-item selected" : "history-item"}>
-      <div className="history-entry-main">
-        <input
-          aria-label="Snapshot name"
-          className="history-title-input"
-          value={draftTitle}
-          onBlur={commitRename}
-          onChange={(event) => setDraftTitle(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.currentTarget.blur();
-            }
-            if (event.key === "Escape") {
-              skipCommitRef.current = true;
-              setDraftTitle(entry.title);
-              event.currentTarget.blur();
-            }
-          }}
-        />
-        <span>{formatHistoryTime(entry.createdAt)}</span>
-      </div>
-      <div className="history-actions">
-        <button type="button" onClick={() => onCompareSnapshot(entry.id)}>
-          Compare
-        </button>
-        <button
-          className="history-delete"
-          type="button"
-          title={`Delete ${entry.title}`}
-          aria-label={`Delete history snapshot ${entry.title}`}
-          onClick={() => onDeleteSnapshot(entry.id)}
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
-    </article>
-  );
-}
-
 function DiagnosticsPanel({
   diagnostics,
   traceability,
@@ -3471,15 +3347,6 @@ function formatBytes(value: string): string {
   }
 
   return `${(bytes / 1024).toFixed(1)} KB`;
-}
-
-function formatHistoryTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
 }
 
 function createImageAssetId(filename: string, mimeType: string): string {

@@ -2,7 +2,7 @@
 
 Created: 2026-07-18
 Target: Phase 5.2 Explorer-First Authoring Workbench
-Status: implementation in progress; Slice 1 accepted, Slice 2 next
+Status: implementation in progress; Slices 1-2 accepted, Slice 3 next
 
 ## 1. Purpose
 
@@ -392,6 +392,8 @@ Required checks:
 - path-identity fix, ARIA tree model, roving focus and keyboard navigation.
 - inline create/rename, context menu, auto reveal, Collapse All, natural folders-first sort.
 - keep Tauri validation, symlink, depth, dirty-delete, watcher and browser boundaries unchanged.
+
+Accepted 2026-07-18. The tree now uses normalized full-path identity and folders-first natural ordering, exposes `tree`/`treeitem`/`group` semantics with one roving tab stop, supports arrows/Home/End/Enter/F2/Delete/Shift+F10/Escape, and performs create/rename inline. Current documents reveal their ancestor folders, Collapse All is explicit, and pointer/keyboard context menus share the same actions. The existing typed adapter, safe Trash confirmation, dirty-document guard, watcher feedback, and browser boundary remain in place. Evidence: four focused tree-model unit tests, the desktop bridge Playwright workflow, `npm test` (307), `npm run build`, and `npm run test:e2e` (40).
 
 ### Slice 3: Activity Bar and panel consolidation
 

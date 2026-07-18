@@ -134,6 +134,8 @@
 
 ## Phase 5.2: Explorer-First Authoring Workbench
 
+Implementation evidence: Slices 1-2 are accepted. Explorer visual declutter and accessible desktop tree interactions are complete; Activity Bar and panel consolidation is next. The accepted tree uses normalized full-path identity, natural folders-first ordering, ARIA/roving keyboard navigation, inline create/rename, context menus, current-document reveal, and Collapse All while preserving the Tauri/browser boundary.
+
 상태: 진행 중. `docs/editor-workbench-ux-improvement-guide.md`의 확정 정보구조와 8개 ordered slice를 따른다.
 
 목표는 Phase 5.1 기능을 유지하면서 Explorer를 파일 트리 중심으로 재구성하고, Activity Bar·Review·Settings·Export·document header·toolbar·status/recovery feedback을 일반 작성자 중심으로 통합하는 것이다. canonical `.sdoc`, stable block ID, asset, browser/Tauri 경계는 변경하지 않는다.

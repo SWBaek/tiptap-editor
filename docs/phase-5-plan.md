@@ -60,6 +60,8 @@ Status: in progress from the accepted Phase 5.1 UX review. `docs/editor-workbenc
 
 Phase 5.2 removes the remaining management-dashboard character without adding new canonical document features. The ordered work is Explorer declutter and accessible tree behavior, Activity/panel consolidation, document-header and toolbar command cleanup, Status Bar/recovery relocation, normal-user Settings/Export/browser language, and responsive/accessibility hardening. Each bounded slice preserves the typed Tauri adapter, browser boundary, canonical JSON, asset ownership, and stable IDs and ends in a separate validated commit/push.
 
+Slices 1-2 are accepted. Files is now a compact tree-first surface, and its desktop tree uses full-path identity, folders-first natural ordering, ARIA tree semantics, roving keyboard focus, inline create/rename, shared context actions, active-document reveal, and Collapse All. Slice 3 next consolidates the Activity Bar and secondary panels without changing document or adapter contracts.
+
 The phase stops at a refreshed packaged-app and 3-5-person review gate. It reports `user review required`; it does not claim human acceptance without recorded sessions.
 
 ## Priority Slice 1: Desktop Workspace Entry

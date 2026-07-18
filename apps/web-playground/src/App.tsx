@@ -163,11 +163,7 @@ import {
   type FigureAlignment,
   type ImageInspectorValues
 } from "./components/dialogs/ImageInspectorDialog";
-import {
-  WorkspaceCreateDialog,
-  type WorkspaceCreateKind,
-  type WorkspaceCreateValues
-} from "./components/dialogs/WorkspaceCreateDialog";
+import type { WorkspaceCreateKind } from "./components/dialogs/WorkspaceCreateDialog";
 import {
   WorkspaceEntryActionDialog,
   type WorkspaceEntryAction
@@ -223,11 +219,6 @@ interface ImageInspectorState {
   alt: string;
   caption: string;
   alignment: FigureAlignment;
-}
-
-interface WorkspaceCreateDialogState {
-  parent: WindowSdocWorkspaceEntry | null;
-  kind: WorkspaceCreateKind;
 }
 
 interface WorkspaceEntryActionDialogState {
@@ -301,7 +292,6 @@ export function App() {
   const [mermaidDialog, setMermaidDialog] = useState<MermaidDialogState | null>(null);
   const [tableDialog, setTableDialog] = useState<TableDialogState | null>(null);
   const [imageInspector, setImageInspector] = useState<ImageInspectorState | null>(null);
-  const [workspaceCreateDialog, setWorkspaceCreateDialog] = useState<WorkspaceCreateDialogState | null>(null);
   const [workspaceEntryActionDialog, setWorkspaceEntryActionDialog] = useState<WorkspaceEntryActionDialogState | null>(null);
   const [workspaceExternalChange, setWorkspaceExternalChange] = useState<WindowSdocWorkspaceWatchEvent | null>(null);
   const [externalDocumentComparison, setExternalDocumentComparison] = useState<OpenDocumentResult | null>(null);
@@ -965,51 +955,50 @@ export function App() {
     }
   }
 
-  function openWorkspaceCreateDialog(parent: WindowSdocWorkspaceEntry | null, kind: WorkspaceCreateKind) {
+  async function createWorkspaceEntry(
+    parent: WindowSdocWorkspaceEntry | null,
+    kind: WorkspaceCreateKind,
+    name: string
+  ): Promise<boolean> {
     if (documentFileRuntime.kind !== "desktop" || !nativeSdocWorkspaceAdapter || !workspaceDirectory) {
       setStatusMessage("Choose a desktop workspace folder before creating entries.");
-      return;
+      return false;
     }
-    setWorkspaceCreateDialog({ parent, kind });
-  }
-
-  async function createWorkspaceEntry(values: WorkspaceCreateValues) {
-    const dialogState = workspaceCreateDialog;
     const directoryPath = workspaceDirectory;
-    if (!dialogState || !directoryPath || !nativeSdocWorkspaceAdapter) {
+    if (!directoryPath || !nativeSdocWorkspaceAdapter) {
       setStatusMessage("Native workspace creation is not available.");
-      return;
+      return false;
     }
 
-    const parentRelativePath = dialogState.parent ? getWorkspaceRelativePath(directoryPath, dialogState.parent.path) : "";
+    const parentRelativePath = parent ? getWorkspaceRelativePath(directoryPath, parent.path) : "";
     if (parentRelativePath === null) {
       setStatusMessage("The selected folder is outside the active workspace.");
-      return;
+      return false;
     }
-    const relativePath = [parentRelativePath, values.name].filter(Boolean).join("/");
+    const relativePath = [parentRelativePath, name].filter(Boolean).join("/");
 
     try {
-      if (values.kind === "folder") {
+      if (kind === "folder") {
         const result = await nativeSdocWorkspaceAdapter.createFolder(directoryPath, relativePath);
         ignoreWorkspaceEventPath(result.path);
-        setWorkspaceCreateDialog(null);
         await refreshWorkspaceEntries(directoryPath);
         setStatusMessage(result.message);
-        return;
+        return true;
       }
 
-      const title = values.name.replace(/\.sdoc$/i, "") || "Untitled";
+      const title = name.replace(/\.sdoc$/i, "") || "Untitled";
       const nextDocument = createEmptyDocument();
       const nextMetadata: SDocMetadata = { ...initialMetadata, author: metadata.author, title };
       const payload = await createSdocPayload(nextDocument, nextMetadata);
       const result = await nativeSdocWorkspaceAdapter.createSdoc(directoryPath, relativePath, payload.bytes);
       ignoreWorkspaceEventPath(result.path);
-      setWorkspaceCreateDialog(null);
       await refreshWorkspaceEntries(directoryPath);
-      await openDocumentBytes(values.name, payload.bytes, result.path);
+      await openDocumentBytes(name, payload.bytes, result.path);
       setStatusMessage(`Created and opened ${result.relativePath}.`);
+      return true;
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
+      return false;
     }
   }
 
@@ -1030,29 +1019,32 @@ export function App() {
     setWorkspaceEntryActionDialog({ entry, action });
   }
 
-  async function renameWorkspaceEntry(newName: string) {
-    const dialogState = workspaceEntryActionDialog;
+  async function renameWorkspaceEntry(entryToRename: WindowSdocWorkspaceEntry, newName: string): Promise<boolean> {
     const directoryPath = workspaceDirectory;
-    if (!dialogState || !directoryPath || !nativeSdocWorkspaceAdapter) {
+    if (!directoryPath || !nativeSdocWorkspaceAdapter) {
       setStatusMessage("Native workspace rename is not available.");
-      return;
+      return false;
     }
-    const relativePath = getWorkspaceRelativePath(directoryPath, dialogState.entry.path);
+    if (entryToRename.kind === "unpacked-sdoc-folder") {
+      setStatusMessage("Unpacked .sdoc folders are developer-only and cannot be changed here.");
+      return false;
+    }
+    const relativePath = getWorkspaceRelativePath(directoryPath, entryToRename.path);
     if (relativePath === null || !relativePath) {
       setStatusMessage("The selected entry is outside the active workspace.");
-      return;
+      return false;
     }
 
     try {
       const result = await nativeSdocWorkspaceAdapter.renameEntry(directoryPath, relativePath, newName);
-      ignoreWorkspaceEventPath(dialogState.entry.path);
+      ignoreWorkspaceEventPath(entryToRename.path);
       ignoreWorkspaceEventPath(result.path);
       const nextCurrentPath = currentNativePath
-        ? replaceNativePathPrefix(currentNativePath, dialogState.entry.path, result.path)
+        ? replaceNativePathPrefix(currentNativePath, entryToRename.path, result.path)
         : null;
       if (nextCurrentPath) {
         setCurrentNativePath(nextCurrentPath);
-        if (dialogState.entry.kind === "sdoc-file") {
+        if (entryToRename.kind === "sdoc-file") {
           setCurrentFilename(newName);
         }
       }
@@ -1060,14 +1052,14 @@ export function App() {
         if (!entry.nativePath) {
           return entry;
         }
-        const nextPath = replaceNativePathPrefix(entry.nativePath, dialogState.entry.path, result.path);
+        const nextPath = replaceNativePathPrefix(entry.nativePath, entryToRename.path, result.path);
         if (!nextPath) {
           return entry;
         }
         return {
           ...entry,
           id: nextPath,
-          name: dialogState.entry.kind === "sdoc-file" ? newName : entry.name,
+          name: entryToRename.kind === "sdoc-file" ? newName : entry.name,
           nativePath: nextPath
         };
       });
@@ -1076,8 +1068,10 @@ export function App() {
       setWorkspaceEntryActionDialog(null);
       await refreshWorkspaceEntries(directoryPath);
       setStatusMessage(result.message);
+      return true;
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
+      return false;
     }
   }
 
@@ -2548,7 +2542,7 @@ export function App() {
 
           {activePanel === "files" && (
             <FilesPanel
-              currentFile={fileLabel}
+              currentFilePath={currentNativePath}
               isCurrentFileUnsaved={hasUnsavedChanges}
               isDesktopRuntime={documentFileRuntime.kind === "desktop"}
               workspaceDirectory={workspaceDirectory}
@@ -2563,8 +2557,9 @@ export function App() {
               onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
               onRefreshWorkspace={() => void refreshWorkspaceEntries()}
               onOpenWorkspaceEntry={openWorkspaceEntry}
-              onCreateWorkspaceEntry={openWorkspaceCreateDialog}
-              onManageWorkspaceEntry={openWorkspaceEntryActionDialog}
+              onCreateWorkspaceEntry={createWorkspaceEntry}
+              onRenameWorkspaceEntry={renameWorkspaceEntry}
+              onTrashWorkspaceEntry={(entry) => openWorkspaceEntryActionDialog(entry, "trash")}
               onReloadExternalChange={() => void reloadExternalDocument()}
               onKeepExternalChange={keepCurrentAfterExternalChange}
               onCompareExternalChange={() => void compareExternalDocument()}
@@ -2832,22 +2827,11 @@ export function App() {
           </>
         )}
       </section>
-      {workspaceCreateDialog && workspaceDirectory && (
-        <WorkspaceCreateDialog
-          parentLabel={workspaceCreateDialog.parent?.name ?? filenameFromNativePath(workspaceDirectory)}
-          initialKind={workspaceCreateDialog.kind}
-          onApply={(values) => void createWorkspaceEntry(values)}
-          onCancel={() => {
-            setWorkspaceCreateDialog(null);
-            setStatusMessage("Canceled workspace entry creation");
-          }}
-        />
-      )}
       {workspaceEntryActionDialog && (
         <WorkspaceEntryActionDialog
           action={workspaceEntryActionDialog.action}
           entry={workspaceEntryActionDialog.entry}
-          onRename={(name) => void renameWorkspaceEntry(name)}
+          onRename={(name) => void renameWorkspaceEntry(workspaceEntryActionDialog.entry, name)}
           onTrash={() => void trashWorkspaceEntry()}
           onCancel={() => {
             setWorkspaceEntryActionDialog(null);

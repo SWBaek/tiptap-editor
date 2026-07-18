@@ -53,10 +53,11 @@ Traceability and References should not be permanent top-level panels for ordinar
 
 - Files must look and behave like a simple explorer, not a mixed dashboard.
 - Show the active workspace folder and immediate `.sdoc` files clearly.
-- Show the current file and unsaved state in a compact header.
+- Show the current file and unsaved state on its unique full-path tree row; do not add a separate current-file card.
 - Move secondary operations to context menus or compact menus.
 - Keep unpack/pack, Git, raw path, and debug commands out of the default author path.
 - Recent files, workspace path, expanded folders, selected files, and sort order are runtime/user settings and never `document.json`.
+- Desktop tree rows use folders-first natural ordering, `tree`/`treeitem`/`group` semantics, one roving tab stop, arrow/Home/End/Enter navigation, F2 inline rename, Delete with the existing safe Trash flow, Shift+F10/context menu, Escape cancellation, inline creation, current-document reveal, and Collapse All.
 
 Browser mode must not pretend to browse arbitrary folders. Folder listing belongs to the Tauri adapter.
 

@@ -454,6 +454,34 @@ test("folds editor sections without storing runtime state in document.json", asy
   await expect(page.locator('.editor-surface [data-id="blk_intro"]')).toBeVisible();
 });
 
+test("persists runtime-only editor zoom without changing document.json", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!window.localStorage.getItem("sdoc-editor-zoom")) {
+      window.localStorage.setItem("sdoc-editor-zoom", "130");
+    }
+  });
+  await page.goto("/");
+  await selectPreviewTab(page, "JSON");
+
+  const beforeZoom = await readPreviewDocument(page);
+  const zoomControls = page.getByLabel("Editor zoom controls");
+  await expect(zoomControls).toBeVisible();
+  await expect(zoomControls.locator("output")).toHaveText("130%");
+
+  await zoomControls.getByLabel("Editor zoom").fill("170");
+  await expect(zoomControls.locator("output")).toHaveText("170%");
+  await expect.poll(() => page.locator(".editor-zoom-layer").evaluate((element) => getComputedStyle(element).zoom)).toBe("1.7");
+  expect(await readPreviewDocument(page)).toEqual(beforeZoom);
+  await expect.poll(() => page.evaluate(() => window.localStorage.getItem("sdoc-editor-zoom"))).toBe("170");
+
+  await page.reload();
+  await expect(page.getByLabel("Editor zoom controls").locator("output")).toHaveText("170%");
+  expect(await readPreviewDocument(page)).toEqual(beforeZoom);
+  await page.getByLabel("Editor zoom controls").getByRole("button", { name: "Reset zoom" }).click();
+  await expect(page.getByLabel("Editor zoom controls").locator("output")).toHaveText("100%");
+  expect(await readPreviewDocument(page)).toEqual(beforeZoom);
+});
+
 test("tracks browser recent files in the Files side panel", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Files panel" }).click();

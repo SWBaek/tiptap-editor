@@ -121,6 +121,7 @@ import {
 import { ActivityBar } from "./components/editor-shell/ActivityBar";
 import { DesktopStartScreen } from "./components/editor-shell/DesktopStartScreen";
 import { DocumentCommandBar } from "./components/editor-shell/DocumentCommandBar";
+import { EDITOR_ZOOM_STORAGE_KEY, loadStoredEditorZoom, ZoomControl } from "./components/editor-shell/ZoomControl";
 import { PreviewTabButton as TabButton } from "./components/editor-shell/PreviewTabButton";
 import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry } from "./components/editor-shell/types";
 import { EditorToolbar } from "./components/editor-toolbar/EditorToolbar";
@@ -252,6 +253,7 @@ export function App() {
   const [collapsedHeadingIds, setCollapsedHeadingIds] = useState<Set<string>>(() => new Set());
   const [headingNumbering, setHeadingNumbering] = useState<HeadingNumberingSettings>({ enabled: true, maxLevel: 3 });
   const [outlineDepth, setOutlineDepth] = useState(3);
+  const [editorZoom, setEditorZoom] = useState(() => loadInitialEditorZoom());
   const [publishingStyleProfile, setPublishingStyleProfile] = useState<PublishingStyleProfileName>("modern");
   const [bubbleToolbarPosition, setBubbleToolbarPosition] = useState<BubbleToolbarPosition | null>(null);
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
@@ -320,6 +322,14 @@ export function App() {
     onUpdate: () => setEditorRevision((revision) => revision + 1),
     onSelectionUpdate: () => setSelectionRevision((revision) => revision + 1)
   });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(EDITOR_ZOOM_STORAGE_KEY, String(editorZoom));
+    } catch {
+      // Storage can be unavailable in restricted browser contexts; zoom remains session-local.
+    }
+  }, [editorZoom]);
 
   useEffect(() => {
     return () => {
@@ -2345,7 +2355,10 @@ export function App() {
                 onDeleteTableColumn={() => runTableCommand("deleteColumn", "Deleted table column")}
               />
             )}
-            <EditorContent editor={editor} />
+            <ZoomControl zoom={editorZoom} onZoomChange={setEditorZoom} />
+            <div className="editor-zoom-layer" style={{ zoom: `${editorZoom}%` }}>
+              <EditorContent editor={editor} />
+            </div>
             {highlightOverlay && (
               <div
                 className="editor-node-highlight"
@@ -2887,6 +2900,17 @@ function filenameFromNativePath(path: string): string {
   const normalized = path.replace(/\\/g, "/");
   const filename = normalized.split("/").filter(Boolean).pop();
   return filename && filename.length > 0 ? filename : "document.sdoc";
+}
+
+function loadInitialEditorZoom(): number {
+  if (typeof window === "undefined") {
+    return 100;
+  }
+  try {
+    return loadStoredEditorZoom(window.localStorage);
+  } catch {
+    return 100;
+  }
 }
 
 function loadStoredHistory(): LocalHistoryEntry[] {

@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 84
+progress_percent: 86
 current_slice: runtime-navigation
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -111,6 +111,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 84
     note: "Technical-content editors completed. A selected-image inspector now validates alt/caption, supports asset replacement, authored figure alignment, and guarded deletion while preserving figure/caption IDs. Figure align was documented before schema implementation and is validated/exported without serializing preview URLs or dialog state. npm test (288), npm run build, and npm run test:e2e (38) passed."
+  - date: 2026-07-18
+    progress_percent: 86
+    note: "Runtime navigation started with a floating 60-200% editor zoom control using the existing sdoc-editor-zoom local preference, 10% steps, and reset. Unit tests cover normalization/storage loading; E2E verifies CSS zoom, reload persistence, reset, and byte-for-byte unchanged canonical JSON. npm test (290), npm run build, and npm run test:e2e (39) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

@@ -142,6 +142,10 @@ Technical-content editor progress on 2026-07-18:
 - Table creation uses a validated rows/columns/header/caption dialog. The selected-table inspector edits the optional caption, header-row intent, and selected-cell alignment through existing table commands while preserving the table ID; dialog drafts remain runtime-only.
 - The selected-image inspector validates alt text and caption, exposes authored left/center/right alignment, optionally replaces the asset bytes, and offers an explicit two-step delete action. Replacement keeps the figure and caption IDs stable; file/preview/dialog state remains runtime-only.
 
+Runtime-navigation progress on 2026-07-18:
+
+- Editor zoom uses a 60–200% floating control with 10% steps and the `sdoc-editor-zoom` local preference. CSS zoom changes only the authoring projection; it never changes canonical JSON, metadata, exports, or saved `.sdoc` bytes.
+
 ## Outline And Authoring Structure
 
 The Outline surface should become a primary authoring tool:

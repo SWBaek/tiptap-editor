@@ -10,6 +10,8 @@ export interface WindowSdocNativeSaveBridge {
   openSdocPath?(path: string): Promise<WindowSdocNativeOpenResult>;
   chooseSdocWorkspaceDirectory?(): Promise<string | null>;
   listSdocWorkspaceEntries?(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<WindowSdocWorkspaceEntry[]>;
+  createSdocWorkspaceFolder?(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
+  createSdocWorkspaceFile?(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<WindowSdocWorkspaceMutationResult>;
   checkoutDrawioSource?(sourceAssetId: string, sourceBytes: Uint8Array): Promise<WindowDrawioBridgeSession>;
   openDrawioExternalEditor?(sessionId: string, executablePath?: string): Promise<WindowDrawioBridgeStatusEvent>;
   readDrawioExternalEdit?(sessionId: string, latestSourceBytes: Uint8Array): Promise<WindowDrawioSaveBackResult>;
@@ -38,9 +40,19 @@ export interface WindowSdocWorkspaceListOptions {
   includeUnpackedFolders?: boolean;
 }
 
+export interface WindowSdocWorkspaceMutationResult {
+  status: "created";
+  path: string;
+  relativePath: string;
+  kind: "folder" | "sdoc-file";
+  message: string;
+}
+
 export interface NativeSdocWorkspaceAdapter {
   chooseDirectory(): Promise<string | null>;
   list(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<WindowSdocWorkspaceEntry[]>;
+  createFolder(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
+  createSdoc(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<WindowSdocWorkspaceMutationResult>;
   openFile(path: string): Promise<WindowSdocNativeOpenResult>;
 }
 
@@ -108,7 +120,13 @@ export function getWindowSdocNativeOpenAdapter(globalScope: unknown = globalThis
 
 export function getWindowSdocWorkspaceAdapter(globalScope: unknown = globalThis): NativeSdocWorkspaceAdapter | undefined {
   const bridge = getWindowSdocNativeSaveBridge(globalScope);
-  if (!bridge?.chooseSdocWorkspaceDirectory || !bridge.listSdocWorkspaceEntries || !bridge.openSdocPath) {
+  if (
+    !bridge?.chooseSdocWorkspaceDirectory ||
+    !bridge.listSdocWorkspaceEntries ||
+    !bridge.createSdocWorkspaceFolder ||
+    !bridge.createSdocWorkspaceFile ||
+    !bridge.openSdocPath
+  ) {
     return undefined;
   }
 
@@ -119,10 +137,40 @@ export function getWindowSdocWorkspaceAdapter(globalScope: unknown = globalThis)
     list(directoryPath, options = {}) {
       return bridge.listSdocWorkspaceEntries?.(directoryPath, options) ?? Promise.resolve([]);
     },
+    async createFolder(directoryPath, relativePath) {
+      const result = await bridge.createSdocWorkspaceFolder?.(directoryPath, relativePath);
+      if (!isWindowSdocWorkspaceMutationResult(result)) {
+        throw new Error("Native workspace folder creation returned an invalid result.");
+      }
+      return result;
+    },
+    async createSdoc(directoryPath, relativePath, bytes) {
+      const result = await bridge.createSdocWorkspaceFile?.(directoryPath, relativePath, bytes);
+      if (!isWindowSdocWorkspaceMutationResult(result)) {
+        throw new Error("Native workspace document creation returned an invalid result.");
+      }
+      return result;
+    },
     openFile(path) {
       return bridge.openSdocPath?.(path) ?? Promise.reject(new Error("Native workspace open is not available."));
     }
   };
+}
+
+export function getWorkspaceRelativePath(directoryPath: string, targetPath: string): string | null {
+  const normalizedDirectory = normalizeNativePath(directoryPath);
+  const normalizedTarget = normalizeNativePath(targetPath);
+  const isWindowsPath = /^[a-z]:\//i.test(normalizedDirectory);
+  const comparableDirectory = isWindowsPath ? normalizedDirectory.toLowerCase() : normalizedDirectory;
+  const comparableTarget = isWindowsPath ? normalizedTarget.toLowerCase() : normalizedTarget;
+  if (comparableTarget === comparableDirectory) {
+    return "";
+  }
+  const prefix = `${comparableDirectory}/`;
+  if (!comparableTarget.startsWith(prefix)) {
+    return null;
+  }
+  return normalizedTarget.slice(normalizedDirectory.length + 1);
 }
 
 export function getWindowDrawioExternalEditorAdapter(globalScope: unknown = globalThis): NativeDrawioExternalEditorAdapter | undefined {
@@ -182,6 +230,14 @@ function getWindowSdocNativeSaveBridge(globalScope: unknown): WindowSdocNativeSa
     return undefined;
   }
 
+  if (candidate.createSdocWorkspaceFolder !== undefined && typeof candidate.createSdocWorkspaceFolder !== "function") {
+    return undefined;
+  }
+
+  if (candidate.createSdocWorkspaceFile !== undefined && typeof candidate.createSdocWorkspaceFile !== "function") {
+    return undefined;
+  }
+
   if (candidate.checkoutDrawioSource !== undefined && typeof candidate.checkoutDrawioSource !== "function") {
     return undefined;
   }
@@ -199,4 +255,22 @@ function getWindowSdocNativeSaveBridge(globalScope: unknown): WindowSdocNativeSa
   }
 
   return candidate as WindowSdocNativeSaveBridge;
+}
+
+function isWindowSdocWorkspaceMutationResult(value: unknown): value is WindowSdocWorkspaceMutationResult {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const result = value as Record<string, unknown>;
+  return (
+    result.status === "created" &&
+    typeof result.path === "string" &&
+    typeof result.relativePath === "string" &&
+    (result.kind === "folder" || result.kind === "sdoc-file") &&
+    typeof result.message === "string"
+  );
+}
+
+function normalizeNativePath(value: string): string {
+  return value.trim().replace(/\\/g, "/").replace(/\/+$/, "");
 }

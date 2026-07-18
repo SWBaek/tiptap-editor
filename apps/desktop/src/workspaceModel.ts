@@ -9,6 +9,14 @@ export interface NativeWorkspaceEntry {
   modifiedAtMs?: number;
 }
 
+export interface NativeWorkspaceMutationResult {
+  status: "created";
+  path: string;
+  relativePath: string;
+  kind: "folder" | "sdoc-file";
+  message: string;
+}
+
 export function sortWorkspaceEntries(entries: NativeWorkspaceEntry[]): NativeWorkspaceEntry[] {
   return entries
     .map((entry) => entry.kind === "folder" ? { ...entry, children: sortWorkspaceEntries(entry.children ?? []) } : { ...entry })
@@ -42,6 +50,20 @@ export function isWorkspaceEntry(value: unknown): value is NativeWorkspaceEntry 
     (entry.kind === "folder" || entry.children === undefined) &&
     (entry.sizeBytes === undefined || typeof entry.sizeBytes === "number") &&
     (entry.modifiedAtMs === undefined || typeof entry.modifiedAtMs === "number")
+  );
+}
+
+export function isWorkspaceMutationResult(value: unknown): value is NativeWorkspaceMutationResult {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const result = value as Record<string, unknown>;
+  return (
+    result.status === "created" &&
+    typeof result.path === "string" &&
+    typeof result.relativePath === "string" &&
+    (result.kind === "folder" || result.kind === "sdoc-file") &&
+    typeof result.message === "string"
   );
 }
 

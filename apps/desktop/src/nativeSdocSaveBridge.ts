@@ -6,7 +6,7 @@ import {
 import { nativeDrawioExternalEditorBridge, type DrawioExternalEditorBridge } from "./nativeDrawioExternalEditorBridge.js";
 import { nativeWorkspaceAdapter } from "./nativeWorkspaceAdapter.js";
 import type { NativeSdocSaveBackRequest } from "./sdocSaveBackModel.js";
-import type { NativeWorkspaceEntry } from "./workspaceModel.js";
+import type { NativeWorkspaceEntry, NativeWorkspaceMutationResult } from "./workspaceModel.js";
 
 export const SDOC_NATIVE_SAVE_BRIDGE_KEY = "__SDOC_NATIVE_SAVE_BRIDGE__";
 
@@ -17,6 +17,8 @@ export interface WindowSdocNativeSaveBridge {
   openSdocPath(path: string): Promise<WindowSdocNativeOpenResult>;
   chooseSdocWorkspaceDirectory(): Promise<string | null>;
   listSdocWorkspaceEntries(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<NativeWorkspaceEntry[]>;
+  createSdocWorkspaceFolder(directoryPath: string, relativePath: string): Promise<NativeWorkspaceMutationResult>;
+  createSdocWorkspaceFile(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<NativeWorkspaceMutationResult>;
   checkoutDrawioSource(sourceAssetId: string, sourceBytes: Uint8Array): Promise<WindowDrawioBridgeSession>;
   openDrawioExternalEditor(sessionId: string, executablePath?: string): Promise<WindowDrawioBridgeStatusEvent>;
   readDrawioExternalEdit(sessionId: string, latestSourceBytes: Uint8Array): Promise<WindowDrawioSaveBackResult>;
@@ -66,6 +68,8 @@ export interface NativeSdocSaveBridgeOptions {
   readPackage?: (path: string) => Promise<Uint8Array>;
   chooseWorkspaceDirectory?: () => Promise<string | null>;
   listWorkspaceEntries?: (directoryPath: string, options?: WindowSdocWorkspaceListOptions) => Promise<NativeWorkspaceEntry[]>;
+  createWorkspaceFolder?: (directoryPath: string, relativePath: string) => Promise<NativeWorkspaceMutationResult>;
+  createWorkspaceFile?: (directoryPath: string, relativePath: string, bytes: Uint8Array) => Promise<NativeWorkspaceMutationResult>;
   drawioBridge?: DrawioExternalEditorBridge;
 }
 
@@ -76,6 +80,8 @@ export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions 
   const readPackage = options.readPackage ?? nativeWorkspaceAdapter.readSdoc;
   const chooseWorkspaceDirectory = options.chooseWorkspaceDirectory ?? chooseSdocWorkspaceDirectoryWithDialog;
   const listWorkspaceEntries = options.listWorkspaceEntries ?? nativeWorkspaceAdapter.list;
+  const createWorkspaceFolder = options.createWorkspaceFolder ?? nativeWorkspaceAdapter.createFolder;
+  const createWorkspaceFile = options.createWorkspaceFile ?? nativeWorkspaceAdapter.createSdoc;
   const drawioBridge = options.drawioBridge ?? nativeDrawioExternalEditorBridge;
 
   return {
@@ -116,6 +122,14 @@ export function createNativeSdocSaveBridge(options: NativeSdocSaveBridgeOptions 
       return listWorkspaceEntries(directoryPath, {
         includeUnpackedFolders: options.includeUnpackedFolders ?? false
       });
+    },
+
+    createSdocWorkspaceFolder(directoryPath, relativePath) {
+      return createWorkspaceFolder(directoryPath, relativePath);
+    },
+
+    createSdocWorkspaceFile(directoryPath, relativePath, bytes) {
+      return createWorkspaceFile(directoryPath, relativePath, bytes);
     },
 
     checkoutDrawioSource(sourceAssetId, sourceBytes) {

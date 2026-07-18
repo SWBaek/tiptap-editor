@@ -44,6 +44,8 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
    - Choose a workspace folder containing multiple `.sdoc` files.
    - Include nested folders and confirm the Files panel renders a folder tree with predictable expand/collapse behavior.
    - Confirm nested `.sdoc` files open from the tree while symlinked folders are not traversed outside the selected workspace.
+   - Select a nested folder, create a subfolder and a new document, and confirm the document is a valid single-file `.sdoc` that opens from the refreshed tree.
+   - Confirm duplicate names, parent traversal, and invalid names are rejected without overwriting an existing entry.
    - Confirm the current document and saved/unsaved state are visible in the compact Files header.
    - Confirm developer-only unpacked folder commands are not part of the default author path.
 

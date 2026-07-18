@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 91
+progress_percent: 93
 current_slice: desktop-explorer
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -120,6 +120,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 91
     note: "Desktop explorer started with recursive typed folder/.sdoc entries, runtime-only expand/collapse state, depth-bounded native traversal, symlink exclusion, and the existing browser filesystem boundary. Rust tests cover nested listing and optional-field serialization; desktop-runtime E2E covers collapse/expand/open. npm test (292), npm run build, npm run test:e2e (40), npm run typecheck:desktop, cargo test (1), and npm run build:desktop passed. The packaged build also exposed and repaired the previously missing RGBA icon.png derived from the existing icon.ico."
+  - date: 2026-07-18
+    progress_percent: 93
+    note: "Desktop explorer now creates a validated nested folder or a canonical packed .sdoc beneath the selected folder/root through typed Tauri commands. Workspace-relative validation rejects traversal, symlink parents, invalid/reserved names, duplicates, and non-.sdoc targets; successful document creation refreshes and opens the new package. npm test (296), npm run build, npm run test:e2e (40), npm run typecheck:desktop, cargo test (1), and npm run build:desktop passed. Rename and trash remain in the desktop-explorer slice."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getWorkspaceEntryLabel, isWorkspaceEntry, sortWorkspaceEntries, type NativeWorkspaceEntry } from "./workspaceModel.js";
+import {
+  getWorkspaceEntryLabel,
+  isWorkspaceEntry,
+  isWorkspaceMutationResult,
+  sortWorkspaceEntries,
+  type NativeWorkspaceEntry
+} from "./workspaceModel.js";
 
 describe("workspaceModel", () => {
   it("sorts folders before .sdoc files and recursively sorts children", () => {
@@ -34,5 +40,16 @@ describe("workspaceModel", () => {
     expect(isWorkspaceEntry({ name: "Guides", path: "C:/docs/Guides", kind: "folder" })).toBe(false);
     expect(isWorkspaceEntry({ name: "doc.sdoc", path: "C:/docs/doc.sdoc", kind: "sdoc-file", children: [] })).toBe(false);
     expect(isWorkspaceEntry({ name: "doc.txt", path: "C:/docs/doc.txt", kind: "text" })).toBe(false);
+  });
+
+  it("validates typed workspace mutation results", () => {
+    expect(isWorkspaceMutationResult({
+      status: "created",
+      path: "C:/docs/Guides",
+      relativePath: "Guides",
+      kind: "folder",
+      message: "Created folder Guides."
+    })).toBe(true);
+    expect(isWorkspaceMutationResult({ status: "created", path: "C:/docs/Guides", kind: "folder" })).toBe(false);
   });
 });

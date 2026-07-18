@@ -94,10 +94,12 @@ Acceptance evidence:
 - Files panel now presents a compact current-file header with saved/unsaved state.
 - File actions are reduced to New, Open, and Save/Save As.
 - Desktop workspace entries render as a recursive typed explorer tree under the selected folder, with runtime-only expand/collapse state.
+- Compact explorer actions create a nested folder or a canonical packed `.sdoc` beneath the selected folder, falling back to the workspace root when no folder is selected.
+- The typed Tauri boundary accepts workspace-relative targets only and rejects traversal, symlink parents, invalid/reserved names, duplicate targets, and non-`.sdoc` document names without overwriting existing content.
 - Native traversal is bounded to 32 folder levels, skips symlinks, and omits unpacked `.sdoc` folders from the ordinary author view.
 - Browser mode continues to show a desktop-only browsing boundary instead of claiming folder access.
 - Developer unpack/pack commands remain available only behind a collapsed Developer workspace disclosure.
-- Unit, Rust filesystem/serialization, and Playwright tests cover recursive bridge validation, native listing, and nested explorer behavior; desktop typecheck and packaged Tauri build pass.
+- Unit, Rust filesystem/serialization, and Playwright tests cover recursive bridge validation, native listing, nested explorer behavior, and selected-folder creation of folders and valid `.sdoc` packages; desktop typecheck and packaged Tauri build pass.
 
 ## Priority Slice 3: Information Architecture Cleanup
 

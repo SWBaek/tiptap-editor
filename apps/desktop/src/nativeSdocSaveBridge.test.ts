@@ -135,6 +135,24 @@ describe("native sdoc save bridge", () => {
             kind: "sdoc-file"
           }
         ];
+      },
+      async createWorkspaceFolder(directoryPath, relativePath) {
+        return {
+          status: "created",
+          path: `${directoryPath}/${relativePath}`,
+          relativePath,
+          kind: "folder",
+          message: `Created folder ${relativePath}.`
+        };
+      },
+      async createWorkspaceFile(directoryPath, relativePath) {
+        return {
+          status: "created",
+          path: `${directoryPath}/${relativePath}`,
+          relativePath,
+          kind: "sdoc-file",
+          message: `Created document ${relativePath}.`
+        };
       }
     });
 
@@ -146,6 +164,11 @@ describe("native sdoc save bridge", () => {
         kind: "sdoc-file"
       }
     ]);
+    await expect(bridge.createSdocWorkspaceFolder("C:/docs", "Guides")).resolves.toMatchObject({ kind: "folder", relativePath: "Guides" });
+    await expect(bridge.createSdocWorkspaceFile("C:/docs", "Spec.sdoc", new Uint8Array([80, 75, 3, 4]))).resolves.toMatchObject({
+      kind: "sdoc-file",
+      relativePath: "Spec.sdoc"
+    });
   });
 
   it("routes Draw.io external editor calls through the injected bridge", async () => {

@@ -4,6 +4,7 @@ import {
   getWindowSdocNativeOpenAdapter,
   getWindowSdocNativeSaveAdapter,
   getWindowSdocWorkspaceAdapter,
+  getWorkspaceRelativePath,
   SDOC_NATIVE_SAVE_BRIDGE_KEY
 } from "./documentNativeBridge";
 
@@ -13,6 +14,12 @@ const payload = {
 };
 
 describe("document native bridge", () => {
+  it("derives workspace-relative paths without accepting sibling prefixes", () => {
+    expect(getWorkspaceRelativePath("C:\\Docs", "c:\\docs\\Guides\\Spec.sdoc")).toBe("Guides/Spec.sdoc");
+    expect(getWorkspaceRelativePath("/workspace/docs/", "/workspace/docs/Guides")).toBe("Guides");
+    expect(getWorkspaceRelativePath("/workspace/docs", "/workspace/docs-other/Spec.sdoc")).toBeNull();
+  });
+
   it("does not expose a native save adapter without an injected bridge", () => {
     expect(getWindowSdocNativeSaveAdapter({})).toBeUndefined();
     expect(getWindowSdocNativeSaveAdapter({ [SDOC_NATIVE_SAVE_BRIDGE_KEY]: { saveSdoc: "nope" } })).toBeUndefined();
@@ -92,6 +99,24 @@ describe("document native bridge", () => {
             }
           ];
         },
+        async createSdocWorkspaceFolder(directoryPath: string, relativePath: string) {
+          return {
+            status: "created" as const,
+            path: `${directoryPath}/${relativePath}`,
+            relativePath,
+            kind: "folder" as const,
+            message: `Created folder ${relativePath}.`
+          };
+        },
+        async createSdocWorkspaceFile(directoryPath: string, relativePath: string) {
+          return {
+            status: "created" as const,
+            path: `${directoryPath}/${relativePath}`,
+            relativePath,
+            kind: "sdoc-file" as const,
+            message: `Created document ${relativePath}.`
+          };
+        },
         async openSdocPath(path: string) {
           return {
             path,
@@ -110,6 +135,14 @@ describe("document native bridge", () => {
         children: [{ name: "Spec.sdoc", path: "C:/docs/Guides/Spec.sdoc", kind: "sdoc-file" }]
       }
     ]);
+    await expect(adapter?.createFolder("C:/docs", "Guides/New")).resolves.toMatchObject({
+      relativePath: "Guides/New",
+      kind: "folder"
+    });
+    await expect(adapter?.createSdoc("C:/docs", "Guides/Spec.sdoc", new Uint8Array([80, 75, 3, 4]))).resolves.toMatchObject({
+      relativePath: "Guides/Spec.sdoc",
+      kind: "sdoc-file"
+    });
     await expect(adapter?.openFile("C:/docs/Spec.sdoc")).resolves.toEqual({
       path: "C:/docs/Spec.sdoc",
       bytes: new Uint8Array([80, 75, 3, 4])

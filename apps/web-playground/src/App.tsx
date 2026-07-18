@@ -72,6 +72,7 @@ import {
   getWindowSdocNativeSaveAdapter,
   getWindowDrawioExternalEditorAdapter,
   getWindowSdocWorkspaceAdapter,
+  getWorkspaceRelativePath,
   type WindowDrawioBridgeSession,
   type WindowSdocWorkspaceEntry
 } from "./documentNativeBridge";
@@ -155,6 +156,11 @@ import {
   type FigureAlignment,
   type ImageInspectorValues
 } from "./components/dialogs/ImageInspectorDialog";
+import {
+  WorkspaceCreateDialog,
+  type WorkspaceCreateKind,
+  type WorkspaceCreateValues
+} from "./components/dialogs/WorkspaceCreateDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -205,6 +211,11 @@ interface ImageInspectorState {
   alt: string;
   caption: string;
   alignment: FigureAlignment;
+}
+
+interface WorkspaceCreateDialogState {
+  parent: WindowSdocWorkspaceEntry | null;
+  kind: WorkspaceCreateKind;
 }
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
@@ -273,6 +284,7 @@ export function App() {
   const [mermaidDialog, setMermaidDialog] = useState<MermaidDialogState | null>(null);
   const [tableDialog, setTableDialog] = useState<TableDialogState | null>(null);
   const [imageInspector, setImageInspector] = useState<ImageInspectorState | null>(null);
+  const [workspaceCreateDialog, setWorkspaceCreateDialog] = useState<WorkspaceCreateDialogState | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -818,6 +830,52 @@ export function App() {
     try {
       const opened = await nativeSdocWorkspaceAdapter.openFile(entry.path);
       await openDocumentBytes(filenameFromNativePath(opened.path), opened.bytes, opened.path);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function openWorkspaceCreateDialog(parent: WindowSdocWorkspaceEntry | null, kind: WorkspaceCreateKind) {
+    if (documentFileRuntime.kind !== "desktop" || !nativeSdocWorkspaceAdapter || !workspaceDirectory) {
+      setStatusMessage("Choose a desktop workspace folder before creating entries.");
+      return;
+    }
+    setWorkspaceCreateDialog({ parent, kind });
+  }
+
+  async function createWorkspaceEntry(values: WorkspaceCreateValues) {
+    const dialogState = workspaceCreateDialog;
+    const directoryPath = workspaceDirectory;
+    if (!dialogState || !directoryPath || !nativeSdocWorkspaceAdapter) {
+      setStatusMessage("Native workspace creation is not available.");
+      return;
+    }
+
+    const parentRelativePath = dialogState.parent ? getWorkspaceRelativePath(directoryPath, dialogState.parent.path) : "";
+    if (parentRelativePath === null) {
+      setStatusMessage("The selected folder is outside the active workspace.");
+      return;
+    }
+    const relativePath = [parentRelativePath, values.name].filter(Boolean).join("/");
+
+    try {
+      if (values.kind === "folder") {
+        const result = await nativeSdocWorkspaceAdapter.createFolder(directoryPath, relativePath);
+        setWorkspaceCreateDialog(null);
+        await refreshWorkspaceEntries(directoryPath);
+        setStatusMessage(result.message);
+        return;
+      }
+
+      const title = values.name.replace(/\.sdoc$/i, "") || "Untitled";
+      const nextDocument = createEmptyDocument();
+      const nextMetadata: SDocMetadata = { ...initialMetadata, author: metadata.author, title };
+      const payload = await createSdocPayload(nextDocument, nextMetadata);
+      const result = await nativeSdocWorkspaceAdapter.createSdoc(directoryPath, relativePath, payload.bytes);
+      setWorkspaceCreateDialog(null);
+      await refreshWorkspaceEntries(directoryPath);
+      await openDocumentBytes(values.name, payload.bytes, result.path);
+      setStatusMessage(`Created and opened ${result.relativePath}.`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     }
@@ -2230,6 +2288,7 @@ export function App() {
               onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
               onRefreshWorkspace={() => void refreshWorkspaceEntries()}
               onOpenWorkspaceEntry={openWorkspaceEntry}
+              onCreateWorkspaceEntry={openWorkspaceCreateDialog}
               onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
@@ -2495,6 +2554,17 @@ export function App() {
           </>
         )}
       </section>
+      {workspaceCreateDialog && workspaceDirectory && (
+        <WorkspaceCreateDialog
+          parentLabel={workspaceCreateDialog.parent?.name ?? filenameFromNativePath(workspaceDirectory)}
+          initialKind={workspaceCreateDialog.kind}
+          onApply={(values) => void createWorkspaceEntry(values)}
+          onCancel={() => {
+            setWorkspaceCreateDialog(null);
+            setStatusMessage("Canceled workspace entry creation");
+          }}
+        />
+      )}
       {linkDialog && (
         <LinkDialog
           initialHref={linkDialog.href}

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -126,6 +128,19 @@ const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
         includeUnpackedFolders: options.includeUnpackedFolders === true
       });
     },
+    async createSdocWorkspaceFolder(directoryPath, relativePath) {
+      return await internals.invoke("create_sdoc_workspace_folder", {
+        directoryPath,
+        relativePath
+      });
+    },
+    async createSdocWorkspaceFile(directoryPath, relativePath, bytes) {
+      return await internals.invoke("create_sdoc_workspace_file", {
+        directoryPath,
+        relativePath,
+        bytes: toByteArray(bytes)
+      });
+    },
     async checkoutDrawioSource(sourceAssetId, sourceBytes) {
       return await internals.invoke("checkout_drawio_source_asset", {
         sourceAssetId,
@@ -181,6 +196,16 @@ struct WorkspaceEntry {
     size_bytes: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     modified_at_ms: Option<u64>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceMutationResult {
+    status: String,
+    path: String,
+    relative_path: String,
+    kind: WorkspaceEntryKind,
+    message: String,
 }
 
 #[derive(serde::Serialize)]
@@ -311,6 +336,153 @@ fn read_workspace_directory(
     }
 
     Ok(entries)
+}
+
+#[tauri::command]
+fn create_sdoc_workspace_folder(
+    directory_path: String,
+    relative_path: String,
+) -> Result<WorkspaceMutationResult, String> {
+    let (target, normalized_relative_path) =
+        resolve_workspace_creation_target(&directory_path, &relative_path)?;
+    fs::create_dir(&target)
+        .map_err(|error| format!("Could not create workspace folder: {error}"))?;
+
+    Ok(WorkspaceMutationResult {
+        status: "created".to_string(),
+        path: target.to_string_lossy().to_string(),
+        relative_path: normalized_relative_path.clone(),
+        kind: WorkspaceEntryKind::Folder,
+        message: format!("Created folder {normalized_relative_path}."),
+    })
+}
+
+#[tauri::command]
+fn create_sdoc_workspace_file(
+    directory_path: String,
+    relative_path: String,
+    bytes: Vec<u8>,
+) -> Result<WorkspaceMutationResult, String> {
+    if bytes.len() < 4 || !bytes.starts_with(&[80, 75]) {
+        return Err("New workspace documents must be non-empty .sdoc ZIP packages.".to_string());
+    }
+
+    let (target, normalized_relative_path) =
+        resolve_workspace_creation_target(&directory_path, &relative_path)?;
+    if !has_extension(&target, "sdoc") {
+        return Err("New workspace documents must use the .sdoc extension.".to_string());
+    }
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&target)
+        .map_err(|error| format!("Could not create workspace document: {error}"))?;
+    file.write_all(&bytes)
+        .map_err(|error| format!("Could not write workspace document: {error}"))?;
+
+    Ok(WorkspaceMutationResult {
+        status: "created".to_string(),
+        path: target.to_string_lossy().to_string(),
+        relative_path: normalized_relative_path.clone(),
+        kind: WorkspaceEntryKind::SdocFile,
+        message: format!("Created document {normalized_relative_path}."),
+    })
+}
+
+fn resolve_workspace_creation_target(
+    directory_path: &str,
+    relative_path: &str,
+) -> Result<(PathBuf, String), String> {
+    let workspace = fs::canonicalize(PathBuf::from(directory_path))
+        .map_err(|error| format!("Could not resolve workspace folder: {error}"))?;
+    if !workspace.is_dir() {
+        return Err("Workspace path must be an existing directory.".to_string());
+    }
+
+    let relative = validate_workspace_relative_path(relative_path)?;
+    let parent = relative.parent().unwrap_or_else(|| Path::new(""));
+    ensure_workspace_parent_is_safe(&workspace, parent)?;
+    let target = workspace.join(&relative);
+    if fs::symlink_metadata(&target).is_ok() {
+        return Err("A workspace entry with this name already exists.".to_string());
+    }
+
+    let normalized = relative
+        .components()
+        .filter_map(|component| match component {
+            Component::Normal(value) => Some(value.to_string_lossy().to_string()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("/");
+    Ok((target, normalized))
+}
+
+fn validate_workspace_relative_path(value: &str) -> Result<PathBuf, String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() || trimmed.contains('\\') || trimmed.contains(':') {
+        return Err("Workspace target must be a non-empty relative path.".to_string());
+    }
+
+    let mut relative = PathBuf::new();
+    for component in Path::new(trimmed).components() {
+        let Component::Normal(name) = component else {
+            return Err("Workspace target cannot use absolute or parent traversal paths.".to_string());
+        };
+        validate_workspace_name_component(&name.to_string_lossy())?;
+        relative.push(name);
+    }
+    if relative.as_os_str().is_empty() {
+        return Err("Workspace target must be a non-empty relative path.".to_string());
+    }
+    Ok(relative)
+}
+
+fn validate_workspace_name_component(value: &str) -> Result<(), String> {
+    if value.is_empty()
+        || value.len() > 128
+        || value.ends_with('.')
+        || value.ends_with(' ')
+        || value
+            .chars()
+            .any(|character| character.is_control() || "<>\"|?*".contains(character))
+    {
+        return Err("Workspace entry name contains unsupported characters.".to_string());
+    }
+
+    let stem = value.split('.').next().unwrap_or(value).to_ascii_lowercase();
+    let is_reserved = matches!(stem.as_str(), "con" | "prn" | "aux" | "nul")
+        || (stem.len() == 4
+            && (stem.starts_with("com") || stem.starts_with("lpt"))
+            && stem.as_bytes()[3].is_ascii_digit()
+            && stem.as_bytes()[3] != b'0');
+    if is_reserved {
+        return Err("Workspace entry name is reserved by the operating system.".to_string());
+    }
+    Ok(())
+}
+
+fn ensure_workspace_parent_is_safe(
+    workspace: &Path,
+    relative_parent: &Path,
+) -> Result<(), String> {
+    let mut current = workspace.to_path_buf();
+    for component in relative_parent.components() {
+        let Component::Normal(name) = component else {
+            return Err("Workspace target cannot use parent traversal paths.".to_string());
+        };
+        current.push(name);
+        let metadata = fs::symlink_metadata(&current)
+            .map_err(|_| "Workspace target parent folder does not exist.".to_string())?;
+        if metadata.file_type().is_symlink() {
+            return Err("Workspace target cannot traverse a symlinked folder.".to_string());
+        }
+        if !metadata.is_dir() {
+            return Err("Workspace target parent must be a folder.".to_string());
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -625,6 +797,8 @@ fn main() {
             read_sdoc_file,
             write_sdoc_file,
             list_sdoc_workspace_entries,
+            create_sdoc_workspace_folder,
+            create_sdoc_workspace_file,
             checkout_drawio_source_asset,
             open_drawio_external_editor,
             read_drawio_external_edit,
@@ -681,6 +855,41 @@ mod tests {
         assert!(serialized[0].get("children").is_some() || serialized[1].get("children").is_some());
         assert!(!serialized.to_string().contains("\"children\":null"));
         assert!(!serialized.to_string().contains("\"sizeBytes\":null"));
+
+        let workspace_path = root.to_string_lossy().to_string();
+        let created_folder =
+            create_sdoc_workspace_folder(workspace_path.clone(), "Guides/New".to_string())
+                .unwrap();
+        assert_eq!(created_folder.relative_path, "Guides/New");
+        assert!(root.join("Guides/New").is_dir());
+        let created_file = create_sdoc_workspace_file(
+            workspace_path.clone(),
+            "Guides/New/Created.sdoc".to_string(),
+            vec![80, 75, 3, 4],
+        )
+        .unwrap();
+        assert_eq!(created_file.relative_path, "Guides/New/Created.sdoc");
+        assert_eq!(
+            fs::read(root.join("Guides/New/Created.sdoc")).unwrap(),
+            vec![80, 75, 3, 4]
+        );
+        assert!(
+            create_sdoc_workspace_folder(workspace_path.clone(), "../escape".to_string())
+                .is_err()
+        );
+        assert!(create_sdoc_workspace_file(
+            workspace_path.clone(),
+            "Guides/New/Created.sdoc".to_string(),
+            vec![80, 75, 3, 4],
+        )
+        .is_err());
+
+        #[cfg(unix)]
+        assert!(create_sdoc_workspace_folder(
+            workspace_path,
+            "linked-guides/Escape".to_string()
+        )
+        .is_err());
 
         fs::remove_dir_all(&root).unwrap();
     }

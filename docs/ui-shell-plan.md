@@ -152,6 +152,8 @@ Desktop-explorer behavior for Phase 5.1:
 - The typed Tauri workspace listing returns a recursive tree of ordinary folders and `.sdoc` files. The explorer owns runtime-only expanded-folder state, and native traversal does not follow symlinks outside the selected workspace.
 - Unpacked `.sdoc` folders remain an explicit developer/reviewer option rather than appearing as ordinary author documents. Browser mode continues to expose only user-selected file open/download flows.
 - Workspace mutations and watcher events are separate typed adapter operations so listing, destructive feedback, and external-change recovery can be tested in bounded slices.
+- New document/folder creation targets the currently selected explorer folder, or the workspace root when no folder is selected. One validated dialog collects the entry kind and name; a new document is packed as a valid canonical `.sdoc` before the native adapter writes it.
+- Native creation commands accept only workspace-relative paths, reject absolute/parent traversal and symlink traversal, refuse overwrite, and return a typed result for explicit author feedback.
 
 ## Outline And Authoring Structure
 

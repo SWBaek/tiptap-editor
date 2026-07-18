@@ -46,6 +46,7 @@ export interface EditorToolbarGroupsProps {
   hasCollapsedSections: boolean;
   hasDrawioSession: boolean;
   onInsertImage: () => void;
+  onEditImage: () => void;
   onEditLink: () => void;
   onInsertReference: () => void;
   onInsertTable: () => void;
@@ -74,6 +75,7 @@ export function EditorToolbarGroups({
   hasCollapsedSections,
   hasDrawioSession,
   onInsertImage,
+  onEditImage,
   onEditLink,
   onInsertReference,
   onInsertTable,
@@ -251,6 +253,14 @@ export function EditorToolbarGroups({
           </ToolbarButton>
           <ToolbarButton title="Align table cell right" active={editor.isActive("tableCell", { align: "right" }) || editor.isActive("tableHeader", { align: "right" })} onClick={() => onAlignTableCells("right")}>
             <AlignRight size={18} />
+          </ToolbarButton>
+        </ToolbarMenu>
+      )}
+
+      {editor.isActive("figure") && (
+        <ToolbarMenu label="Image tools" icon={<Image size={17} />} active>
+          <ToolbarButton title="Edit selected image" active onClick={onEditImage}>
+            <Image size={18} />
           </ToolbarButton>
         </ToolbarMenu>
       )}

@@ -2151,6 +2151,47 @@ button {
   height: 16px;
 }
 
+.image-inspector-dialog {
+  width: min(620px, calc(100vw - 32px));
+}
+
+.image-inspector-preview {
+  display: grid;
+  min-height: 150px;
+  max-height: 280px;
+  place-items: center;
+  overflow: hidden;
+  padding: 12px;
+  background: #f6f8fa;
+  border: 1px solid #dbe2e8;
+  border-radius: 6px;
+}
+
+.image-inspector-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 250px;
+  object-fit: contain;
+}
+
+.image-inspector-asset {
+  overflow: hidden;
+  color: #6b7884;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-delete-actions {
+  display: flex;
+  gap: 8px;
+  margin-right: auto;
+}
+
+.author-dialog button.danger {
+  color: #9f3636;
+  border-color: #dca8a8;
+}
+
 .dialog-validation {
   min-height: 18px;
   font-size: 12px;
@@ -2429,6 +2470,24 @@ button {
 
 .editor-surface figure[data-type="figure"] figcaption p {
   margin: 0;
+}
+
+.editor-surface figure[data-type="figure"][data-align="left"] img {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.editor-surface figure[data-type="figure"][data-align="right"] img {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.editor-surface figure[data-type="figure"][data-align="left"] figcaption {
+  text-align: left;
+}
+
+.editor-surface figure[data-type="figure"][data-align="right"] figcaption {
+  text-align: right;
 }
 
 .editor-surface table {

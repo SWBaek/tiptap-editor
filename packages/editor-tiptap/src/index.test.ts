@@ -246,6 +246,7 @@ describe("SDoc conversion", () => {
               id: "blk_figure",
               assetId: "asset_diagram.png",
               alt: "Diagram",
+              align: "right",
               src: "data:image/png;base64,preview"
             },
             content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "Architecture diagram" }] }]
@@ -258,7 +259,8 @@ describe("SDoc conversion", () => {
     expect(document.content[0].attrs).toEqual({
       id: "blk_figure",
       assetId: "asset_diagram.png",
-      alt: "Diagram"
+      alt: "Diagram",
+      align: "right"
     });
     expect(validateDocument(document).ok).toBe(true);
     expect(fromSdocDocument(document, { "asset_diagram.png": "blob:asset_diagram" })).toEqual({
@@ -270,6 +272,7 @@ describe("SDoc conversion", () => {
             id: "blk_figure",
             assetId: "asset_diagram.png",
             alt: "Diagram",
+            align: "right",
             src: "blob:asset_diagram"
           },
           content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "Architecture diagram" }] }]

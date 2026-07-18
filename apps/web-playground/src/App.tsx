@@ -139,6 +139,12 @@ import { ImagePasteDialog, type PastedImageDetails } from "./components/dialogs/
 import { EquationDialog, type EquationDialogMode } from "./components/dialogs/EquationDialog";
 import { MermaidDialog, type MermaidDialogMode } from "./components/dialogs/MermaidDialog";
 import { TableDialog, type TableDialogAlignment, type TableDialogMode, type TableDialogValues } from "./components/dialogs/TableDialog";
+import {
+  ImageInspectorDialog,
+  isSupportedImageFile,
+  type FigureAlignment,
+  type ImageInspectorValues
+} from "./components/dialogs/ImageInspectorDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -181,6 +187,14 @@ interface TableDialogState extends TableDialogValues {
   mode: TableDialogMode;
   position?: number;
   initialAlignment: TableDialogAlignment;
+}
+interface ImageInspectorState {
+  position: number;
+  assetId: string;
+  src: string;
+  alt: string;
+  caption: string;
+  alignment: FigureAlignment;
 }
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
@@ -246,6 +260,7 @@ export function App() {
   const [equationDialog, setEquationDialog] = useState<EquationDialogState | null>(null);
   const [mermaidDialog, setMermaidDialog] = useState<MermaidDialogState | null>(null);
   const [tableDialog, setTableDialog] = useState<TableDialogState | null>(null);
+  const [imageInspector, setImageInspector] = useState<ImageInspectorState | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -1760,6 +1775,16 @@ export function App() {
         event.preventDefault();
         editMermaidAtPosition(position);
       }
+      return;
+    }
+
+    const figureElement = eventTarget?.closest<HTMLElement>("figure[data-type='figure']");
+    if (figureElement) {
+      const position = findFigurePositionFromElement(editor, figureElement);
+      if (position !== null) {
+        event.preventDefault();
+        editImageAtPosition(position);
+      }
     }
   }
 
@@ -1771,7 +1796,8 @@ export function App() {
 
     const equationElement = target.closest<HTMLElement>("[data-type='equation'], [data-type='equationBlock']");
     const mermaidElement = target.closest<HTMLElement>("[data-type='diagram'][data-kind='mermaid']");
-    const kind: EditorContextMenuKind = equationElement ? "equation" : mermaidElement ? "mermaid" : target.closest("table") ? "table" : "editor";
+    const figureElement = target.closest<HTMLElement>("figure[data-type='figure']");
+    const kind: EditorContextMenuKind = equationElement ? "equation" : mermaidElement ? "mermaid" : figureElement ? "image" : target.closest("table") ? "table" : "editor";
     if (equationElement) {
       const position = findEquationPositionFromElement(editor, equationElement);
       if (position !== null) {
@@ -1779,6 +1805,11 @@ export function App() {
       }
     } else if (mermaidElement) {
       const position = findMermaidPositionFromElement(editor, mermaidElement);
+      if (position !== null) {
+        editor.commands.setNodeSelection(position);
+      }
+    } else if (figureElement) {
+      const position = findFigurePositionFromElement(editor, figureElement);
       if (position !== null) {
         editor.commands.setNodeSelection(position);
       }
@@ -1802,6 +1833,105 @@ export function App() {
   function openMermaidInsertDialog() {
     setMermaidDialog({ mode: "insert", source: "flowchart TD\nA[Start] --> B[Done]" });
     setStatusMessage("Editing Mermaid diagram");
+  }
+
+  function openSelectedImageInspector() {
+    const position = getSelectedFigurePosition(editor);
+    if (position === null) {
+      setStatusMessage("Select an image to edit");
+      return;
+    }
+
+    editImageAtPosition(position);
+  }
+
+  function editImageAtPosition(position: number) {
+    const node = editor.state.doc.nodeAt(position);
+    if (!node || node.type.name !== "figure") {
+      setStatusMessage("Select an image to edit");
+      return;
+    }
+
+    const alignment = node.attrs.align === "left" || node.attrs.align === "right" ? node.attrs.align : "center";
+    setImageInspector({
+      position,
+      assetId: typeof node.attrs.assetId === "string" ? node.attrs.assetId : "",
+      src: typeof node.attrs.src === "string" ? node.attrs.src : "",
+      alt: typeof node.attrs.alt === "string" ? node.attrs.alt : "",
+      caption: node.textContent,
+      alignment
+    });
+    setStatusMessage("Editing selected image");
+  }
+
+  async function applyImageInspector(values: ImageInspectorValues) {
+    if (!imageInspector) {
+      return;
+    }
+
+    const node = editor.state.doc.nodeAt(imageInspector.position);
+    const captionNode = node?.firstChild;
+    if (!node || node.type.name !== "figure" || !captionNode || captionNode.type.name !== "paragraph") {
+      setStatusMessage("Cannot update image: selection changed");
+      return;
+    }
+
+    try {
+      const nextAttrs: Record<string, unknown> = { ...node.attrs, alt: values.alt };
+      if (values.alignment === "center") {
+        delete nextAttrs.align;
+      } else {
+        nextAttrs.align = values.alignment;
+      }
+
+      let replacementAsset: { assetId: string; bytes: Uint8Array } | null = null;
+      if (values.replacementFile) {
+        const replacementFile = values.replacementFile;
+        const bytes = new Uint8Array(await replacementFile.arrayBuffer());
+        const assetId = createImageAssetId(replacementFile.name, replacementFile.type);
+        nextAttrs.assetId = assetId;
+        nextAttrs.src = await readFileAsDataUrl(replacementFile);
+        replacementAsset = { assetId, bytes };
+      }
+
+      let transaction = editor.state.tr.setNodeMarkup(imageInspector.position, undefined, nextAttrs);
+      if (node.textContent !== values.caption) {
+        const captionContentFrom = imageInspector.position + 2;
+        transaction = transaction.replaceWith(
+          captionContentFrom,
+          captionContentFrom + captionNode.content.size,
+          editor.schema.text(values.caption)
+        );
+      }
+      editor.view.dispatch(transaction.scrollIntoView());
+      if (replacementAsset) {
+        setAssets((current) => ({ ...current, [replacementAsset.assetId]: replacementAsset.bytes }));
+      }
+      setImageInspector(null);
+      editor.view.focus();
+      setActiveTab("json");
+      setStatusMessage(replacementAsset ? `Replaced image with ${values.replacementFile?.name}` : "Updated image");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function deleteSelectedImage() {
+    if (!imageInspector) {
+      return;
+    }
+    const node = editor.state.doc.nodeAt(imageInspector.position);
+    if (!node || node.type.name !== "figure") {
+      setStatusMessage("Cannot delete image: selection changed");
+      return;
+    }
+
+    const transaction = editor.state.tr.delete(imageInspector.position, imageInspector.position + node.nodeSize);
+    editor.view.dispatch(transaction.scrollIntoView());
+    setImageInspector(null);
+    editor.view.focus();
+    setActiveTab("json");
+    setStatusMessage("Deleted image");
   }
 
   function openSelectedMermaidDialog() {
@@ -2142,6 +2272,7 @@ export function App() {
             hasCollapsedSections: collapsedHeadingIds.size > 0,
             hasDrawioSession: drawioBridgeSession !== null,
             onInsertImage: () => imageInputRef.current?.click(),
+            onEditImage: openSelectedImageInspector,
             onEditLink: openLinkDialog,
             onInsertReference: openReferencePicker,
             onInsertTable: openTableInsertDialog,
@@ -2199,6 +2330,7 @@ export function App() {
                 state={editorContextMenu}
                 onClose={() => setEditorContextMenu(null)}
                 onInsertImage={() => imageInputRef.current?.click()}
+                onEditImage={openSelectedImageInspector}
                 onInsertReference={openReferencePicker}
                 onInsertTable={openTableInsertDialog}
                 onInsertInlineEquation={openInlineEquationDialog}
@@ -2317,6 +2449,24 @@ export function App() {
             setTableDialog(null);
             editor.view.focus();
             setStatusMessage("Canceled table edit");
+          }}
+        />
+      )}
+      {imageInspector && (
+        <ImageInspectorDialog
+          assetId={imageInspector.assetId}
+          initialSrc={imageInspector.src}
+          initialValues={{
+            alt: imageInspector.alt,
+            caption: imageInspector.caption,
+            alignment: imageInspector.alignment
+          }}
+          onApply={(values) => void applyImageInspector(values)}
+          onDelete={deleteSelectedImage}
+          onCancel={() => {
+            setImageInspector(null);
+            editor.view.focus();
+            setStatusMessage("Canceled image edit");
           }}
         />
       )}
@@ -2563,6 +2713,40 @@ function getSelectedEquationPosition(editor: Editor): number | null {
     }
   }
 
+  return null;
+}
+
+function getSelectedFigurePosition(editor: Editor): number | null {
+  const { selection } = editor.state;
+  for (let depth = selection.$from.depth; depth > 0; depth -= 1) {
+    if (selection.$from.node(depth).type.name === "figure") {
+      return selection.$from.before(depth);
+    }
+  }
+
+  const candidates = [selection.from, selection.from - 1, selection.to, selection.to - 1];
+  for (const position of candidates) {
+    if (position < 0) {
+      continue;
+    }
+    if (editor.state.doc.nodeAt(position)?.type.name === "figure") {
+      return position;
+    }
+  }
+  return null;
+}
+
+function findFigurePositionFromElement(editor: Editor, element: HTMLElement): number | null {
+  const basePosition = editor.view.posAtDOM(element, 0);
+  const candidates = [basePosition, basePosition - 1, basePosition + 1];
+  for (const position of candidates) {
+    if (position < 0) {
+      continue;
+    }
+    if (editor.state.doc.nodeAt(position)?.type.name === "figure") {
+      return position;
+    }
+  }
   return null;
 }
 
@@ -2970,10 +3154,6 @@ function getImageExtension(filename: string, mimeType: string): string {
     default:
       return ".bin";
   }
-}
-
-function isSupportedImageFile(file: File): boolean {
-  return file.type.startsWith("image/") && getImageExtension(file.name, file.type) !== ".bin";
 }
 
 function getDefaultPastedImageFilename(file: File): string {

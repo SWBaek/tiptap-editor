@@ -38,7 +38,7 @@ PDF, slide, and embedded Draw.io editing are schema extensions after the source-
 
 ## Phase 2 Figure Shape
 
-`figure` is the first Phase 2 block node. It stores an asset reference in `attrs.assetId`, keeps image bytes in the `.sdoc` `assets/` container, and requires a paragraph caption so Markdown and AI/RAG exports have useful text.
+`figure` is the first Phase 2 block node. It stores an asset reference in `attrs.assetId`, keeps image bytes in the `.sdoc` `assets/` container, and requires a paragraph caption so Markdown and AI/RAG exports have useful text. Optional `attrs.align` may be `left`, `center`, or `right`; omission means the centered editor/HTML default. Alignment is authored figure presentation, while selection handles, inspector drafts, preview URLs, and replacement-file state remain runtime-only.
 
 ```json
 {
@@ -46,7 +46,8 @@ PDF, slide, and embedded Draw.io editing are schema extensions after the source-
   "attrs": {
     "id": "blk_figure",
     "assetId": "asset_architecture.png",
-    "alt": "Architecture"
+    "alt": "Architecture",
+    "align": "right"
   },
   "content": [
     {

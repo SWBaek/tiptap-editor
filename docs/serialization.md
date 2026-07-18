@@ -16,6 +16,7 @@ SDoc serialization은 같은 semantic document가 항상 같은 canonical `docum
 - Mark attrs follow the same rule. Editor-runtime defaults are removed during normalization; a v1 `link` mark stores its authored `href` rather than Tiptap defaults such as `target`, `rel`, `class`, or null `title`.
 - 빈 문자열은 의미 있는 값일 수 있으므로 보존한다.
 - runtime-only state는 저장하지 않는다.
+- Figure `src` preview URLs are removed during normalization. Authored `assetId`, `alt`, caption content, and optional `align` remain canonical; inspector drafts and replacement-file state never enter serialization. Optional `align` uses ordinary deterministic attr ordering and does not require a container or schema-version change.
 
 저장하지 않는 값:
 

@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { FileText, Image, Link2, Plus, Sigma, Table, Trash2, Workflow } from "lucide-react";
 
-export type EditorContextMenuKind = "editor" | "table" | "equation" | "mermaid";
+export type EditorContextMenuKind = "editor" | "table" | "equation" | "mermaid" | "image";
 
 export interface EditorContextMenuState {
   kind: EditorContextMenuKind;
@@ -13,6 +13,7 @@ export interface EditorContextMenuProps {
   state: EditorContextMenuState;
   onClose: () => void;
   onInsertImage: () => void;
+  onEditImage: () => void;
   onInsertReference: () => void;
   onInsertTable: () => void;
   onInsertInlineEquation: () => void;
@@ -31,6 +32,7 @@ export function EditorContextMenu({
   state,
   onClose,
   onInsertImage,
+  onEditImage,
   onInsertReference,
   onInsertTable,
   onInsertInlineEquation,
@@ -72,7 +74,7 @@ export function EditorContextMenu({
     <div
       className="editor-context-menu"
       role="menu"
-      aria-label={`${state.kind === "editor" ? "Insert" : state.kind === "table" ? "Table" : state.kind === "equation" ? "Equation" : "Mermaid"} context menu`}
+      aria-label={`${state.kind === "editor" ? "Insert" : state.kind === "table" ? "Table" : state.kind === "equation" ? "Equation" : state.kind === "mermaid" ? "Mermaid" : "Image"} context menu`}
       style={{ left: state.x, top: state.y }}
       onPointerDown={(event) => event.stopPropagation()}
     >
@@ -97,6 +99,7 @@ export function EditorContextMenu({
       )}
       {state.kind === "equation" && <ContextMenuButton label="Edit equation" icon={<Sigma size={16} />} onClick={() => run(onEditEquation)} />}
       {state.kind === "mermaid" && <ContextMenuButton label="Edit Mermaid diagram" icon={<Workflow size={16} />} onClick={() => run(onEditMermaid)} />}
+      {state.kind === "image" && <ContextMenuButton label="Edit image" icon={<Image size={16} />} onClick={() => run(onEditImage)} />}
     </div>
   );
 }

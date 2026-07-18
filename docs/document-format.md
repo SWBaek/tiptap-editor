@@ -33,6 +33,8 @@ Draw.io diagrams are asset-backed in v1. The editable `.drawio` or `.drawio.xml`
 
 Large engineering data grids follow the same asset-backed principle: CSV or JSON source lives under `assets/`, while `document.json` stores `dataGrid.attrs.sourceAssetId`, `format`, and optional title/caption rather than huge spreadsheet state.
 
+Image figures follow the same boundary: `figure.attrs.assetId`, accessible `alt`, optional authored `align`, and caption content live in `document.json`, while image bytes live under `assets/`. Inspector previews, object/data URLs, replacement file handles, and selection state are runtime-only. Optional figure alignment is backward-compatible within schema v1; omission retains the centered default.
+
 ## 빈 파일 처리
 
 사용자가 `name.sdoc`라는 0-byte 파일을 먼저 만들 수 있다. 이 파일은 아직 유효한 `.sdoc`가 아니므로 앱은 “새 SDoc 문서로 초기화” 동작을 제공해야 한다. 임의 텍스트 파일을 `.sdoc`로 rename한 경우에는 invalid container로 처리한다.

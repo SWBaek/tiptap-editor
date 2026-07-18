@@ -183,6 +183,14 @@ export const FigureNode = Node.create({
         parseHTML: (element) => element.querySelector("img")?.getAttribute("alt") ?? "",
         renderHTML: () => ({})
       },
+      align: {
+        default: null,
+        parseHTML: (element) => {
+          const align = element.getAttribute("data-align");
+          return isTableCellAlignment(align) ? align : null;
+        },
+        renderHTML: (attributes) => isTableCellAlignment(attributes.align) ? { "data-align": attributes.align } : {}
+      },
       src: {
         default: null,
         parseHTML: (element) => element.querySelector("img")?.getAttribute("src") ?? null,

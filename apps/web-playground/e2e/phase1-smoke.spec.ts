@@ -844,13 +844,16 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   await selectPreviewTab(page, "JSON");
 
   const imagePath = testInfo.outputPath("architecture-diagram.png");
+  const replacementImagePath = testInfo.outputPath("reviewed-architecture.png");
+  const imageBytes = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+    "base64"
+  );
   await writeFile(
     imagePath,
-    Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
-      "base64"
-    )
+    imageBytes
   );
+  await writeFile(replacementImagePath, imageBytes);
 
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
@@ -866,14 +869,47 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
 
   const insertedDocument = await readPreviewDocument(page);
   const insertedFigure = findFirstNodeByType(insertedDocument, "figure");
+  const insertedFigureId = insertedFigure.attrs?.id;
+  const insertedCaptionId = insertedFigure.content?.[0]?.attrs?.id;
+  const insertedAssetId = insertedFigure.attrs?.assetId;
   expect(insertedFigure.attrs?.assetId).toEqual(expect.stringMatching(/^asset_[a-z0-9]+\.png$/));
   expect(insertedFigure.attrs?.alt).toBe("architecture diagram");
   expect(JSON.stringify(insertedDocument)).not.toContain("data:image/png");
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
+  await page.locator('.editor-surface figure[data-type="figure"] img').click({ button: "right" });
+  const imageContextMenu = page.getByRole("menu", { name: "Image context menu" });
+  await expect(imageContextMenu).toBeVisible();
+  await imageContextMenu.getByRole("menuitem", { name: "Edit image" }).click();
+  const imageDialog = page.getByRole("dialog", { name: "Edit image" });
+  await imageDialog.getByLabel("Alt text").fill("");
+  await expect(imageDialog.getByRole("button", { name: "Update image" })).toBeDisabled();
+  await expect(imageDialog.getByText("Enter alt text")).toBeVisible();
+  await imageDialog.getByLabel("Alt text").fill("Reviewed architecture alt");
+  await imageDialog.getByLabel("Caption").fill("Reviewed system architecture");
+  await imageDialog.getByLabel("Alignment").selectOption("right");
+  await imageDialog.getByLabel("Replace image file").setInputFiles(replacementImagePath);
+  await expect(imageDialog.getByText("Ready to replace with reviewed-architecture.png")).toBeVisible();
+  await imageDialog.getByRole("button", { name: "Update image" }).click();
+  await expect(page.locator(".status-note")).toContainText("Replaced image with reviewed-architecture.png");
+  await expect(page.locator('.editor-surface figure[data-type="figure"]')).toHaveAttribute("data-align", "right");
+  await expect(page.locator('.editor-surface figure[data-type="figure"] img')).toHaveAttribute("alt", "Reviewed architecture alt");
+  await expect(page.locator('.editor-surface figure[data-type="figure"] figcaption')).toContainText("Reviewed system architecture");
+
+  const editedDocument = await readPreviewDocument(page);
+  const editedFigure = findFirstNodeByType(editedDocument, "figure");
+  expect(editedFigure.attrs?.id).toBe(insertedFigureId);
+  expect(editedFigure.content?.[0]?.attrs?.id).toBe(insertedCaptionId);
+  expect(editedFigure.attrs?.assetId).not.toBe(insertedAssetId);
+  expect(editedFigure.attrs?.alt).toBe("Reviewed architecture alt");
+  expect(editedFigure.attrs?.align).toBe("right");
+  expect(JSON.stringify(editedDocument)).not.toContain("data:image/png");
+  expectUniqueIds(collectBlockIds(editedDocument));
+
   await selectPreviewTab(page, "Markdown");
-  await expect(page.locator(".preview-output")).toContainText("_Figure: architecture diagram_");
+  await expect(page.locator(".preview-output")).toContainText("![Reviewed architecture alt]");
+  await expect(page.locator(".preview-output")).toContainText("_Figure: Reviewed system architecture_");
   await expect(page.locator(".preview-output")).toContainText("](assets/");
 
   const sdocDownloadPromise = page.waitForEvent("download");
@@ -886,14 +922,27 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Figure Round Trip.sdoc");
   await expect(page.locator('.editor-surface figure[data-type="figure"] img')).toBeVisible();
-  await expect(page.locator(".editor-surface")).toContainText("architecture diagram");
+  await expect(page.locator(".editor-surface")).toContainText("Reviewed system architecture");
 
   await selectPreviewTab(page, "JSON");
   const reopenedDocument = await readPreviewDocument(page);
   const reopenedFigure = findFirstNodeByType(reopenedDocument, "figure");
-  expect(reopenedFigure.attrs?.assetId).toBe(insertedFigure.attrs?.assetId);
+  expect(reopenedFigure.attrs?.id).toBe(insertedFigureId);
+  expect(reopenedFigure.content?.[0]?.attrs?.id).toBe(insertedCaptionId);
+  expect(reopenedFigure.attrs?.assetId).toBe(editedFigure.attrs?.assetId);
+  expect(reopenedFigure.attrs?.align).toBe("right");
   expect(JSON.stringify(reopenedDocument)).not.toContain("data:image/png");
   expectUniqueIds(collectBlockIds(reopenedDocument));
+
+  await page.locator('.editor-surface figure[data-type="figure"] img').click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Edit image" }).click();
+  const deleteDialog = page.getByRole("dialog", { name: "Edit image" });
+  await deleteDialog.getByRole("button", { name: "Delete image" }).click();
+  await expect(deleteDialog.getByRole("button", { name: "Confirm delete" })).toBeVisible();
+  await deleteDialog.getByRole("button", { name: "Confirm delete" }).click();
+  await expect(page.locator(".status-note")).toContainText("Deleted image");
+  await expect(page.locator('.editor-surface figure[data-type="figure"]')).toHaveCount(0);
+  expect(JSON.stringify(await readPreviewDocument(page))).not.toContain('"type":"figure"');
 });
 
 test("names and stores a pasted clipboard image through a dialog", async ({ page }, testInfo) => {

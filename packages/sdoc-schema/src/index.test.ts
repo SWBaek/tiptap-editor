@@ -112,7 +112,7 @@ describe("validateDocument", () => {
       content: [
         {
           type: "figure",
-          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture" },
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture", align: "right" },
           content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "System diagram" }] }]
         }
       ]
@@ -120,6 +120,25 @@ describe("validateDocument", () => {
 
     const result = validateDocument(document);
     expect(result.ok).toBe(true);
+  });
+
+  it("rejects unsupported figure alignment", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_test" },
+      content: [
+        {
+          type: "figure",
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture", align: "justify" },
+          content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "System diagram" }] }]
+        }
+      ]
+    };
+
+    const result = validateDocument(document);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("figure align"))).toBe(true);
   });
 
   it("rejects figures without an asset reference or caption", () => {

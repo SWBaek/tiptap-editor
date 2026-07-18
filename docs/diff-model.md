@@ -47,6 +47,8 @@ reference-broken
 
 Asset-backed blocks are compared by semantic references, not by binary payload. Draw.io changes report source/preview asset reference changes. `dataGrid` changes report source asset, format, title, caption, and display metadata changes at block level. Row-level CSV/JSON validation diagnostics may inspect asset bytes as runtime/export readiness feedback.
 
+Figure changes compare stable block identity plus authored `assetId`, `alt`, optional `align`, and caption content. Image replacement is therefore an asset-reference modification on the existing figure ID; inspector selection, preview URLs, and dialog state never participate in diff.
+
 Row-level `dataGrid` diff and merge is an asset-level review projection, not a replacement for `SDocDiffEvent` block diff. The boundary in `docs/data-grid-row-diff-merge-boundary.md` requires reliable row identity, reports keyed row/cell events through the separate `DataGridRowDiff` view-model, and refuses raw line-number merge when no key exists. Applying accepted row changes uses `applyDataGridRowMerge` to recompute the row diff, refuse stale current assets, and return updated asset source text; it must not store row patches or merge UI state in `document.json`.
 
 ## Text Diff

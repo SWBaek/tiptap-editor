@@ -314,6 +314,11 @@ function validateNode(
     if (!caption || getPlainText(caption).trim().length === 0) {
       issues.push({ path: `${path}.content`, message: "figure caption paragraph is required" });
     }
+
+    const align = typedNode.attrs?.align;
+    if (align !== undefined && align !== "left" && align !== "center" && align !== "right") {
+      issues.push({ path: `${path}.attrs.align`, message: "figure align must be left, center, or right" });
+    }
   }
 
   if (typedNode.type === "table") {

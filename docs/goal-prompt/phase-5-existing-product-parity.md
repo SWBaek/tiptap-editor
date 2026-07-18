@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 81
-current_slice: technical-content-editors
+progress_percent: 84
+current_slice: runtime-navigation
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -20,8 +20,8 @@ completed_slices:
   - shell-extraction
   - author-header-and-command-hierarchy
   - writing-essentials
-remaining_slices:
   - technical-content-editors
+remaining_slices:
   - runtime-navigation
   - desktop-explorer
   - recovery-and-security
@@ -108,6 +108,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 81
     note: "Table creation now uses a bounded rows/columns/header/caption dialog, and the selected-table inspector replaces the caption prompt with caption, header-row, and selected-cell alignment controls. E2E rejects invalid dimensions, exercises context-menu insertion and inspector edits, preserves the table ID, exports the caption, and reopens .sdoc. npm test (285), npm run build, and npm run test:e2e (38) passed."
+  - date: 2026-07-18
+    progress_percent: 84
+    note: "Technical-content editors completed. A selected-image inspector now validates alt/caption, supports asset replacement, authored figure alignment, and guarded deletion while preserving figure/caption IDs. Figure align was documented before schema implementation and is validated/exported without serializing preview URLs or dialog state. npm test (288), npm run build, and npm run test:e2e (38) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

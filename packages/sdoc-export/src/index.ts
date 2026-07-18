@@ -1553,8 +1553,9 @@ ${indentHtml(renderHtmlChildrenAsBlocks(node, references, options, depth), 2)}
       const assetId = typeof node.attrs?.assetId === "string" ? node.attrs.assetId : "";
       const caption = renderHtmlInlineChildren(node, references, options).trim();
       const alt = typeof node.attrs?.alt === "string" && node.attrs.alt.length > 0 ? node.attrs.alt : getPlainText(node).trim();
+      const align = node.attrs?.align === "left" || node.attrs?.align === "right" ? node.attrs.align : "center";
       const src = options.assetResolver?.(assetId) ?? `assets/${encodeURI(assetId)}`;
-      return `<figure id="${escapeHtmlAttribute(getNodeId(node) ?? "")}">
+      return `<figure id="${escapeHtmlAttribute(getNodeId(node) ?? "")}" data-align="${align}">
   <img src="${escapeHtmlAttribute(src)}" alt="${escapeHtmlAttribute(alt)}">
   <figcaption>${caption}</figcaption>
 </figure>`;
@@ -2323,6 +2324,19 @@ const PUBLISH_HTML_CSS = `    :root {
       margin: 0 auto;
       object-fit: contain;
     }
+
+    figure[data-align="left"] img {
+      margin-left: 0;
+      margin-right: auto;
+    }
+
+    figure[data-align="right"] img {
+      margin-left: auto;
+      margin-right: 0;
+    }
+
+    figure[data-align="left"] figcaption { text-align: left; }
+    figure[data-align="right"] figcaption { text-align: right; }
 
     figcaption {
       color: var(--sdoc-muted-color);

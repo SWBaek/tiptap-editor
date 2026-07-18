@@ -50,6 +50,7 @@ Markdown은 canonical이 아니다. Markdown export는 리뷰, 외부 협업, LL
 - target block이 없으면 missing reference marker를 남긴다.
 - callout은 Markdown admonition 호환 문법으로 export한다.
 - dataGrid는 title/caption/source asset label을 export하고 raw CSV/JSON rows를 기본 Markdown에 dump하지 않는다. HTML/PDF publishing may show bounded preview rows from assets, but RAG chunks remain metadata-focused by default.
+- Figure `align` is an authored editor/HTML presentation hint. Markdown and AI/RAG text retain the asset, alt text, and caption but may omit alignment because it has no stable plain-text equivalent.
 - 지원하지 않는 node는 가능한 범위에서 text fallback으로 export한다.
 
 ## Chunk Export

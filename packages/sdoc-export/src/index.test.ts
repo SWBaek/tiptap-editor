@@ -168,7 +168,7 @@ describe("exportMarkdown", () => {
       content: [
         {
           type: "figure",
-          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture" },
+          attrs: { id: "blk_figure", assetId: "asset_architecture.png", alt: "Architecture", align: "right" },
           content: [{ type: "paragraph", attrs: { id: "blk_caption" }, content: [{ type: "text", text: "System architecture" }] }]
         }
       ]
@@ -177,6 +177,7 @@ describe("exportMarkdown", () => {
     const markdown = exportMarkdown(withFigure);
     expect(markdown).toContain("![Architecture](assets/asset_architecture.png)");
     expect(markdown).toContain("_Figure: System architecture_");
+    expect(exportHtml(withFigure)).toContain('<figure id="blk_figure" data-align="right">');
   });
 
   it("exports simple tables as Markdown pipe tables", () => {

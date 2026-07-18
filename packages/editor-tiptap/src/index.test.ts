@@ -12,6 +12,7 @@ import {
   EquationBlockNode,
   FigureNode,
   fromSdocDocument,
+  getNextHeadingLevel,
   getSelectedBlockHumanIdTarget,
   insertCrossReference,
   insertDataGrid,
@@ -29,6 +30,16 @@ import {
   TableExtensions,
   toSdocDocument
 } from "./index";
+
+describe("getNextHeadingLevel", () => {
+  it("changes supported levels and yields at heading boundaries", () => {
+    expect(getNextHeadingLevel(2, "deeper")).toBe(3);
+    expect(getNextHeadingLevel(2, "shallower")).toBe(1);
+    expect(getNextHeadingLevel(6, "deeper")).toBeNull();
+    expect(getNextHeadingLevel(1, "shallower")).toBeNull();
+    expect(getNextHeadingLevel("2", "deeper")).toBeNull();
+  });
+});
 
 describe("repairJsonBlockIds", () => {
   it("preserves first-seen ids and assigns missing block ids", () => {

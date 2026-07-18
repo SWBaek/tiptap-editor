@@ -49,6 +49,7 @@ import {
   insertDataGrid,
   insertDrawioDiagram,
   getSelectedBlockHumanIdTarget,
+  HeadingLevelKeyboardExtension,
   insertInlineEquation,
   insertMermaidDiagram,
   insertSimpleTable,
@@ -180,6 +181,7 @@ const sdocExtensions = [
   ...TableExtensions,
   FigureNode,
   CalloutNode,
+  HeadingLevelKeyboardExtension,
   BlockIdExtension
 ] as unknown as AnyExtension[];
 

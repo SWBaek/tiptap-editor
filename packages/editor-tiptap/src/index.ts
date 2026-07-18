@@ -1,4 +1,4 @@
-import { Extension, mergeAttributes, Node, type JSONContent } from "@tiptap/core";
+import { Extension, mergeAttributes, Node, type Editor, type JSONContent } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import katex from "katex";
@@ -30,6 +30,36 @@ const BLOCK_ID_REPAIR_META = "sdocBlockIdRepair";
 
 export type BlockMoveDirection = "up" | "down";
 export type TableCellAlignment = "left" | "center" | "right";
+export type HeadingLevelChangeDirection = "deeper" | "shallower";
+
+export function getNextHeadingLevel(level: unknown, direction: HeadingLevelChangeDirection): number | null {
+  if (!Number.isInteger(level) || typeof level !== "number" || level < 1 || level > 6) {
+    return null;
+  }
+
+  const nextLevel = direction === "deeper" ? level + 1 : level - 1;
+  return nextLevel >= 1 && nextLevel <= 6 ? nextLevel : null;
+}
+
+export function changeSelectedHeadingLevel(editor: Editor, direction: HeadingLevelChangeDirection): boolean {
+  if (!editor.isActive("heading")) {
+    return false;
+  }
+
+  const nextLevel = getNextHeadingLevel(editor.getAttributes("heading").level, direction);
+  return nextLevel === null ? false : editor.chain().focus().updateAttributes("heading", { level: nextLevel }).run();
+}
+
+export const HeadingLevelKeyboardExtension = Extension.create({
+  name: "headingLevelKeyboard",
+
+  addKeyboardShortcuts() {
+    return {
+      Tab: () => changeSelectedHeadingLevel(this.editor, "deeper"),
+      "Shift-Tab": () => changeSelectedHeadingLevel(this.editor, "shallower")
+    };
+  }
+});
 
 export interface EditorBlockIdTarget {
   state: {

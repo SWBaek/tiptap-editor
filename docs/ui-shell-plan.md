@@ -132,6 +132,7 @@ Bubble-menu progress on 2026-07-18:
 - Sub/superscript are implemented as canonical attribute-free marks in the advanced Text options menu and selected-text Bubble Menu, with semantic export coverage.
 - Paragraph and heading left/center/right alignment is implemented in Text options; table-cell alignment remains contextual under Table tools.
 - Task list is a visible basic writing control alongside bullet and ordered lists; checkbox state is canonical while focus/hover remains runtime-only.
+- Heading Tab/Shift-Tab changes heading depth in place, preserves the stable block ID, and does not intercept Tab in ordinary paragraphs or list-specific contexts.
 
 ## Outline And Authoring Structure
 

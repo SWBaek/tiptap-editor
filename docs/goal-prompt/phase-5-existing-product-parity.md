@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 65
+progress_percent: 68
 current_slice: writing-essentials
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -93,6 +93,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 65
     note: "Task lists are available beside bullet/ordered lists with accessible checkbox toggling and nested list support. Canonical taskList/taskItem/paragraph blocks retain stable IDs; checked is validated as boolean and exported to Markdown/HTML/DOCX/PPTX projections. npm test (279), npm run build, and npm run test:e2e (36) passed."
+  - date: 2026-07-18
+    progress_percent: 68
+    note: "Heading Tab/Shift-Tab now changes levels 1-6 in place through a focused editor extension, preserving attrs.id and yielding outside headings or at boundaries. The first build exposed workspace-private Tiptap type identity, so the extension follows the existing typed package-extension boundary. npm test (280), npm run build, and npm run test:e2e (37) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

@@ -252,6 +252,43 @@ test("authors and checks a stable-id task list", async ({ page }) => {
   await expect(page.locator(".preview-output")).toContainText("- [x] Verify converter limits");
 });
 
+test("changes heading depth with Tab without replacing block ids", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.getByRole("button", { name: "Heading 2" }).click();
+  await page.keyboard.type("Converter limits");
+
+  let document = await readPreviewDocument(page);
+  let heading = document.content?.find((node) => node.type === "heading");
+  const headingId = heading?.attrs?.id;
+  expect(heading?.attrs?.level).toBe(2);
+
+  await page.locator(".editor-surface h2").click();
+  await page.keyboard.press("Tab");
+  document = await readPreviewDocument(page);
+  heading = document.content?.find((node) => node.type === "heading");
+  expect(heading?.attrs?.level).toBe(3);
+  expect(heading?.attrs?.id).toBe(headingId);
+
+  await page.locator(".editor-surface h3").click();
+  await page.keyboard.press("Shift+Tab");
+  document = await readPreviewDocument(page);
+  heading = document.content?.find((node) => node.type === "heading");
+  expect(heading?.attrs?.level).toBe(2);
+  expect(heading?.attrs?.id).toBe(headingId);
+
+  await page.locator(".editor-surface h2").click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Body paragraph");
+  const paragraph = page.locator(".editor-surface p").last();
+  const beforeParagraphTab = await readPreviewDocument(page);
+  await paragraph.click();
+  await page.keyboard.press("Tab");
+  expect(await readPreviewDocument(page)).toEqual(beforeParagraphTab);
+  expectUniqueIds(collectBlockIds(beforeParagraphTab));
+});
+
 test("uses viewport-safe runtime editor and table context menus", async ({ page }) => {
   await page.goto("/");
   await selectPreviewTab(page, "JSON");

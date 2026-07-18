@@ -140,6 +140,8 @@ Paragraph and heading blocks may store authored horizontal alignment in `attrs.t
 
 Task lists use Tiptap-compatible `taskList` and `taskItem` block nodes. Both nodes, plus each paragraph inside a task item, carry stable immutable `attrs.id`. `taskItem.attrs.checked` is the only task-specific canonical state and must be boolean; checkbox hover/focus and selection remain runtime-only. Nested task lists are allowed inside task items and preserve their own stable IDs.
 
+In the authoring runtime, Tab and Shift-Tab on a heading change only its `attrs.level` within levels 1–6. The command updates the existing node and must preserve its `attrs.id`; outside a heading it returns control to the browser or another applicable editor shortcut.
+
 ```json
 {
   "type": "table",

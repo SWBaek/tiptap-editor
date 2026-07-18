@@ -28,7 +28,8 @@ export interface NativeSdocOpenAdapter {
 export interface WindowSdocWorkspaceEntry {
   name: string;
   path: string;
-  kind: "sdoc-file" | "unpacked-sdoc-folder";
+  kind: "folder" | "sdoc-file" | "unpacked-sdoc-folder";
+  children?: WindowSdocWorkspaceEntry[];
   sizeBytes?: number;
   modifiedAtMs?: number;
 }

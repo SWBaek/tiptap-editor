@@ -42,7 +42,8 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
 
 2. Workspace Explorer
    - Choose a workspace folder containing multiple `.sdoc` files.
-   - Confirm the Files panel reads as a simple explorer and lists immediate `.sdoc` files.
+   - Include nested folders and confirm the Files panel renders a folder tree with predictable expand/collapse behavior.
+   - Confirm nested `.sdoc` files open from the tree while symlinked folders are not traversed outside the selected workspace.
    - Confirm the current document and saved/unsaved state are visible in the compact Files header.
    - Confirm developer-only unpacked folder commands are not part of the default author path.
 

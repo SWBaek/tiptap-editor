@@ -147,6 +147,12 @@ Runtime-navigation progress on 2026-07-18:
 - Editor zoom uses a 60–200% floating control with 10% steps and the `sdoc-editor-zoom` local preference. CSS zoom changes only the authoring projection; it never changes canonical JSON, metadata, exports, or saved `.sdoc` bytes.
 - Cursor history keeps a bounded runtime stack of explicit editor click locations, resets for a newly opened document, and clamps stale positions after edits. Floating back/forward buttons, Alt+Left/Right, and mouse buttons 3/4 navigate the stack without changing content or joining ProseMirror undo history.
 
+Desktop-explorer behavior for Phase 5.1:
+
+- The typed Tauri workspace listing returns a recursive tree of ordinary folders and `.sdoc` files. The explorer owns runtime-only expanded-folder state, and native traversal does not follow symlinks outside the selected workspace.
+- Unpacked `.sdoc` folders remain an explicit developer/reviewer option rather than appearing as ordinary author documents. Browser mode continues to expose only user-selected file open/download flows.
+- Workspace mutations and watcher events are separate typed adapter operations so listing, destructive feedback, and external-change recovery can be tested in bounded slices.
+
 ## Outline And Authoring Structure
 
 The Outline surface should become a primary authoring tool:

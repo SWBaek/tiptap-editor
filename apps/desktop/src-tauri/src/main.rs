@@ -175,13 +175,18 @@ struct WorkspaceEntry {
     name: String,
     path: String,
     kind: WorkspaceEntryKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    children: Option<Vec<WorkspaceEntry>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     size_bytes: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     modified_at_ms: Option<u64>,
 }
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum WorkspaceEntryKind {
+    Folder,
     SdocFile,
     UnpackedSdocFolder,
 }
@@ -233,13 +238,36 @@ fn write_sdoc_file(path: String, bytes: Vec<u8>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn list_sdoc_workspace_entries(directory_path: String, include_unpacked_folders: bool) -> Result<Vec<WorkspaceEntry>, String> {
+fn list_sdoc_workspace_entries(
+    directory_path: String,
+    include_unpacked_folders: bool,
+) -> Result<Vec<WorkspaceEntry>, String> {
     let directory = PathBuf::from(directory_path);
+    if !directory.is_dir() {
+        return Err("Workspace path must be an existing directory.".to_string());
+    }
+
+    read_workspace_directory(&directory, include_unpacked_folders, 0)
+}
+
+fn read_workspace_directory(
+    directory: &PathBuf,
+    include_unpacked_folders: bool,
+    depth: usize,
+) -> Result<Vec<WorkspaceEntry>, String> {
+    if depth > 32 {
+        return Err("Workspace folder nesting exceeds the supported depth of 32.".to_string());
+    }
+
     let mut entries = Vec::new();
 
-    for item in fs::read_dir(&directory).map_err(|error| error.to_string())? {
+    for item in fs::read_dir(directory).map_err(|error| error.to_string())? {
         let item = item.map_err(|error| error.to_string())?;
         let path = item.path();
+        let file_type = item.file_type().map_err(|error| error.to_string())?;
+        if file_type.is_symlink() {
+            continue;
+        }
         let metadata = item.metadata().map_err(|error| error.to_string())?;
         let name = item.file_name().to_string_lossy().to_string();
 
@@ -248,14 +276,34 @@ fn list_sdoc_workspace_entries(directory_path: String, include_unpacked_folders:
                 name,
                 path: path.to_string_lossy().to_string(),
                 kind: WorkspaceEntryKind::SdocFile,
+                children: None,
                 size_bytes: Some(metadata.len()),
                 modified_at_ms: modified_at_ms(&metadata),
             });
-        } else if include_unpacked_folders && metadata.is_dir() && is_unpacked_sdoc_folder(&path) {
+        } else if metadata.is_dir() {
+            if is_unpacked_sdoc_folder(&path) {
+                if include_unpacked_folders {
+                    entries.push(WorkspaceEntry {
+                        name,
+                        path: path.to_string_lossy().to_string(),
+                        kind: WorkspaceEntryKind::UnpackedSdocFolder,
+                        children: None,
+                        size_bytes: None,
+                        modified_at_ms: modified_at_ms(&metadata),
+                    });
+                }
+                continue;
+            }
+
             entries.push(WorkspaceEntry {
                 name,
                 path: path.to_string_lossy().to_string(),
-                kind: WorkspaceEntryKind::UnpackedSdocFolder,
+                kind: WorkspaceEntryKind::Folder,
+                children: Some(read_workspace_directory(
+                    &path,
+                    include_unpacked_folders,
+                    depth + 1,
+                )?),
                 size_bytes: None,
                 modified_at_ms: modified_at_ms(&metadata),
             });
@@ -584,4 +632,56 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("failed to run SDoc desktop app");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lists_nested_sdoc_folders_without_following_symlinks() {
+        let root = std::env::temp_dir().join(format!(
+            "sdoc-workspace-tree-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let guides = root.join("Guides");
+        let unpacked = root.join("review-copy");
+        fs::create_dir_all(&guides).unwrap();
+        fs::create_dir_all(&unpacked).unwrap();
+        fs::write(root.join("Top.sdoc"), [80, 75, 3, 4]).unwrap();
+        fs::write(root.join("notes.txt"), b"not listed").unwrap();
+        fs::write(guides.join("Nested.sdoc"), [80, 75, 3, 4]).unwrap();
+        fs::write(unpacked.join("manifest.json"), b"{}").unwrap();
+        fs::write(unpacked.join("document.json"), b"{}").unwrap();
+        fs::write(unpacked.join("metadata.json"), b"{}").unwrap();
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&guides, root.join("linked-guides")).unwrap();
+
+        let entries =
+            list_sdoc_workspace_entries(root.to_string_lossy().to_string(), false).unwrap();
+        assert_eq!(entries.len(), 2);
+        assert!(entries
+            .iter()
+            .any(|entry| entry.name == "Top.sdoc"
+                && matches!(entry.kind, WorkspaceEntryKind::SdocFile)));
+        let guides_entry = entries.iter().find(|entry| entry.name == "Guides").unwrap();
+        assert!(matches!(guides_entry.kind, WorkspaceEntryKind::Folder));
+        let children = guides_entry.children.as_ref().unwrap();
+        assert_eq!(children.len(), 1);
+        assert_eq!(children[0].name, "Nested.sdoc");
+        assert!(!entries
+            .iter()
+            .any(|entry| entry.name == "review-copy" || entry.name == "linked-guides"));
+        let serialized = serde_json::to_value(&entries).unwrap();
+        assert!(serialized[0].get("children").is_some() || serialized[1].get("children").is_some());
+        assert!(!serialized.to_string().contains("\"children\":null"));
+        assert!(!serialized.to_string().contains("\"sizeBytes\":null"));
+
+        fs::remove_dir_all(&root).unwrap();
+    }
 }

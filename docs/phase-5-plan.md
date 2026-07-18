@@ -47,6 +47,8 @@ Ordered slices:
 5. Add runtime-only zoom and cursor history.
 6. Extend the typed Tauri explorer for nested folders, create/rename/trash/refresh/watcher behavior.
 7. Add recoverable save/external-change/Draw.io conflict feedback and minimize Tauri CSP/capabilities.
+
+The explorer extension is delivered in bounded operations: recursive typed listing and expand/collapse first; validated create/rename/trash commands second; then scoped watcher events and dirty-document conflict handling. Native traversal remains rooted at the chosen workspace and does not follow symlinks.
 8. Run the full review gate, update native smoke and 3-5-user scenarios, then stop for user review.
 
 Every slice requires docs, implementation, tests, `npm test`, `npm run build`, and `npm run test:e2e`, followed by a separate commit and push. Desktop slices additionally require `npm run typecheck:desktop` and `npm run build:desktop`.
@@ -91,10 +93,11 @@ Acceptance evidence:
 
 - Files panel now presents a compact current-file header with saved/unsaved state.
 - File actions are reduced to New, Open, and Save/Save As.
-- Desktop workspace entries render as an explorer tree under the selected folder.
+- Desktop workspace entries render as a recursive typed explorer tree under the selected folder, with runtime-only expand/collapse state.
+- Native traversal is bounded to 32 folder levels, skips symlinks, and omits unpacked `.sdoc` folders from the ordinary author view.
 - Browser mode continues to show a desktop-only browsing boundary instead of claiming folder access.
 - Developer unpack/pack commands remain available only behind a collapsed Developer workspace disclosure.
-- Playwright covers browser Files panel behavior and the desktop workspace listing path.
+- Unit, Rust filesystem/serialization, and Playwright tests cover recursive bridge validation, native listing, and nested explorer behavior; desktop typecheck and packaged Tauri build pass.
 
 ## Priority Slice 3: Information Architecture Cleanup
 

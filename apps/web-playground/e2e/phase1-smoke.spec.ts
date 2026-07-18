@@ -574,7 +574,15 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
         return "C:\\Docs";
       },
       async listSdocWorkspaceEntries() {
-        return [{ name: "opened.sdoc", path: "C:\\Docs\\opened.sdoc", kind: "sdoc-file" }];
+        return [
+          {
+            name: "Guides",
+            path: "C:\\Docs\\Guides",
+            kind: "folder",
+            children: [{ name: "nested.sdoc", path: "C:\\Docs\\Guides\\nested.sdoc", kind: "sdoc-file" }]
+          },
+          { name: "opened.sdoc", path: "C:\\Docs\\opened.sdoc", kind: "sdoc-file" }
+        ];
       }
     };
   });
@@ -595,6 +603,11 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   const filesPanel = page.getByRole("complementary", { name: "Files side panel" });
   await expect(filesPanel.getByLabel("Workspace files")).toContainText("Docs");
   await expect(filesPanel.getByLabel("Workspace files")).toContainText("opened.sdoc");
+  await expect(filesPanel.getByRole("button", { name: /nested\.sdoc/ })).toHaveCount(0);
+  await filesPanel.getByRole("button", { name: "Expand folder Guides" }).click();
+  await expect(filesPanel.getByRole("button", { name: /nested\.sdoc/ })).toBeVisible();
+  await filesPanel.getByRole("button", { name: "Collapse folder Guides" }).click();
+  await expect(filesPanel.getByRole("button", { name: /nested\.sdoc/ })).toHaveCount(0);
   await filesPanel.getByRole("button", { name: /opened\.sdoc/ }).click();
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("opened");
   await expect(filesPanel.getByLabel("Current file")).toContainText("opened.sdoc");

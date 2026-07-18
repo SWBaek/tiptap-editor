@@ -83,7 +83,14 @@ describe("document native bridge", () => {
           return "C:/docs";
         },
         async listSdocWorkspaceEntries(directoryPath: string) {
-          return [{ name: "Spec.sdoc", path: `${directoryPath}/Spec.sdoc`, kind: "sdoc-file" as const }];
+          return [
+            {
+              name: "Guides",
+              path: `${directoryPath}/Guides`,
+              kind: "folder" as const,
+              children: [{ name: "Spec.sdoc", path: `${directoryPath}/Guides/Spec.sdoc`, kind: "sdoc-file" as const }]
+            }
+          ];
         },
         async openSdocPath(path: string) {
           return {
@@ -95,7 +102,14 @@ describe("document native bridge", () => {
     });
 
     await expect(adapter?.chooseDirectory()).resolves.toBe("C:/docs");
-    await expect(adapter?.list("C:/docs")).resolves.toEqual([{ name: "Spec.sdoc", path: "C:/docs/Spec.sdoc", kind: "sdoc-file" }]);
+    await expect(adapter?.list("C:/docs")).resolves.toEqual([
+      {
+        name: "Guides",
+        path: "C:/docs/Guides",
+        kind: "folder",
+        children: [{ name: "Spec.sdoc", path: "C:/docs/Guides/Spec.sdoc", kind: "sdoc-file" }]
+      }
+    ]);
     await expect(adapter?.openFile("C:/docs/Spec.sdoc")).resolves.toEqual({
       path: "C:/docs/Spec.sdoc",
       bytes: new Uint8Array([80, 75, 3, 4])

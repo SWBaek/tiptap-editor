@@ -1,4 +1,5 @@
-import { FilePlus, FileText, FolderOpen, RefreshCw, Save } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, FilePlus, FileText, Folder, FolderOpen, RefreshCw, Save } from "lucide-react";
 import type { WindowSdocWorkspaceEntry } from "../../documentNativeBridge";
 import { formatRecentFileTime } from "../editor-shell/DesktopStartScreen";
 import type { RecentFileEntry } from "../editor-shell/types";
@@ -45,7 +46,23 @@ export function FilesPanel({
   const unpackCommand = `npm run sdoc -- unpack ${quoteCliPath(sdocFilename)} ${quoteCliPath(`${sdocFilename}.d`)}`;
   const packCommand = `npm run sdoc -- pack ${quoteCliPath(`${sdocFilename}.d`)} ${quoteCliPath(sdocFilename)}`;
   const isCurrentUnsaved = savedLabel.toLowerCase().includes("unsaved") || savedLabel === "Not saved";
-  const currentWorkspaceEntries = workspaceEntries.filter((entry) => entry.name === currentFile || entry.path === currentFile);
+  const [expandedWorkspacePaths, setExpandedWorkspacePaths] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    setExpandedWorkspacePaths(new Set());
+  }, [workspaceDirectory]);
+
+  function toggleWorkspaceFolder(path: string) {
+    setExpandedWorkspacePaths((current) => {
+      const next = new Set(current);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="side-panel-section files-panel explorer-panel">
@@ -94,19 +111,15 @@ export function FilesPanel({
               </button>
             </div>
             {workspaceEntries.length === 0 ? (
-              <p className="explorer-empty">{isWorkspaceLoading ? "Loading workspace files" : "No .sdoc files in this folder"}</p>
+              <p className="explorer-empty">{isWorkspaceLoading ? "Loading workspace files" : "No folders or .sdoc files in this workspace"}</p>
             ) : (
-              <ul className="explorer-tree">
-                {workspaceEntries.map((entry) => (
-                  <li key={entry.path} className={isCurrentWorkspaceEntry(entry, currentFile, currentWorkspaceEntries) ? "active" : undefined}>
-                    <button type="button" onClick={() => onOpenWorkspaceEntry(entry)} disabled={entry.kind !== "sdoc-file"} title={entry.path}>
-                      <FileText size={15} />
-                      <span>{entry.name}</span>
-                      <small>{formatWorkspaceEntryMeta(entry)}</small>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <WorkspaceTree
+                entries={workspaceEntries}
+                currentFile={currentFile}
+                expandedPaths={expandedWorkspacePaths}
+                onToggleFolder={toggleWorkspaceFolder}
+                onOpenEntry={onOpenWorkspaceEntry}
+              />
             )}
           </>
         ) : (
@@ -157,8 +170,62 @@ export function FilesPanel({
   );
 }
 
+interface WorkspaceTreeProps {
+  entries: WindowSdocWorkspaceEntry[];
+  currentFile: string;
+  expandedPaths: Set<string>;
+  onToggleFolder: (path: string) => void;
+  onOpenEntry: (entry: WindowSdocWorkspaceEntry) => void;
+}
+
+function WorkspaceTree({ entries, currentFile, expandedPaths, onToggleFolder, onOpenEntry }: WorkspaceTreeProps) {
+  return (
+    <ul className="explorer-tree">
+      {entries.map((entry) => {
+        const isFolder = entry.kind === "folder";
+        const isExpanded = isFolder && expandedPaths.has(entry.path);
+        return (
+          <li key={entry.path} className={isCurrentWorkspaceEntry(entry, currentFile) ? "active" : undefined}>
+            <button
+              type="button"
+              onClick={() => isFolder ? onToggleFolder(entry.path) : onOpenEntry(entry)}
+              disabled={entry.kind === "unpacked-sdoc-folder"}
+              title={entry.path}
+              aria-expanded={isFolder ? isExpanded : undefined}
+              aria-label={isFolder ? `${isExpanded ? "Collapse" : "Expand"} folder ${entry.name}` : undefined}
+            >
+              {isFolder ? (
+                <>
+                  {isExpanded ? <ChevronDown className="explorer-chevron" size={13} /> : <ChevronRight className="explorer-chevron" size={13} />}
+                  {isExpanded ? <FolderOpen size={15} /> : <Folder size={15} />}
+                </>
+              ) : (
+                <>
+                  <span className="explorer-chevron-placeholder" aria-hidden="true" />
+                  <FileText size={15} />
+                </>
+              )}
+              <span>{entry.name}</span>
+              <small>{formatWorkspaceEntryMeta(entry)}</small>
+            </button>
+            {isExpanded && entry.children && entry.children.length > 0 && (
+              <WorkspaceTree
+                entries={entry.children}
+                currentFile={currentFile}
+                expandedPaths={expandedPaths}
+                onToggleFolder={onToggleFolder}
+                onOpenEntry={onOpenEntry}
+              />
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function formatWorkspaceEntryMeta(entry: WindowSdocWorkspaceEntry): string {
-  const parts = [entry.kind === "unpacked-sdoc-folder" ? "unpacked folder" : "single .sdoc"];
+  const parts = [entry.kind === "folder" ? "folder" : entry.kind === "unpacked-sdoc-folder" ? "unpacked folder" : "single .sdoc"];
   if (typeof entry.sizeBytes === "number") {
     parts.push(formatByteSize(entry.sizeBytes));
   }
@@ -176,8 +243,8 @@ function basenameFromPath(path: string): string {
   return normalized.split("/").filter(Boolean).pop() ?? path;
 }
 
-function isCurrentWorkspaceEntry(entry: WindowSdocWorkspaceEntry, currentFile: string, candidates: WindowSdocWorkspaceEntry[]): boolean {
-  return entry.name === currentFile || entry.path === currentFile || candidates.some((candidate) => candidate.path === entry.path);
+function isCurrentWorkspaceEntry(entry: WindowSdocWorkspaceEntry, currentFile: string): boolean {
+  return entry.name === currentFile || entry.path === currentFile;
 }
 
 function formatByteSize(value: number): string {

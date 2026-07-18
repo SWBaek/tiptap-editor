@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 89
+progress_percent: 91
 current_slice: desktop-explorer
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -117,6 +117,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 89
     note: "Runtime navigation completed with a bounded runtime-only cursor history for explicit editor click locations, floating back/forward controls, Alt+Left/Right, and mouse buttons 3/4. Branching, retention bounds, and stale-position clamping have unit coverage; E2E verifies keyboard, mouse, and control navigation without changing canonical JSON. npm test (292), npm run build, and npm run test:e2e (40) passed."
+  - date: 2026-07-18
+    progress_percent: 91
+    note: "Desktop explorer started with recursive typed folder/.sdoc entries, runtime-only expand/collapse state, depth-bounded native traversal, symlink exclusion, and the existing browser filesystem boundary. Rust tests cover nested listing and optional-field serialization; desktop-runtime E2E covers collapse/expand/open. npm test (292), npm run build, npm run test:e2e (40), npm run typecheck:desktop, cargo test (1), and npm run build:desktop passed. The packaged build also exposed and repaired the previously missing RGBA icon.png derived from the existing icon.ico."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

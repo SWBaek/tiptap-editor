@@ -122,6 +122,15 @@ import { ActivityBar } from "./components/editor-shell/ActivityBar";
 import { DesktopStartScreen } from "./components/editor-shell/DesktopStartScreen";
 import { DocumentCommandBar } from "./components/editor-shell/DocumentCommandBar";
 import { EDITOR_ZOOM_STORAGE_KEY, loadStoredEditorZoom, ZoomControl } from "./components/editor-shell/ZoomControl";
+import { CursorHistoryControl } from "./components/editor-shell/CursorHistoryControl";
+import {
+  canNavigateCursorHistory,
+  createCursorHistory,
+  navigateCursorHistory,
+  recordCursorLocation,
+  type CursorHistoryDirection,
+  type CursorLocation
+} from "./components/editor-shell/cursorHistory";
 import { PreviewTabButton as TabButton } from "./components/editor-shell/PreviewTabButton";
 import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry } from "./components/editor-shell/types";
 import { EditorToolbar } from "./components/editor-toolbar/EditorToolbar";
@@ -254,6 +263,7 @@ export function App() {
   const [headingNumbering, setHeadingNumbering] = useState<HeadingNumberingSettings>({ enabled: true, maxLevel: 3 });
   const [outlineDepth, setOutlineDepth] = useState(3);
   const [editorZoom, setEditorZoom] = useState(() => loadInitialEditorZoom());
+  const [cursorHistory, setCursorHistory] = useState(() => createCursorHistory());
   const [publishingStyleProfile, setPublishingStyleProfile] = useState<PublishingStyleProfileName>("modern");
   const [bubbleToolbarPosition, setBubbleToolbarPosition] = useState<BubbleToolbarPosition | null>(null);
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
@@ -330,6 +340,29 @@ export function App() {
       // Storage can be unavailable in restricted browser contexts; zoom remains session-local.
     }
   }, [editorZoom]);
+
+  useEffect(() => {
+    const selection = editor.state.selection;
+    setCursorHistory(createCursorHistory({ from: selection.from, to: selection.to }));
+  }, [documentId, editor]);
+
+  useEffect(() => {
+    function handleCursorHistoryKeyDown(event: KeyboardEvent) {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) {
+        return;
+      }
+      const eventTarget = event.target;
+      if (!(eventTarget instanceof Node) || !editorPaneRef.current?.contains(eventTarget)) {
+        return;
+      }
+
+      event.preventDefault();
+      navigateEditorCursor(event.key === "ArrowLeft" ? "back" : "forward");
+    }
+
+    window.addEventListener("keydown", handleCursorHistoryKeyDown, true);
+    return () => window.removeEventListener("keydown", handleCursorHistoryKeyDown, true);
+  }, [cursorHistory, editor]);
 
   useEffect(() => {
     return () => {
@@ -1798,6 +1831,55 @@ export function App() {
     }
   }
 
+  function handleEditorPaneMouseDown(event: React.MouseEvent<HTMLElement>) {
+    if (event.button !== 3 && event.button !== 4) {
+      return;
+    }
+    event.preventDefault();
+    navigateEditorCursor(event.button === 3 ? "back" : "forward");
+  }
+
+  function handleEditorPaneMouseUp(event: React.MouseEvent<HTMLElement>) {
+    if (event.button !== 0 || (event.target instanceof Element && event.target.closest(".editor-runtime-controls"))) {
+      return;
+    }
+    const domSelection = window.getSelection();
+    const anchorNode = domSelection?.anchorNode;
+    const focusNode = domSelection?.focusNode;
+    if (!domSelection || !anchorNode || !focusNode || !editor.view.dom.contains(anchorNode) || !editor.view.dom.contains(focusNode)) {
+      return;
+    }
+
+    let location: CursorLocation;
+    try {
+      location = {
+        from: editor.view.posAtDOM(anchorNode, domSelection.anchorOffset),
+        to: editor.view.posAtDOM(focusNode, domSelection.focusOffset)
+      };
+    } catch {
+      return;
+    }
+    setCursorHistory((current) => recordCursorLocation(current, location));
+  }
+
+  function handleEditorPaneAuxClick(event: React.MouseEvent<HTMLElement>) {
+    if (event.button === 3 || event.button === 4) {
+      event.preventDefault();
+    }
+  }
+
+  function navigateEditorCursor(direction: CursorHistoryDirection) {
+    const result = navigateCursorHistory(cursorHistory, direction, editor.state.doc.content.size);
+    if (!result.location) {
+      setStatusMessage(direction === "back" ? "No previous cursor position" : "No next cursor position");
+      return;
+    }
+
+    setCursorHistory(result.state);
+    editor.chain().focus().setTextSelection(result.location).scrollIntoView().run();
+    setStatusMessage(direction === "back" ? "Moved to previous cursor position" : "Moved to next cursor position");
+  }
+
   function handleEditorPaneContextMenu(event: ReactMouseEvent<HTMLElement>) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target || !target.closest(".editor-surface")) {
@@ -2321,7 +2403,15 @@ export function App() {
         />
 
         <div className={isPreviewOpen ? "editor-grid" : "editor-grid preview-collapsed"}>
-          <section className="editor-pane" ref={editorPaneRef} onDoubleClick={handleEditorPaneDoubleClick} onContextMenu={handleEditorPaneContextMenu}>
+          <section
+            className="editor-pane"
+            ref={editorPaneRef}
+            onDoubleClick={handleEditorPaneDoubleClick}
+            onContextMenu={handleEditorPaneContextMenu}
+            onMouseDown={handleEditorPaneMouseDown}
+            onMouseUp={handleEditorPaneMouseUp}
+            onAuxClick={handleEditorPaneAuxClick}
+          >
             {foldRuntimeCss && <style data-sdoc-fold-runtime>{foldRuntimeCss}</style>}
             {headingNumberRuntimeCss && <style data-sdoc-heading-number-runtime>{headingNumberRuntimeCss}</style>}
             {brokenReferenceRuntimeCss && <style data-sdoc-broken-reference-runtime>{brokenReferenceRuntimeCss}</style>}
@@ -2355,7 +2445,15 @@ export function App() {
                 onDeleteTableColumn={() => runTableCommand("deleteColumn", "Deleted table column")}
               />
             )}
-            <ZoomControl zoom={editorZoom} onZoomChange={setEditorZoom} />
+            <div className="editor-runtime-controls">
+              <CursorHistoryControl
+                canGoBack={canNavigateCursorHistory(cursorHistory, "back")}
+                canGoForward={canNavigateCursorHistory(cursorHistory, "forward")}
+                onGoBack={() => navigateEditorCursor("back")}
+                onGoForward={() => navigateEditorCursor("forward")}
+              />
+              <ZoomControl zoom={editorZoom} onZoomChange={setEditorZoom} />
+            </div>
             <div className="editor-zoom-layer" style={{ zoom: `${editorZoom}%` }}>
               <EditorContent editor={editor} />
             </div>

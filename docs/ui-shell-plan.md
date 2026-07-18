@@ -145,6 +145,7 @@ Technical-content editor progress on 2026-07-18:
 Runtime-navigation progress on 2026-07-18:
 
 - Editor zoom uses a 60–200% floating control with 10% steps and the `sdoc-editor-zoom` local preference. CSS zoom changes only the authoring projection; it never changes canonical JSON, metadata, exports, or saved `.sdoc` bytes.
+- Cursor history keeps a bounded runtime stack of explicit editor click locations, resets for a newly opened document, and clamps stale positions after edits. Floating back/forward buttons, Alt+Left/Right, and mouse buttons 3/4 navigate the stack without changing content or joining ProseMirror undo history.
 
 ## Outline And Authoring Structure
 

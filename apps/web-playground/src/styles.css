@@ -2303,7 +2303,7 @@ button {
   min-width: 0;
 }
 
-.editor-zoom-control {
+.editor-runtime-controls {
   position: sticky;
   top: calc(100% - 42px);
   z-index: 18;
@@ -2323,7 +2323,19 @@ button {
   backdrop-filter: blur(8px);
 }
 
-.editor-zoom-control button {
+.editor-zoom-control,
+.cursor-history-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cursor-history-control {
+  padding-right: 5px;
+  border-right: 1px solid #52606d;
+}
+
+.editor-runtime-controls button {
   display: grid;
   width: 27px;
   height: 27px;
@@ -2335,12 +2347,12 @@ button {
   border-radius: 4px;
 }
 
-.editor-zoom-control button:hover:not(:disabled) {
+.editor-runtime-controls button:hover:not(:disabled) {
   background: #334452;
   border-color: #526572;
 }
 
-.editor-zoom-control button:disabled {
+.editor-runtime-controls button:disabled {
   opacity: 0.4;
 }
 

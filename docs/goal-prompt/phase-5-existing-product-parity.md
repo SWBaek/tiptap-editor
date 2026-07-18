@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 86
-current_slice: runtime-navigation
+progress_percent: 89
+current_slice: desktop-explorer
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -21,8 +21,8 @@ completed_slices:
   - author-header-and-command-hierarchy
   - writing-essentials
   - technical-content-editors
-remaining_slices:
   - runtime-navigation
+remaining_slices:
   - desktop-explorer
   - recovery-and-security
   - review-gate
@@ -114,6 +114,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 86
     note: "Runtime navigation started with a floating 60-200% editor zoom control using the existing sdoc-editor-zoom local preference, 10% steps, and reset. Unit tests cover normalization/storage loading; E2E verifies CSS zoom, reload persistence, reset, and byte-for-byte unchanged canonical JSON. npm test (290), npm run build, and npm run test:e2e (39) passed."
+  - date: 2026-07-18
+    progress_percent: 89
+    note: "Runtime navigation completed with a bounded runtime-only cursor history for explicit editor click locations, floating back/forward controls, Alt+Left/Right, and mouse buttons 3/4. Branching, retention bounds, and stale-position clamping have unit coverage; E2E verifies keyboard, mouse, and control navigation without changing canonical JSON. npm test (292), npm run build, and npm run test:e2e (40) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

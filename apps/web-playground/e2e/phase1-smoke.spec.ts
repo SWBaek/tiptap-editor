@@ -482,6 +482,46 @@ test("persists runtime-only editor zoom without changing document.json", async (
   expect(await readPreviewDocument(page)).toEqual(beforeZoom);
 });
 
+test("navigates runtime-only cursor history with keyboard mouse and controls", async ({ page }) => {
+  await page.goto("/");
+  await selectPreviewTab(page, "JSON");
+  const beforeNavigation = await readPreviewDocument(page);
+  const selectionSnapshot = () => page.evaluate(() => {
+    const selection = window.getSelection();
+    return {
+      anchorText: selection?.anchorNode?.textContent ?? "",
+      anchorOffset: selection?.anchorOffset ?? -1,
+      focusText: selection?.focusNode?.textContent ?? "",
+      focusOffset: selection?.focusOffset ?? -1
+    };
+  });
+
+  await page.locator(".editor-surface p").first().click();
+  const firstLocation = await selectionSnapshot();
+  await page.locator(".editor-surface pre").first().click();
+  const secondLocation = await selectionSnapshot();
+  expect(secondLocation).not.toEqual(firstLocation);
+
+  const historyControls = page.getByLabel("Cursor history controls");
+  await expect(historyControls.getByRole("button", { name: "Previous cursor position" })).toBeEnabled();
+  await page.keyboard.press("Alt+ArrowLeft");
+  await expect(page.locator(".status-note")).toContainText("Moved to previous cursor position");
+  await expect.poll(selectionSnapshot).toEqual(firstLocation);
+
+  await page.keyboard.press("Alt+ArrowRight");
+  await expect(page.locator(".status-note")).toContainText("Moved to next cursor position");
+  await expect.poll(selectionSnapshot).toEqual(secondLocation);
+
+  await page.locator(".editor-pane").dispatchEvent("mousedown", { button: 3, bubbles: true, cancelable: true });
+  await expect(page.locator(".status-note")).toContainText("Moved to previous cursor position");
+  await expect.poll(selectionSnapshot).toEqual(firstLocation);
+  await historyControls.getByRole("button", { name: "Next cursor position" }).click();
+  await expect.poll(selectionSnapshot).toEqual(secondLocation);
+
+  expect(await readPreviewDocument(page)).toEqual(beforeNavigation);
+  expect(JSON.stringify(await readPreviewDocument(page))).not.toContain("cursorHistory");
+});
+
 test("tracks browser recent files in the Files side panel", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Files panel" }).click();

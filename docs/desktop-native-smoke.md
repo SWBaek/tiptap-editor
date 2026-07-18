@@ -49,6 +49,9 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
    - Rename a nested folder and `.sdoc`; confirm the tree refreshes, duplicate/invalid targets are rejected, and an open document continues saving to its renamed native path.
    - Move a non-current document and folder to the operating-system Trash/Recycle Bin through the explicit confirmation dialog; confirm the explorer refreshes and the entries can be recovered from the OS trash.
    - Try to trash the current document or its parent folder with unsaved edits; confirm the editor blocks the action and retains the dirty document and native save path.
+   - With the workspace open, create/rename/remove a nested `.sdoc` in the operating-system file manager and confirm the explorer refreshes without manual intervention.
+   - Modify the current `.sdoc` externally and confirm the Files panel reports an external change without silently reloading, overwriting, or serializing watcher/conflict state into `document.json`.
+   - Save or rename from inside the editor and confirm the resulting native watcher events do not produce a false external-change warning.
    - Confirm the current document and saved/unsaved state are visible in the compact Files header.
    - Confirm developer-only unpacked folder commands are not part of the default author path.
 

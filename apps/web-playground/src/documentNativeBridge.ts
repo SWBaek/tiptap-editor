@@ -14,6 +14,9 @@ export interface WindowSdocNativeSaveBridge {
   createSdocWorkspaceFile?(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<WindowSdocWorkspaceMutationResult>;
   renameSdocWorkspaceEntry?(directoryPath: string, relativePath: string, newName: string): Promise<WindowSdocWorkspaceMutationResult>;
   trashSdocWorkspaceEntry?(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
+  startSdocWorkspaceWatch?(directoryPath: string): Promise<WindowSdocWorkspaceWatchStartResult>;
+  readSdocWorkspaceWatchEvents?(watchId: string): Promise<WindowSdocWorkspaceWatchEvent[]>;
+  stopSdocWorkspaceWatch?(watchId: string): Promise<boolean>;
   checkoutDrawioSource?(sourceAssetId: string, sourceBytes: Uint8Array): Promise<WindowDrawioBridgeSession>;
   openDrawioExternalEditor?(sessionId: string, executablePath?: string): Promise<WindowDrawioBridgeStatusEvent>;
   readDrawioExternalEdit?(sessionId: string, latestSourceBytes: Uint8Array): Promise<WindowDrawioSaveBackResult>;
@@ -50,6 +53,22 @@ export interface WindowSdocWorkspaceMutationResult {
   message: string;
 }
 
+export type WindowSdocWorkspaceWatchEventKind = "created" | "modified" | "removed" | "renamed" | "accessed" | "other" | "error";
+
+export interface WindowSdocWorkspaceWatchStartResult {
+  watchId: string;
+  rootPath: string;
+}
+
+export interface WindowSdocWorkspaceWatchEvent {
+  watchId: string;
+  kind: WindowSdocWorkspaceWatchEventKind;
+  path: string;
+  isSdoc: boolean;
+  occurredAtMs: number;
+  message?: string;
+}
+
 export interface NativeSdocWorkspaceAdapter {
   chooseDirectory(): Promise<string | null>;
   list(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<WindowSdocWorkspaceEntry[]>;
@@ -57,6 +76,9 @@ export interface NativeSdocWorkspaceAdapter {
   createSdoc(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<WindowSdocWorkspaceMutationResult>;
   renameEntry(directoryPath: string, relativePath: string, newName: string): Promise<WindowSdocWorkspaceMutationResult>;
   trashEntry(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
+  startWatch(directoryPath: string): Promise<WindowSdocWorkspaceWatchStartResult>;
+  readWatchEvents(watchId: string): Promise<WindowSdocWorkspaceWatchEvent[]>;
+  stopWatch(watchId: string): Promise<boolean>;
   openFile(path: string): Promise<WindowSdocNativeOpenResult>;
 }
 
@@ -131,6 +153,9 @@ export function getWindowSdocWorkspaceAdapter(globalScope: unknown = globalThis)
     !bridge.createSdocWorkspaceFile ||
     !bridge.renameSdocWorkspaceEntry ||
     !bridge.trashSdocWorkspaceEntry ||
+    !bridge.startSdocWorkspaceWatch ||
+    !bridge.readSdocWorkspaceWatchEvents ||
+    !bridge.stopSdocWorkspaceWatch ||
     !bridge.openSdocPath
   ) {
     return undefined;
@@ -168,6 +193,27 @@ export function getWindowSdocWorkspaceAdapter(globalScope: unknown = globalThis)
       const result = await bridge.trashSdocWorkspaceEntry?.(directoryPath, relativePath);
       if (!isWindowSdocWorkspaceMutationResult(result)) {
         throw new Error("Native workspace trash returned an invalid result.");
+      }
+      return result;
+    },
+    async startWatch(directoryPath) {
+      const result = await bridge.startSdocWorkspaceWatch?.(directoryPath);
+      if (!isWindowSdocWorkspaceWatchStartResult(result)) {
+        throw new Error("Native workspace watcher returned an invalid start result.");
+      }
+      return result;
+    },
+    async readWatchEvents(watchId) {
+      const events = await bridge.readSdocWorkspaceWatchEvents?.(watchId);
+      if (!Array.isArray(events) || !events.every(isWindowSdocWorkspaceWatchEvent)) {
+        throw new Error("Native workspace watcher returned invalid events.");
+      }
+      return events;
+    },
+    async stopWatch(watchId) {
+      const result = await bridge.stopSdocWorkspaceWatch?.(watchId);
+      if (typeof result !== "boolean") {
+        throw new Error("Native workspace watcher returned an invalid stop result.");
       }
       return result;
     },
@@ -278,6 +324,18 @@ function getWindowSdocNativeSaveBridge(globalScope: unknown): WindowSdocNativeSa
     return undefined;
   }
 
+  if (candidate.startSdocWorkspaceWatch !== undefined && typeof candidate.startSdocWorkspaceWatch !== "function") {
+    return undefined;
+  }
+
+  if (candidate.readSdocWorkspaceWatchEvents !== undefined && typeof candidate.readSdocWorkspaceWatchEvents !== "function") {
+    return undefined;
+  }
+
+  if (candidate.stopSdocWorkspaceWatch !== undefined && typeof candidate.stopSdocWorkspaceWatch !== "function") {
+    return undefined;
+  }
+
   if (candidate.checkoutDrawioSource !== undefined && typeof candidate.checkoutDrawioSource !== "function") {
     return undefined;
   }
@@ -309,6 +367,34 @@ function isWindowSdocWorkspaceMutationResult(value: unknown): value is WindowSdo
     (result.kind === "folder" || result.kind === "sdoc-file") &&
     typeof result.message === "string"
   );
+}
+
+function isWindowSdocWorkspaceWatchStartResult(value: unknown): value is WindowSdocWorkspaceWatchStartResult {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const result = value as Record<string, unknown>;
+  return typeof result.watchId === "string" && typeof result.rootPath === "string";
+}
+
+function isWindowSdocWorkspaceWatchEvent(value: unknown): value is WindowSdocWorkspaceWatchEvent {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const event = value as Record<string, unknown>;
+  return (
+    typeof event.watchId === "string" &&
+    isWindowSdocWorkspaceWatchEventKind(event.kind) &&
+    typeof event.path === "string" &&
+    typeof event.isSdoc === "boolean" &&
+    typeof event.occurredAtMs === "number" &&
+    (event.message === undefined || typeof event.message === "string")
+  );
+}
+
+function isWindowSdocWorkspaceWatchEventKind(value: unknown): value is WindowSdocWorkspaceWatchEventKind {
+  return value === "created" || value === "modified" || value === "removed" || value === "renamed" ||
+    value === "accessed" || value === "other" || value === "error";
 }
 
 function normalizeNativePath(value: string): string {

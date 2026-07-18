@@ -156,6 +156,8 @@ Desktop-explorer behavior for Phase 5.1:
 - Native creation commands accept only workspace-relative paths, reject absolute/parent traversal and symlink traversal, refuse overwrite, and return a typed result for explicit author feedback.
 - Explorer entry actions are desktop-only and contextual. Rename stays within the current parent, preserves the `.sdoc` extension contract, updates an affected open-document path, and never overwrites an existing entry. Move to Trash requires an explicit product dialog and delegates to the operating-system Trash/Recycle Bin; a dirty current document or its parent folder cannot be trashed until it is saved or discarded.
 - Trash recovery remains an operating-system action for this review gate. The editor does not claim an in-app undo unless a cross-platform restore token is available and tested.
+- A desktop workspace watcher is scoped to the canonicalized selected workspace, replaced when the workspace changes, and stopped when the shell unmounts. Typed create/modify/remove/rename events are drained through the Tauri adapter and coalesced into silent explorer refreshes; watcher IDs, queues, polling timers, and conflict notices remain runtime-only.
+- A watcher event that overlaps the current `.sdoc` never reloads or overwrites editor content automatically. The Files panel surfaces an external-change notice; author-initiated native writes/mutations are briefly correlated and suppressed so they are not reported as external conflicts.
 
 ## Outline And Authoring Structure
 

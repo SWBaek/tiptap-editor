@@ -3,6 +3,8 @@ import {
   getWorkspaceEntryLabel,
   isWorkspaceEntry,
   isWorkspaceMutationResult,
+  isWorkspaceWatchEvent,
+  isWorkspaceWatchStartResult,
   sortWorkspaceEntries,
   type NativeWorkspaceEntry
 } from "./workspaceModel.js";
@@ -65,5 +67,18 @@ describe("workspaceModel", () => {
       message: "Moved Guides to Trash."
     })).toBe(true);
     expect(isWorkspaceMutationResult({ status: "created", path: "C:/docs/Guides", kind: "folder" })).toBe(false);
+  });
+
+  it("validates typed workspace watcher sessions and events", () => {
+    expect(isWorkspaceWatchStartResult({ watchId: "watch-1", rootPath: "C:/docs" })).toBe(true);
+    expect(isWorkspaceWatchStartResult({ watchId: "watch-1" })).toBe(false);
+    expect(isWorkspaceWatchEvent({
+      watchId: "watch-1",
+      kind: "modified",
+      path: "C:/docs/Spec.sdoc",
+      isSdoc: true,
+      occurredAtMs: 10
+    })).toBe(true);
+    expect(isWorkspaceWatchEvent({ watchId: "watch-1", kind: "unknown" })).toBe(false);
   });
 });

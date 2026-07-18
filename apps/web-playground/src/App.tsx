@@ -75,7 +75,8 @@ import {
   getWorkspaceRelativePath,
   replaceNativePathPrefix,
   type WindowDrawioBridgeSession,
-  type WindowSdocWorkspaceEntry
+  type WindowSdocWorkspaceEntry,
+  type WindowSdocWorkspaceWatchEvent
 } from "./documentNativeBridge";
 import {
   addLocalHistoryEntry,
@@ -296,6 +297,7 @@ export function App() {
   const [imageInspector, setImageInspector] = useState<ImageInspectorState | null>(null);
   const [workspaceCreateDialog, setWorkspaceCreateDialog] = useState<WorkspaceCreateDialogState | null>(null);
   const [workspaceEntryActionDialog, setWorkspaceEntryActionDialog] = useState<WorkspaceEntryActionDialogState | null>(null);
+  const [workspaceExternalChange, setWorkspaceExternalChange] = useState<WindowSdocWorkspaceWatchEvent | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -310,6 +312,9 @@ export function App() {
   const editorPaneRef = useRef<HTMLElement>(null);
   const highlightTimeoutRef = useRef<number | null>(null);
   const bubbleSelectionRangeRef = useRef<{ from: number; to: number } | null>(null);
+  const currentNativePathRef = useRef<string | null>(null);
+  const hasUnsavedChangesRef = useRef(false);
+  const ignoredWorkspaceEventPathsRef = useRef<Map<string, number>>(new Map());
 
   const editor = useEditor({
     extensions: [
@@ -576,6 +581,91 @@ export function App() {
   };
   const preview = activeTab === "json" ? json : markdown;
 
+  currentNativePathRef.current = currentNativePath;
+  hasUnsavedChangesRef.current = hasUnsavedChanges;
+
+  useEffect(() => {
+    if (!workspaceDirectory || !nativeSdocWorkspaceAdapter) {
+      setWorkspaceExternalChange(null);
+      return;
+    }
+
+    setWorkspaceExternalChange(null);
+
+    let disposed = false;
+    let watchId: string | null = null;
+    let pollTimer: number | null = null;
+    let polling = false;
+
+    async function pollWorkspaceWatch() {
+      if (disposed || polling || !watchId || !workspaceDirectory || !nativeSdocWorkspaceAdapter) {
+        return;
+      }
+      polling = true;
+      try {
+        const events = await nativeSdocWorkspaceAdapter.readWatchEvents(watchId);
+        if (disposed || events.length === 0) {
+          return;
+        }
+        const relevantEvents = events.filter((event) => event.kind !== "accessed" && event.kind !== "other");
+        if (relevantEvents.length > 0) {
+          await refreshWorkspaceEntries(workspaceDirectory, false);
+        }
+        const watcherError = relevantEvents.find((event) => event.kind === "error");
+        if (watcherError) {
+          setStatusMessage(watcherError.message ?? "Workspace watcher reported an error.");
+        }
+        const currentPath = currentNativePathRef.current;
+        const externalChange = currentPath
+          ? relevantEvents.find((event) =>
+              event.kind !== "error" &&
+              workspaceEventCanAffectDocument(event, currentPath) &&
+              !isIgnoredWorkspaceEventPath(event.path)
+            )
+          : undefined;
+        if (externalChange) {
+          setWorkspaceExternalChange(externalChange);
+          setStatusMessage(
+            hasUnsavedChangesRef.current
+              ? `External change detected for the current document. Unsaved edits are preserved.`
+              : `External change detected for the current document. Review it before continuing.`
+          );
+        }
+      } catch (error) {
+        if (!disposed) {
+          setStatusMessage(error instanceof Error ? error.message : String(error));
+        }
+      } finally {
+        polling = false;
+      }
+    }
+
+    void nativeSdocWorkspaceAdapter.startWatch(workspaceDirectory)
+      .then((session) => {
+        if (disposed) {
+          void nativeSdocWorkspaceAdapter.stopWatch(session.watchId).catch(() => undefined);
+          return;
+        }
+        watchId = session.watchId;
+        pollTimer = window.setInterval(() => void pollWorkspaceWatch(), 750);
+      })
+      .catch((error) => {
+        if (!disposed) {
+          setStatusMessage(error instanceof Error ? error.message : String(error));
+        }
+      });
+
+    return () => {
+      disposed = true;
+      if (pollTimer !== null) {
+        window.clearInterval(pollTimer);
+      }
+      if (watchId) {
+        void nativeSdocWorkspaceAdapter.stopWatch(watchId).catch(() => undefined);
+      }
+    };
+  }, [nativeSdocWorkspaceAdapter, workspaceDirectory]);
+
   useEffect(() => {
     if (selectedVisualDiffId && !visibleVisualDiffItems.some((item) => item.id === selectedVisualDiffId)) {
       setSelectedVisualDiffId(null);
@@ -612,6 +702,9 @@ export function App() {
       setSelectedHistoryId(null);
       setCurrentFilename(payload.filename);
       setCurrentNativePath(saveResult.path);
+      if (saveResult.path) {
+        ignoreWorkspaceEventPath(saveResult.path);
+      }
       addRecentFile(payload.filename, metadata.title || payload.filename, "saved", saveResult.path);
       markSaved(saveResult.message);
     } catch (error) {
@@ -691,6 +784,7 @@ export function App() {
     setDrawioBridgeSession(null);
     setDrawioBridgeTargetId(null);
     setDrawioExternalEditConflict(null);
+    setWorkspaceExternalChange(null);
     setCurrentFilename(name);
     setCurrentNativePath(nativePath);
     addRecentFile(name, nextMetadata.title || name, "opened", nativePath);
@@ -803,7 +897,7 @@ export function App() {
     }
   }
 
-  async function refreshWorkspaceEntries(directoryPath = workspaceDirectory) {
+  async function refreshWorkspaceEntries(directoryPath = workspaceDirectory, announce = true) {
     if (!directoryPath) {
       setStatusMessage("Choose a workspace folder first.");
       return;
@@ -819,7 +913,9 @@ export function App() {
       const entries = await nativeSdocWorkspaceAdapter.list(directoryPath);
       setWorkspaceDirectory(directoryPath);
       setWorkspaceEntries(entries);
-      setStatusMessage(`Loaded ${entries.length} .sdoc workspace entr${entries.length === 1 ? "y" : "ies"}.`);
+      if (announce) {
+        setStatusMessage(`Loaded ${entries.length} .sdoc workspace entr${entries.length === 1 ? "y" : "ies"}.`);
+      }
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -872,6 +968,7 @@ export function App() {
     try {
       if (values.kind === "folder") {
         const result = await nativeSdocWorkspaceAdapter.createFolder(directoryPath, relativePath);
+        ignoreWorkspaceEventPath(result.path);
         setWorkspaceCreateDialog(null);
         await refreshWorkspaceEntries(directoryPath);
         setStatusMessage(result.message);
@@ -883,6 +980,7 @@ export function App() {
       const nextMetadata: SDocMetadata = { ...initialMetadata, author: metadata.author, title };
       const payload = await createSdocPayload(nextDocument, nextMetadata);
       const result = await nativeSdocWorkspaceAdapter.createSdoc(directoryPath, relativePath, payload.bytes);
+      ignoreWorkspaceEventPath(result.path);
       setWorkspaceCreateDialog(null);
       await refreshWorkspaceEntries(directoryPath);
       await openDocumentBytes(values.name, payload.bytes, result.path);
@@ -924,6 +1022,8 @@ export function App() {
 
     try {
       const result = await nativeSdocWorkspaceAdapter.renameEntry(directoryPath, relativePath, newName);
+      ignoreWorkspaceEventPath(dialogState.entry.path);
+      ignoreWorkspaceEventPath(result.path);
       const nextCurrentPath = currentNativePath
         ? replaceNativePathPrefix(currentNativePath, dialogState.entry.path, result.path)
         : null;
@@ -981,6 +1081,7 @@ export function App() {
 
     try {
       const result = await nativeSdocWorkspaceAdapter.trashEntry(directoryPath, relativePath);
+      ignoreWorkspaceEventPath(dialogState.entry.path);
       const nextRecentFiles = recentFiles.filter(
         (entry) => !entry.nativePath || getWorkspaceRelativePath(dialogState.entry.path, entry.nativePath) === null
       );
@@ -995,6 +1096,25 @@ export function App() {
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     }
+  }
+
+  function ignoreWorkspaceEventPath(path: string) {
+    ignoredWorkspaceEventPathsRef.current.set(normalizeWorkspaceEventPath(path), Date.now() + 3_000);
+  }
+
+  function isIgnoredWorkspaceEventPath(path: string): boolean {
+    const normalizedPath = normalizeWorkspaceEventPath(path);
+    const now = Date.now();
+    for (const [candidatePath, expiresAt] of ignoredWorkspaceEventPathsRef.current) {
+      if (expiresAt < now) {
+        ignoredWorkspaceEventPathsRef.current.delete(candidatePath);
+      }
+    }
+    const expiresAt = ignoredWorkspaceEventPathsRef.current.get(normalizedPath);
+    if (!expiresAt || expiresAt < now) {
+      return false;
+    }
+    return true;
   }
 
   function showDeveloperCommand(command: string) {
@@ -1116,6 +1236,7 @@ export function App() {
     setDrawioBridgeSession(null);
     setDrawioBridgeTargetId(null);
     setDrawioExternalEditConflict(null);
+    setWorkspaceExternalChange(null);
     setCurrentFilename(null);
     setCurrentNativePath(null);
     setActiveTab("markdown");
@@ -2396,6 +2517,9 @@ export function App() {
               workspaceDirectory={workspaceDirectory}
               workspaceEntries={workspaceEntries}
               isWorkspaceLoading={isWorkspaceLoading}
+              externalChangeMessage={workspaceExternalChange
+                ? `${filenameFromNativePath(workspaceExternalChange.path)} changed outside the editor. No content was reloaded automatically.`
+                : null}
               onNewDocument={createNewDocument}
               onOpenDocument={openDocumentAction}
               onSaveSdoc={downloadSdoc}
@@ -2406,6 +2530,10 @@ export function App() {
               onOpenWorkspaceEntry={openWorkspaceEntry}
               onCreateWorkspaceEntry={openWorkspaceCreateDialog}
               onManageWorkspaceEntry={openWorkspaceEntryActionDialog}
+              onDismissExternalChange={() => {
+                setWorkspaceExternalChange(null);
+                setStatusMessage("Kept the current editor state after the external-change notice.");
+              }}
               onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
@@ -3542,4 +3670,18 @@ function mimeTypeFromAssetId(assetId: string): string {
     default:
       return "application/octet-stream";
   }
+}
+
+function normalizeWorkspaceEventPath(path: string): string {
+  const normalized = path.trim().replace(/\\/g, "/").replace(/\/+$/, "");
+  return /^[a-z]:\//i.test(normalized) ? normalized.toLowerCase() : normalized;
+}
+
+function workspaceEventCanAffectDocument(event: WindowSdocWorkspaceWatchEvent, documentPath: string): boolean {
+  const eventPath = normalizeWorkspaceEventPath(event.path);
+  const currentPath = normalizeWorkspaceEventPath(documentPath);
+  if (event.isSdoc) {
+    return eventPath === currentPath;
+  }
+  return (event.kind === "renamed" || event.kind === "removed") && currentPath.startsWith(`${eventPath}/`);
 }

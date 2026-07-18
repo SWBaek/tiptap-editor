@@ -562,6 +562,20 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
       kind: "folder" | "sdoc-file";
       children?: WorkspaceEntry[];
     };
+    type WorkspaceWatchEvent = {
+      watchId: string;
+      kind: "created" | "modified" | "removed" | "renamed";
+      path: string;
+      isSdoc: boolean;
+      occurredAtMs: number;
+    };
+    const workspaceWatchEvents: WorkspaceWatchEvent[] = [];
+    const queueWorkspaceWatchEvent = (event: Omit<WorkspaceWatchEvent, "watchId" | "occurredAtMs">) => {
+      workspaceWatchEvents.push({ watchId: "watch-1", occurredAtMs: Date.now(), ...event });
+    };
+    (window as typeof window & {
+      __QUEUE_WORKSPACE_EVENT__?: (event: Omit<WorkspaceWatchEvent, "watchId" | "occurredAtMs">) => void;
+    }).__QUEUE_WORKSPACE_EVENT__ = queueWorkspaceWatchEvent;
     const workspaceEntries: WorkspaceEntry[] = [
       {
         name: "Guides",
@@ -623,6 +637,7 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
     (window as typeof window & { __SDOC_NATIVE_SAVE_BRIDGE__?: unknown; __LAST_SAVED_PATH__?: string }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
       async saveSdoc(path: string) {
         (window as typeof window & { __LAST_SAVED_PATH__?: string }).__LAST_SAVED_PATH__ = path;
+        queueWorkspaceWatchEvent({ kind: "modified", path, isSdoc: true });
         return undefined;
       },
       async chooseSdocSavePath() {
@@ -642,6 +657,7 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
       },
       async createSdocWorkspaceFolder(_directoryPath: string, relativePath: string) {
         const entry = addWorkspaceEntry(relativePath, "folder");
+        queueWorkspaceWatchEvent({ kind: "created", path: entry.path, isSdoc: false });
         return { status: "created", path: entry.path, relativePath, kind: entry.kind, message: `Created folder ${relativePath}.` };
       },
       async createSdocWorkspaceFile(_directoryPath: string, relativePath: string, bytes: Uint8Array) {
@@ -649,6 +665,7 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
           throw new Error("Expected a packed .sdoc ZIP payload");
         }
         const entry = addWorkspaceEntry(relativePath, "sdoc-file");
+        queueWorkspaceWatchEvent({ kind: "created", path: entry.path, isSdoc: true });
         return { status: "created", path: entry.path, relativePath, kind: entry.kind, message: `Created document ${relativePath}.` };
       },
       async renameSdocWorkspaceEntry(_directoryPath: string, relativePath: string, newName: string) {
@@ -662,12 +679,24 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
         const nextPath = `C:\\Docs\\${nextRelativePath.replaceAll("/", "\\")}`;
         entry.name = newName;
         replaceEntryPathPrefix(entry, oldPath, nextPath);
+        queueWorkspaceWatchEvent({ kind: "renamed", path: oldPath, isSdoc: oldPath.toLowerCase().endsWith(".sdoc") });
+        queueWorkspaceWatchEvent({ kind: "renamed", path: entry.path, isSdoc: entry.kind === "sdoc-file" });
         return { status: "renamed", path: entry.path, relativePath: nextRelativePath, kind: entry.kind, message: `Renamed to ${nextRelativePath}.` };
       },
       async trashSdocWorkspaceEntry(_directoryPath: string, relativePath: string) {
         const { siblings, index, entry } = findWorkspaceEntry(relativePath);
         siblings.splice(index, 1);
+        queueWorkspaceWatchEvent({ kind: "removed", path: entry.path, isSdoc: entry.kind === "sdoc-file" });
         return { status: "trashed", path: entry.path, relativePath, kind: entry.kind, message: `Moved ${relativePath} to Trash.` };
+      },
+      async startSdocWorkspaceWatch(directoryPath: string) {
+        return { watchId: "watch-1", rootPath: directoryPath };
+      },
+      async readSdocWorkspaceWatchEvents() {
+        return workspaceWatchEvents.splice(0);
+      },
+      async stopSdocWorkspaceWatch(watchId: string) {
+        return watchId === "watch-1";
       }
     };
   });
@@ -720,6 +749,18 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await actionDialog.getByLabel("New name").fill("Review");
   await actionDialog.getByRole("button", { name: "Rename" }).click();
   await expect(filesPanel.getByLabel("Current file")).toContainText("Review.sdoc");
+  await page.waitForTimeout(3_200);
+  await expect(filesPanel.getByRole("alert")).toHaveCount(0);
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __QUEUE_WORKSPACE_EVENT__?: (event: { kind: "modified"; path: string; isSdoc: boolean }) => void;
+    }).__QUEUE_WORKSPACE_EVENT__?.({ kind: "modified", path: "C:\\Docs\\Guides\\Reference\\Review.sdoc", isSdoc: true });
+  });
+  const externalChangeAlert = filesPanel.getByRole("alert");
+  await expect(externalChangeAlert).toContainText("External change detected");
+  await expect(externalChangeAlert).toContainText("No content was reloaded automatically");
+  await externalChangeAlert.getByRole("button", { name: "Keep current editor state" }).click();
+  await expect(externalChangeAlert).toHaveCount(0);
   await page.getByLabel("Title", { exact: true }).fill("Dirty review");
   await filesPanel.getByRole("button", { name: "Actions for Review.sdoc" }).click();
   await filesPanel.getByRole("menu", { name: "Workspace actions for Review.sdoc" }).getByRole("menuitem", { name: "Move to Trash" }).click();
@@ -729,6 +770,8 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __LAST_SAVED_PATH__?: string }).__LAST_SAVED_PATH__)).toBe(
     "C:\\Docs\\Guides\\Reference\\Review.sdoc"
   );
+  await page.waitForTimeout(900);
+  await expect(filesPanel.getByRole("alert")).toHaveCount(0);
   await filesPanel.getByRole("button", { name: "Actions for Review.sdoc" }).click();
   await filesPanel.getByRole("menu", { name: "Workspace actions for Review.sdoc" }).getByRole("menuitem", { name: "Move to Trash" }).click();
   const trashDialog = page.getByRole("dialog", { name: "Move workspace entry to Trash" });

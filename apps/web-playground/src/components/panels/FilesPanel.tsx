@@ -15,6 +15,7 @@ export interface FilesPanelProps {
   workspaceDirectory: string | null;
   workspaceEntries: WindowSdocWorkspaceEntry[];
   isWorkspaceLoading: boolean;
+  externalChangeMessage: string | null;
   onNewDocument: () => void;
   onOpenDocument: () => void;
   onSaveSdoc: () => void;
@@ -25,6 +26,7 @@ export interface FilesPanelProps {
   onOpenWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
   onCreateWorkspaceEntry: (parent: WindowSdocWorkspaceEntry | null, kind: WorkspaceCreateKind) => void;
   onManageWorkspaceEntry: (entry: WindowSdocWorkspaceEntry, action: WorkspaceEntryAction) => void;
+  onDismissExternalChange: () => void;
   onCopyDeveloperCommand: (command: string) => void;
 }
 
@@ -37,6 +39,7 @@ export function FilesPanel({
   workspaceDirectory,
   workspaceEntries,
   isWorkspaceLoading,
+  externalChangeMessage,
   onNewDocument,
   onOpenDocument,
   onSaveSdoc,
@@ -47,6 +50,7 @@ export function FilesPanel({
   onOpenWorkspaceEntry,
   onCreateWorkspaceEntry,
   onManageWorkspaceEntry,
+  onDismissExternalChange,
   onCopyDeveloperCommand
 }: FilesPanelProps) {
   const unpackCommand = `npm run sdoc -- unpack ${quoteCliPath(sdocFilename)} ${quoteCliPath(`${sdocFilename}.d`)}`;
@@ -117,6 +121,13 @@ export function FilesPanel({
               <strong title={workspaceDirectory ?? "No workspace folder selected"}>{workspaceDirectory ? basenameFromPath(workspaceDirectory) : "No folder selected"}</strong>
               {workspaceDirectory && <span title={workspaceDirectory}>{workspaceDirectory}</span>}
             </div>
+            {externalChangeMessage && (
+              <div className="workspace-external-change" role="alert">
+                <strong>External change detected</strong>
+                <span>{externalChangeMessage}</span>
+                <button type="button" onClick={onDismissExternalChange}>Keep current editor state</button>
+              </div>
+            )}
             <div className="explorer-folder-actions" aria-label="Workspace actions">
               <button type="button" onClick={onChooseWorkspaceDirectory}>
                 {workspaceDirectory ? "Change folder" : "Open folder"}

@@ -173,6 +173,21 @@ describe("native sdoc save bridge", () => {
           kind: "sdoc-file",
           message: `Moved ${relativePath} to Trash.`
         };
+      },
+      async startWorkspaceWatch(directoryPath) {
+        return { watchId: "watch-1", rootPath: directoryPath };
+      },
+      async readWorkspaceWatchEvents(watchId) {
+        return [{
+          watchId,
+          kind: "modified",
+          path: "C:/docs/Spec.sdoc",
+          isSdoc: true,
+          occurredAtMs: 10
+        }];
+      },
+      async stopWorkspaceWatch(watchId) {
+        return watchId === "watch-1";
       }
     });
 
@@ -197,6 +212,15 @@ describe("native sdoc save bridge", () => {
       status: "trashed",
       relativePath: "Renamed.sdoc"
     });
+    await expect(bridge.startSdocWorkspaceWatch("C:/docs")).resolves.toEqual({ watchId: "watch-1", rootPath: "C:/docs" });
+    await expect(bridge.readSdocWorkspaceWatchEvents("watch-1")).resolves.toEqual([{
+      watchId: "watch-1",
+      kind: "modified",
+      path: "C:/docs/Spec.sdoc",
+      isSdoc: true,
+      occurredAtMs: 10
+    }]);
+    await expect(bridge.stopSdocWorkspaceWatch("watch-1")).resolves.toBe(true);
   });
 
   it("routes Draw.io external editor calls through the injected bridge", async () => {

@@ -4,8 +4,11 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use notify::event::ModifyKind;
+use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
 (() => {
@@ -154,6 +157,15 @@ const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
         relativePath
       });
     },
+    async startSdocWorkspaceWatch(directoryPath) {
+      return await internals.invoke("start_sdoc_workspace_watch", { directoryPath });
+    },
+    async readSdocWorkspaceWatchEvents(watchId) {
+      return await internals.invoke("read_sdoc_workspace_watch_events", { watchId });
+    },
+    async stopSdocWorkspaceWatch(watchId) {
+      return await internals.invoke("stop_sdoc_workspace_watch", { watchId });
+    },
     async checkoutDrawioSource(sourceAssetId, sourceBytes) {
       return await internals.invoke("checkout_drawio_source_asset", {
         sourceAssetId,
@@ -189,12 +201,18 @@ const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
 
 struct AppState {
     drawio_sessions: Mutex<HashMap<String, DrawioSession>>,
+    workspace_watch_sessions: Mutex<HashMap<String, WorkspaceWatchSession>>,
 }
 
 struct DrawioSession {
     source_asset_id: String,
     temp_path: PathBuf,
     original_source_hash: String,
+}
+
+struct WorkspaceWatchSession {
+    _watcher: RecommendedWatcher,
+    events: Arc<Mutex<Vec<WorkspaceWatchEvent>>>,
 }
 
 #[derive(serde::Serialize)]
@@ -219,6 +237,25 @@ struct WorkspaceMutationResult {
     relative_path: String,
     kind: WorkspaceEntryKind,
     message: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceWatchEvent {
+    watch_id: String,
+    kind: String,
+    path: String,
+    is_sdoc: bool,
+    occurred_at_ms: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceWatchStartResult {
+    watch_id: String,
+    root_path: String,
 }
 
 #[derive(Clone, Copy, serde::Serialize)]
@@ -455,6 +492,158 @@ fn trash_sdoc_workspace_entry(
         kind,
         message: format!("Moved {normalized_relative_path} to Trash."),
     })
+}
+
+#[tauri::command]
+fn start_sdoc_workspace_watch(
+    state: tauri::State<'_, AppState>,
+    directory_path: String,
+) -> Result<WorkspaceWatchStartResult, String> {
+    let root = fs::canonicalize(PathBuf::from(directory_path))
+        .map_err(|error| format!("Could not resolve workspace folder for watching: {error}"))?;
+    if !root.is_dir() {
+        return Err("Workspace watch root must be an existing directory.".to_string());
+    }
+
+    let watch_nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let watch_id = format!("workspace-watch-{}-{watch_nonce}", std::process::id());
+    let events = Arc::new(Mutex::new(Vec::<WorkspaceWatchEvent>::new()));
+    let callback_events = Arc::clone(&events);
+    let callback_root = root.clone();
+    let callback_watch_id = watch_id.clone();
+    let mut watcher = notify::recommended_watcher(move |result| {
+        let next_events =
+            collect_workspace_watch_events(&callback_watch_id, &callback_root, result);
+        if next_events.is_empty() {
+            return;
+        }
+        if let Ok(mut queue) = callback_events.lock() {
+            for event in next_events {
+                let is_duplicate = queue.last().is_some_and(|previous| {
+                    previous.kind == event.kind
+                        && previous.path == event.path
+                        && event.occurred_at_ms.saturating_sub(previous.occurred_at_ms) < 100
+                });
+                if !is_duplicate {
+                    queue.push(event);
+                }
+            }
+            if queue.len() > 128 {
+                let overflow = queue.len() - 128;
+                queue.drain(0..overflow);
+            }
+        }
+    })
+    .map_err(|error| format!("Could not create workspace watcher: {error}"))?;
+    watcher
+        .watch(&root, RecursiveMode::Recursive)
+        .map_err(|error| format!("Could not watch workspace folder: {error}"))?;
+
+    state
+        .workspace_watch_sessions
+        .lock()
+        .map_err(|_| "Workspace watcher state is unavailable.".to_string())?
+        .insert(
+            watch_id.clone(),
+            WorkspaceWatchSession {
+                _watcher: watcher,
+                events,
+            },
+        );
+
+    Ok(WorkspaceWatchStartResult {
+        watch_id,
+        root_path: root.to_string_lossy().to_string(),
+    })
+}
+
+#[tauri::command]
+fn read_sdoc_workspace_watch_events(
+    state: tauri::State<'_, AppState>,
+    watch_id: String,
+) -> Result<Vec<WorkspaceWatchEvent>, String> {
+    let sessions = state
+        .workspace_watch_sessions
+        .lock()
+        .map_err(|_| "Workspace watcher state is unavailable.".to_string())?;
+    let session = sessions
+        .get(&watch_id)
+        .ok_or_else(|| "Workspace watcher session is not active.".to_string())?;
+    let mut events = session
+        .events
+        .lock()
+        .map_err(|_| "Workspace watcher event queue is unavailable.".to_string())?;
+    Ok(std::mem::take(&mut *events))
+}
+
+#[tauri::command]
+fn stop_sdoc_workspace_watch(
+    state: tauri::State<'_, AppState>,
+    watch_id: String,
+) -> Result<bool, String> {
+    let removed = state
+        .workspace_watch_sessions
+        .lock()
+        .map_err(|_| "Workspace watcher state is unavailable.".to_string())?
+        .remove(&watch_id)
+        .is_some();
+    Ok(removed)
+}
+
+fn collect_workspace_watch_events(
+    watch_id: &str,
+    root: &Path,
+    result: notify::Result<notify::Event>,
+) -> Vec<WorkspaceWatchEvent> {
+    match result {
+        Ok(event) => event
+            .paths
+            .iter()
+            .filter_map(|path| create_workspace_watch_event(watch_id, root, &event.kind, path))
+            .collect(),
+        Err(error) => vec![WorkspaceWatchEvent {
+            watch_id: watch_id.to_string(),
+            kind: "error".to_string(),
+            path: root.to_string_lossy().to_string(),
+            is_sdoc: false,
+            occurred_at_ms: current_time_millis(),
+            message: Some(format!("Workspace watcher error: {error}")),
+        }],
+    }
+}
+
+fn create_workspace_watch_event(
+    watch_id: &str,
+    root: &Path,
+    kind: &EventKind,
+    path: &Path,
+) -> Option<WorkspaceWatchEvent> {
+    if !path.starts_with(root) {
+        return None;
+    }
+    Some(WorkspaceWatchEvent {
+        watch_id: watch_id.to_string(),
+        kind: workspace_watch_event_kind(kind).to_string(),
+        path: path.to_string_lossy().to_string(),
+        is_sdoc: has_extension(&path.to_path_buf(), "sdoc"),
+        occurred_at_ms: current_time_millis(),
+        message: None,
+    })
+}
+
+fn workspace_watch_event_kind(kind: &EventKind) -> &'static str {
+    match kind {
+        EventKind::Create(_) => "created",
+        EventKind::Modify(ModifyKind::Name(_)) => "renamed",
+        EventKind::Modify(_) => "modified",
+        EventKind::Remove(_) => "removed",
+        EventKind::Access(_) => "accessed",
+        EventKind::Other => "other",
+        _ => "other",
+    }
 }
 
 fn resolve_workspace_existing_target(
@@ -772,6 +961,14 @@ fn modified_at_ms(metadata: &fs::Metadata) -> Option<u64> {
         .and_then(|duration| u64::try_from(duration.as_millis()).ok())
 }
 
+fn current_time_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok())
+        .unwrap_or(0)
+}
+
 fn safe_drawio_filename(source_asset_id: &str) -> String {
     let clean = source_asset_id
         .chars()
@@ -896,6 +1093,7 @@ fn main() {
         })
         .manage(AppState {
             drawio_sessions: Mutex::new(HashMap::new()),
+            workspace_watch_sessions: Mutex::new(HashMap::new()),
         })
         .invoke_handler(tauri::generate_handler![
             read_sdoc_file,
@@ -905,6 +1103,9 @@ fn main() {
             create_sdoc_workspace_file,
             rename_sdoc_workspace_entry,
             trash_sdoc_workspace_entry,
+            start_sdoc_workspace_watch,
+            read_sdoc_workspace_watch_events,
+            stop_sdoc_workspace_watch,
             checkout_drawio_source_asset,
             open_drawio_external_editor,
             read_drawio_external_edit,
@@ -1021,6 +1222,28 @@ mod tests {
         )
         .is_ok());
         assert!(resolve_workspace_existing_target(&workspace_path, "../escape").is_err());
+        assert_eq!(
+            workspace_watch_event_kind(&EventKind::Modify(ModifyKind::Name(
+                notify::event::RenameMode::Both
+            ))),
+            "renamed"
+        );
+        let watch_event = create_workspace_watch_event(
+            "watch-test",
+            &root,
+            &EventKind::Modify(ModifyKind::Any),
+            &root.join("Guides/Reference/Renamed.sdoc"),
+        )
+        .unwrap();
+        assert_eq!(watch_event.kind, "modified");
+        assert!(watch_event.is_sdoc);
+        assert!(create_workspace_watch_event(
+            "watch-test",
+            &root,
+            &EventKind::Modify(ModifyKind::Any),
+            &root.with_file_name("outside.sdoc"),
+        )
+        .is_none());
         assert!(
             create_sdoc_workspace_folder(workspace_path.clone(), "../escape".to_string())
                 .is_err()

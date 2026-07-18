@@ -148,6 +148,15 @@ describe("document native bridge", () => {
             message: `Moved ${relativePath} to Trash.`
           };
         },
+        async startSdocWorkspaceWatch(directoryPath: string) {
+          return { watchId: "watch-1", rootPath: directoryPath };
+        },
+        async readSdocWorkspaceWatchEvents(watchId: string) {
+          return [{ watchId, kind: "modified" as const, path: "C:/docs/Spec.sdoc", isSdoc: true, occurredAtMs: 10 }];
+        },
+        async stopSdocWorkspaceWatch(watchId: string) {
+          return watchId === "watch-1";
+        },
         async openSdocPath(path: string) {
           return {
             path,
@@ -182,6 +191,11 @@ describe("document native bridge", () => {
       status: "trashed",
       relativePath: "Guides/Renamed.sdoc"
     });
+    await expect(adapter?.startWatch("C:/docs")).resolves.toEqual({ watchId: "watch-1", rootPath: "C:/docs" });
+    await expect(adapter?.readWatchEvents("watch-1")).resolves.toEqual([
+      { watchId: "watch-1", kind: "modified", path: "C:/docs/Spec.sdoc", isSdoc: true, occurredAtMs: 10 }
+    ]);
+    await expect(adapter?.stopWatch("watch-1")).resolves.toBe(true);
     await expect(adapter?.openFile("C:/docs/Spec.sdoc")).resolves.toEqual({
       path: "C:/docs/Spec.sdoc",
       bytes: new Uint8Array([80, 75, 3, 4])

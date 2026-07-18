@@ -862,6 +862,36 @@ button {
   white-space: nowrap;
 }
 
+.workspace-external-change {
+  display: grid;
+  gap: 6px;
+  padding: 9px;
+  color: #ffe7b0;
+  background: rgba(151, 104, 20, 0.22);
+  border: 1px solid rgba(230, 173, 69, 0.5);
+  border-radius: 6px;
+}
+
+.workspace-external-change strong {
+  font-size: 12px;
+}
+
+.workspace-external-change span {
+  color: #ead7ad;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.workspace-external-change button {
+  justify-self: start;
+  min-height: 28px;
+  padding: 4px 8px;
+  color: #fff3d4;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 231, 176, 0.38);
+  border-radius: 5px;
+}
+
 .explorer-root strong {
   color: #f7f9fb;
   font-size: 13px;

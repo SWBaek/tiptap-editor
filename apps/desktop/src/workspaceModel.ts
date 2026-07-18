@@ -17,6 +17,22 @@ export interface NativeWorkspaceMutationResult {
   message: string;
 }
 
+export type NativeWorkspaceWatchEventKind = "created" | "modified" | "removed" | "renamed" | "accessed" | "other" | "error";
+
+export interface NativeWorkspaceWatchStartResult {
+  watchId: string;
+  rootPath: string;
+}
+
+export interface NativeWorkspaceWatchEvent {
+  watchId: string;
+  kind: NativeWorkspaceWatchEventKind;
+  path: string;
+  isSdoc: boolean;
+  occurredAtMs: number;
+  message?: string;
+}
+
 export function sortWorkspaceEntries(entries: NativeWorkspaceEntry[]): NativeWorkspaceEntry[] {
   return entries
     .map((entry) => entry.kind === "folder" ? { ...entry, children: sortWorkspaceEntries(entry.children ?? []) } : { ...entry })
@@ -65,6 +81,34 @@ export function isWorkspaceMutationResult(value: unknown): value is NativeWorksp
     (result.kind === "folder" || result.kind === "sdoc-file") &&
     typeof result.message === "string"
   );
+}
+
+export function isWorkspaceWatchStartResult(value: unknown): value is NativeWorkspaceWatchStartResult {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const result = value as Record<string, unknown>;
+  return typeof result.watchId === "string" && typeof result.rootPath === "string";
+}
+
+export function isWorkspaceWatchEvent(value: unknown): value is NativeWorkspaceWatchEvent {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const event = value as Record<string, unknown>;
+  return (
+    typeof event.watchId === "string" &&
+    isWorkspaceWatchEventKind(event.kind) &&
+    typeof event.path === "string" &&
+    typeof event.isSdoc === "boolean" &&
+    typeof event.occurredAtMs === "number" &&
+    (event.message === undefined || typeof event.message === "string")
+  );
+}
+
+function isWorkspaceWatchEventKind(value: unknown): value is NativeWorkspaceWatchEventKind {
+  return value === "created" || value === "modified" || value === "removed" || value === "renamed" ||
+    value === "accessed" || value === "other" || value === "error";
 }
 
 function getWorkspaceEntryKindOrder(kind: NativeWorkspaceEntryKind): number {

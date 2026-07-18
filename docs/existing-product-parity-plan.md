@@ -70,7 +70,7 @@ The current implementation was checked against `apps/web-playground/src/App.tsx`
 | Position-, text-slug-, or save-time-derived block identity | Reject | Stable block IDs and repair lifecycle are implemented. | ID lifecycle tests prove edits, split/merge/copy/paste/undo/redo do not replace surviving IDs. |
 | Duplicated webview/Tauri frontend mirror | Reject | Desktop already reuses the web playground frontend. | New UI components remain in the shared web app; desktop contains typed native adapters only. |
 | Git/raw JSON/schema/AI as normal-user prerequisites | Reject | Already visually demoted to Developer/advanced surfaces. | Default review scenarios complete without visiting Developer or understanding Git/JSON. |
-| Broad Tauri CSP disablement or wildcard asset scope | Reject | CSP is currently `null`, so hardening is required. | A documented non-null CSP and minimum capability set pass desktop build and native smoke. |
+| Broad Tauri CSP disablement or wildcard asset scope | Reject | Implemented as an explicit production CSP with same-origin bundled resources, Tauri IPC-only connections, in-memory image sources, and no remote/object sources. The `main` capability grants only `dialog:allow-open` and `dialog:allow-save`; validated application commands own workspace/filesystem/watcher/trash/Draw.io access. | Configuration tests lock the exact CSP and capability list and reject the former `core:default`/`dialog:default` grants. `npm test` (301), build, E2E (40), desktop typecheck, and packaged Tauri build pass; the manual native checklist covers CSP enforcement and open/save/workspace continuity. |
 
 ## Ordered Delivery Slices
 

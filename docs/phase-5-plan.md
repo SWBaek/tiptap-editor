@@ -209,7 +209,7 @@ Acceptance evidence:
 
 ## Priority Slice 7: Recovery Feedback And Desktop Security
 
-Status: in progress for Phase 5.1.
+Status: implemented for Phase 5.1; final manual/user review execution remains outside this implementation slice.
 
 Acceptance criteria:
 
@@ -226,8 +226,9 @@ Acceptance evidence:
 - Desktop-runtime E2E proves all three external-change choices, including a dirty Keep path and a compare path labeled `External disk version`.
 - Draw.io external-edit conflicts now use a dedicated modal that explains Keep current, Replace source, and Save as revision against named block/source/revision identifiers; the conflict path no longer invokes a browser confirm prompt.
 - Draw.io E2E proves the revision choice preserves the diagram block ID, packs revised bytes as an asset, changes only the canonical `sourceAssetId`, and leaves runtime/executable/source content out of `document.json`.
-- `npm test` (299), `npm run build`, `npm run test:e2e` (40), `npm run typecheck:desktop`, and `npm run build:desktop` pass.
-- CSP/capability evidence remains required.
+- The packaged desktop CSP permits only same-origin bundles, Tauri IPC connections, local/in-memory fonts and images, and the inline styles required by editor geometry; remote/object sources are not granted.
+- The `main` capability now grants only `dialog:allow-open` and `dialog:allow-save`. Workspace/filesystem/watcher/trash/Draw.io access remains behind path-validating application commands rather than broad plugin scopes.
+- Configuration regression tests lock the exact CSP/capability boundary. `npm test` (301), `npm run build`, `npm run test:e2e` (40), `npm run typecheck:desktop`, and `npm run build:desktop` pass.
 
 ## Reprioritized Existing Work
 

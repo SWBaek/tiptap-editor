@@ -68,6 +68,7 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
    - Edit a checked-out Draw.io source both inside and outside the editor, read the external edit, and confirm the dedicated conflict dialog explains Keep current, Replace source, and Save as revision without a browser confirm prompt. Verify revision changes only `sourceAssetId`, preserves the diagram block ID, and stores the revised source under `.sdoc/assets/`.
    - Reopen the saved file and confirm the edit persists.
    - Inspect exported JSON and confirm cursor, selection, panel state, and native path are absent from `document.json`.
+   - Inspect the packaged webview response in developer tools and confirm a non-null CSP is present, remote scripts/connections are blocked, in-document asset previews still render, and Open/Save dialogs plus validated workspace commands still work with only `dialog:allow-open` and `dialog:allow-save` capabilities.
 
 5. Save As
    - Choose Save As and select a new `.sdoc` path.

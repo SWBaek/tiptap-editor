@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default desktop window permissions for the SDoc editor shell.",
+  "description": "Minimum native dialog permissions for the SDoc editor main window.",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:default"]
+  "permissions": ["dialog:allow-open", "dialog:allow-save"]
 }

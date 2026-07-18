@@ -2,7 +2,7 @@
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
 progress_percent: 99
-current_slice: recovery-and-security
+current_slice: review-gate
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -23,8 +23,8 @@ completed_slices:
   - technical-content-editors
   - runtime-navigation
   - desktop-explorer
-remaining_slices:
   - recovery-and-security
+remaining_slices:
   - review-gate
 progress_log:
   - date: 2026-07-18
@@ -138,6 +138,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 99
     note: "Draw.io external-edit conflicts now open a dedicated modal that names the block, current source, and prospective revision and explains Keep current, Replace source, and Save as revision. No browser confirm prompt is used; E2E proves revision preserves the stable diagram ID, stores revised bytes under assets, and keeps conflict/session/source content out of document.json. npm test (299), npm run build, npm run test:e2e (40), npm run typecheck:desktop, and npm run build:desktop passed. CSP/capability hardening and the final review gate remain."
+  - date: 2026-07-18
+    progress_percent: 99
+    note: "Recovery-and-security completed with a non-null production CSP limited to local bundles, Tauri IPC, and in-memory editor assets, plus a main-window capability containing only dialog:allow-open and dialog:allow-save. Exact-boundary configuration tests reject the former broad defaults. npm test (301), npm run build, npm run test:e2e (40), npm run typecheck:desktop, and npm run build:desktop passed. Only the final review-gate documentation and handoff remain."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

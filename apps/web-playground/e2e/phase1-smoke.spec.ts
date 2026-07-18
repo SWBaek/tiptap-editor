@@ -555,6 +555,7 @@ test("tracks browser recent files in the Files side panel", async ({ page }) => 
 });
 
 test("shows a desktop start screen before opening a Tauri workspace document", async ({ page }) => {
+  test.setTimeout(45_000);
   await page.addInitScript(() => {
     type WorkspaceEntry = {
       name: string;
@@ -768,9 +769,33 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   const externalChangeAlert = filesPanel.getByRole("alert");
   await expect(externalChangeAlert).toContainText("External change detected");
   await expect(externalChangeAlert).toContainText("No content was reloaded automatically");
-  await externalChangeAlert.getByRole("button", { name: "Keep current editor state" }).click();
+  await expect(externalChangeAlert.getByRole("button", { name: "Reload from disk" })).toBeVisible();
+  await expect(externalChangeAlert.getByRole("button", { name: "Keep current" })).toBeVisible();
+  await externalChangeAlert.getByRole("button", { name: "Compare" }).click();
+  const externalReviewPanel = page.getByRole("complementary", { name: "Review side panel" });
+  await expect(externalReviewPanel).toContainText("External disk version");
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Draft");
+  await page.getByRole("button", { name: "Files panel" }).click();
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __QUEUE_WORKSPACE_EVENT__?: (event: { kind: "modified"; path: string; isSdoc: boolean }) => void;
+    }).__QUEUE_WORKSPACE_EVENT__?.({ kind: "modified", path: "C:\\Docs\\Guides\\Reference\\Review.sdoc", isSdoc: true });
+  });
+  await expect(externalChangeAlert).toBeVisible();
+  await externalChangeAlert.getByRole("button", { name: "Reload from disk" }).click();
   await expect(externalChangeAlert).toHaveCount(0);
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Review");
   await page.getByLabel("Title", { exact: true }).fill("Dirty review");
+  await page.evaluate(() => {
+    (window as typeof window & {
+      __QUEUE_WORKSPACE_EVENT__?: (event: { kind: "modified"; path: string; isSdoc: boolean }) => void;
+    }).__QUEUE_WORKSPACE_EVENT__?.({ kind: "modified", path: "C:\\Docs\\Guides\\Reference\\Review.sdoc", isSdoc: true });
+  });
+  await expect(externalChangeAlert).toContainText("Unsaved edits are preserved");
+  await externalChangeAlert.getByRole("button", { name: "Keep current" }).click();
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Dirty review");
+  await filesPanel.getByRole("button", { name: "Expand folder Guides" }).click();
+  await filesPanel.getByRole("button", { name: "Expand folder Reference" }).click();
   await filesPanel.getByRole("button", { name: "Actions for Review.sdoc" }).click();
   await filesPanel.getByRole("menu", { name: "Workspace actions for Review.sdoc" }).getByRole("menuitem", { name: "Move to Trash" }).click();
   await expect(page.getByRole("dialog", { name: "Move workspace entry to Trash" })).toHaveCount(0);

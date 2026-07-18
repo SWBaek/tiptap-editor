@@ -64,7 +64,15 @@ import {
   type BlockMoveDirection,
   type TableCellAlignment
 } from "@sdoc/editor-tiptap";
-import { createHtmlPayload, createMarkdownPayload, createSdocPayload, openDocumentInput, safeFilename, type SDocAssets } from "./documentIo";
+import {
+  createHtmlPayload,
+  createMarkdownPayload,
+  createSdocPayload,
+  openDocumentInput,
+  safeFilename,
+  type OpenDocumentResult,
+  type SDocAssets
+} from "./documentIo";
 import { runSdocSaveAction } from "./documentFileActions";
 import { detectDocumentFileRuntime, resolveSdocSaveRoute } from "./documentFileRuntime";
 import {
@@ -298,6 +306,7 @@ export function App() {
   const [workspaceCreateDialog, setWorkspaceCreateDialog] = useState<WorkspaceCreateDialogState | null>(null);
   const [workspaceEntryActionDialog, setWorkspaceEntryActionDialog] = useState<WorkspaceEntryActionDialogState | null>(null);
   const [workspaceExternalChange, setWorkspaceExternalChange] = useState<WindowSdocWorkspaceWatchEvent | null>(null);
+  const [externalDocumentComparison, setExternalDocumentComparison] = useState<OpenDocumentResult | null>(null);
   const [saveFailureMessage, setSaveFailureMessage] = useState<string | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
@@ -524,9 +533,13 @@ export function App() {
   const markdown = exportMarkdown(document);
   const derivedOutputs = useMemo(() => exportDerivedOutputs(document), [document]);
   const selectedHistoryEntry = historyEntries.find((entry) => entry.id === selectedHistoryId) ?? null;
-  const reviewBaseDocument = selectedHistoryEntry?.document ?? baselineDocument;
-  const reviewBaseMetadata = selectedHistoryEntry?.metadata ?? baselineMetadata;
-  const reviewBaseLabel = selectedHistoryEntry ? `History: ${selectedHistoryEntry.title}` : "Saved baseline";
+  const reviewBaseDocument = selectedHistoryEntry?.document ?? externalDocumentComparison?.document ?? baselineDocument;
+  const reviewBaseMetadata = selectedHistoryEntry?.metadata ?? externalDocumentComparison?.metadata ?? baselineMetadata;
+  const reviewBaseLabel = selectedHistoryEntry
+    ? `History: ${selectedHistoryEntry.title}`
+    : externalDocumentComparison
+      ? "External disk version"
+      : "Saved baseline";
   const documentDiffEvents = diffDocuments(reviewBaseDocument, document);
   const documentDiffLines = renderReadableDiffEvents(documentDiffEvents);
   const metadataDiffLines = renderMetadataDiff(metadata, reviewBaseMetadata);
@@ -705,6 +718,7 @@ export function App() {
       setBaselineMetadata(metadata);
       setBaselineAssets(assets);
       setSelectedHistoryId(null);
+      setExternalDocumentComparison(null);
       setCurrentFilename(payload.filename);
       setCurrentNativePath(saveResult.path);
       if (saveResult.path) {
@@ -728,6 +742,7 @@ export function App() {
     downloadBlob(new Blob([json], { type: "application/json" }), "document.json");
     setBaselineDocument(document);
     setSelectedHistoryId(null);
+    setExternalDocumentComparison(null);
     markSaved("Saved document.json");
   }
 
@@ -788,6 +803,7 @@ export function App() {
     setBaselineMetadata(nextMetadata);
     setBaselineAssets(loaded.assets);
     setSelectedHistoryId(null);
+    setExternalDocumentComparison(null);
     setCollapsedHeadingIds(new Set());
     setDrawioBridgeSession(null);
     setDrawioBridgeTargetId(null);
@@ -1126,6 +1142,54 @@ export function App() {
     return true;
   }
 
+  async function reloadExternalDocument() {
+    if (!workspaceExternalChange || !currentNativePath || !nativeSdocWorkspaceAdapter) {
+      setStatusMessage("No external document change is available to reload.");
+      return;
+    }
+    try {
+      const opened = await nativeSdocWorkspaceAdapter.openFile(currentNativePath);
+      await openDocumentBytes(filenameFromNativePath(opened.path), opened.bytes, opened.path);
+      setStatusMessage(`Reloaded ${filenameFromNativePath(opened.path)} from disk.`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function compareExternalDocument() {
+    if (!workspaceExternalChange || !currentNativePath || !nativeSdocWorkspaceAdapter) {
+      setStatusMessage("No external document change is available to compare.");
+      return;
+    }
+    try {
+      const opened = await nativeSdocWorkspaceAdapter.openFile(currentNativePath);
+      const loaded = await openDocumentInput({
+        name: filenameFromNativePath(opened.path),
+        data: opened.bytes,
+        fallbackMetadata: metadata
+      });
+      const validationResult = validateDocument(loaded.document);
+      if (!validationResult.ok) {
+        setStatusMessage(`Cannot compare invalid external document: ${validationResult.issues[0]?.message ?? "schema validation failed"}`);
+        return;
+      }
+      setExternalDocumentComparison(loaded);
+      setSelectedHistoryId(null);
+      setWorkspaceExternalChange(null);
+      openActivityPanel("review");
+      showPreview("diff");
+      setStatusMessage(`Comparing the current editor state with ${filenameFromNativePath(opened.path)} on disk.`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function keepCurrentAfterExternalChange() {
+    setWorkspaceExternalChange(null);
+    setExternalDocumentComparison(null);
+    setStatusMessage("Kept the current editor state after the external change.");
+  }
+
   function showDeveloperCommand(command: string) {
     void navigator.clipboard?.writeText(command).catch(() => undefined);
     setStatusMessage(`CLI command: ${command}`);
@@ -1151,12 +1215,14 @@ export function App() {
       return;
     }
 
+    setExternalDocumentComparison(null);
     setSelectedHistoryId(entry.id);
     showPreview("diff");
     setStatusMessage(`Comparing with history snapshot: ${entry.title}`);
   }
 
   function compareSavedBaseline() {
+    setExternalDocumentComparison(null);
     setSelectedHistoryId(null);
     showPreview("diff");
     setStatusMessage("Comparing with saved baseline");
@@ -1241,6 +1307,7 @@ export function App() {
     setBaselineAssets({});
     setAssets({});
     setSelectedHistoryId(null);
+    setExternalDocumentComparison(null);
     setCollapsedHeadingIds(new Set());
     setDrawioBridgeSession(null);
     setDrawioBridgeTargetId(null);
@@ -2529,7 +2596,7 @@ export function App() {
               isWorkspaceLoading={isWorkspaceLoading}
               saveFailureMessage={saveFailureMessage}
               externalChangeMessage={workspaceExternalChange
-                ? `${filenameFromNativePath(workspaceExternalChange.path)} changed outside the editor. No content was reloaded automatically.`
+                ? `${filenameFromNativePath(workspaceExternalChange.path)} changed outside the editor. ${hasUnsavedChanges ? "Unsaved edits are preserved. " : ""}No content was reloaded automatically.`
                 : null}
               onNewDocument={createNewDocument}
               onOpenDocument={openDocumentAction}
@@ -2543,10 +2610,9 @@ export function App() {
               onOpenWorkspaceEntry={openWorkspaceEntry}
               onCreateWorkspaceEntry={openWorkspaceCreateDialog}
               onManageWorkspaceEntry={openWorkspaceEntryActionDialog}
-              onDismissExternalChange={() => {
-                setWorkspaceExternalChange(null);
-                setStatusMessage("Kept the current editor state after the external-change notice.");
-              }}
+              onReloadExternalChange={() => void reloadExternalDocument()}
+              onKeepExternalChange={keepCurrentAfterExternalChange}
+              onCompareExternalChange={() => void compareExternalDocument()}
               onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}

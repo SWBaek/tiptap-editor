@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 98
+progress_percent: 99
 current_slice: recovery-and-security
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -132,6 +132,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 98
     note: "Recovery work now gives native save failures a durable Files alert with the concrete error, Retry, and desktop Save As. Failed writes preserve the dirty document and baseline/path; only successful recovery clears the alert and marks the document saved. npm test (299), npm run build, npm run test:e2e (40), npm run typecheck:desktop, and npm run build:desktop passed. External reload/compare, Draw.io conflict dialog, CSP/capability hardening, and the final review gate remain."
+  - date: 2026-07-18
+    progress_percent: 99
+    note: "External current-document changes now offer explicit Reload from disk, Keep current, and Compare recovery. Compare validates the disk SDoc into a runtime-only semantic review baseline without mutating the active draft; Reload is explicit and Keep preserves dirty state. npm test (299), npm run build, npm run test:e2e (40), npm run typecheck:desktop, and npm run build:desktop passed. The Draw.io conflict dialog, CSP/capability hardening, and final review-gate documentation remain."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

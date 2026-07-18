@@ -29,7 +29,9 @@ export interface FilesPanelProps {
   onOpenWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
   onCreateWorkspaceEntry: (parent: WindowSdocWorkspaceEntry | null, kind: WorkspaceCreateKind) => void;
   onManageWorkspaceEntry: (entry: WindowSdocWorkspaceEntry, action: WorkspaceEntryAction) => void;
-  onDismissExternalChange: () => void;
+  onReloadExternalChange: () => void;
+  onKeepExternalChange: () => void;
+  onCompareExternalChange: () => void;
   onCopyDeveloperCommand: (command: string) => void;
 }
 
@@ -56,7 +58,9 @@ export function FilesPanel({
   onOpenWorkspaceEntry,
   onCreateWorkspaceEntry,
   onManageWorkspaceEntry,
-  onDismissExternalChange,
+  onReloadExternalChange,
+  onKeepExternalChange,
+  onCompareExternalChange,
   onCopyDeveloperCommand
 }: FilesPanelProps) {
   const unpackCommand = `npm run sdoc -- unpack ${quoteCliPath(sdocFilename)} ${quoteCliPath(`${sdocFilename}.d`)}`;
@@ -142,7 +146,11 @@ export function FilesPanel({
               <div className="workspace-external-change" role="alert">
                 <strong>External change detected</strong>
                 <span>{externalChangeMessage}</span>
-                <button type="button" onClick={onDismissExternalChange}>Keep current editor state</button>
+                <div className="workspace-external-change-actions">
+                  <button type="button" onClick={onReloadExternalChange}>Reload from disk</button>
+                  <button type="button" onClick={onKeepExternalChange}>Keep current</button>
+                  <button type="button" onClick={onCompareExternalChange}>Compare</button>
+                </div>
               </div>
             )}
             <div className="explorer-folder-actions" aria-label="Workspace actions">

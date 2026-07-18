@@ -222,8 +222,10 @@ Acceptance evidence:
 
 - Save failures now render a durable Files alert with the concrete error, Retry, and desktop Save As. Successful writes alone clear the alert and update baseline/path state.
 - Unit tests prove native adapter failures propagate instead of reporting success; desktop-runtime E2E proves Unsaved changes survive failure and Retry completes recovery.
+- External-change alerts now offer Reload from disk, Keep current, and Compare. Compare validates the disk `.sdoc` into a runtime-only semantic review baseline without mutating the editor; Reload is explicit; Keep preserves dirty authoring state.
+- Desktop-runtime E2E proves all three external-change choices, including a dirty Keep path and a compare path labeled `External disk version`.
 - `npm test` (299), `npm run build`, `npm run test:e2e` (40), `npm run typecheck:desktop`, and `npm run build:desktop` pass.
-- External reload/compare, the dedicated Draw.io conflict dialog, and CSP/capability evidence remain required.
+- The dedicated Draw.io conflict dialog and CSP/capability evidence remain required.
 
 ## Reprioritized Existing Work
 

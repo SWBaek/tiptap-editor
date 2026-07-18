@@ -926,6 +926,12 @@ button {
   border-radius: 5px;
 }
 
+.workspace-external-change-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .explorer-root strong {
   color: #f7f9fb;
   font-size: 13px;

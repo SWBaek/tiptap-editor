@@ -51,6 +51,7 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
    - Try to trash the current document or its parent folder with unsaved edits; confirm the editor blocks the action and retains the dirty document and native save path.
    - With the workspace open, create/rename/remove a nested `.sdoc` in the operating-system file manager and confirm the explorer refreshes without manual intervention.
    - Modify the current `.sdoc` externally and confirm the Files panel reports an external change without silently reloading, overwriting, or serializing watcher/conflict state into `document.json`.
+   - From the external-change notice, verify Compare opens semantic Review against the disk package without changing the editor, Keep preserves unsaved content, and Reload explicitly replaces the editor with the complete disk `.sdoc` and resets its baseline.
    - Save or rename from inside the editor and confirm the resulting native watcher events do not produce a false external-change warning.
    - Confirm the current document and saved/unsaved state are visible in the compact Files header.
    - Confirm developer-only unpacked folder commands are not part of the default author path.

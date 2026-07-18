@@ -16,8 +16,6 @@ import {
   ExternalLink,
   FileJson,
   FileText,
-  Heading1,
-  Heading2,
   Image,
   Info,
   Italic,
@@ -25,7 +23,7 @@ import {
   List,
   ListChecks,
   ListOrdered,
-  Menu,
+  MoreHorizontal,
   Quote,
   RefreshCw,
   Rows3,
@@ -36,8 +34,7 @@ import {
   Table,
   Trash2,
   Underline,
-  Workflow,
-  Wrench
+  Workflow
 } from "lucide-react";
 import { ToolbarButton } from "./ToolbarButton";
 
@@ -100,28 +97,32 @@ export function EditorToolbarGroups({
 }: EditorToolbarGroupsProps) {
   return (
     <>
-      <div className="toolbar-group primary" aria-label="Basic writing tools">
-        <span className="toolbar-group-label">Text</span>
-        <ToolbarButton title="Heading 1" active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
-          <Heading1 size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Heading 2" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-          <Heading2 size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Heading 3" active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-          <Heading2 size={16} />
-        </ToolbarButton>
+      <div className="toolbar-group primary toolbar-writing-tools" aria-label="Basic writing tools">
+        <label className="toolbar-block-style">
+          <span className="visually-hidden">Text style</span>
+          <select
+            aria-label="Text style"
+            value={activeBlockStyle(editor)}
+            onChange={(event) => {
+              const style = event.target.value;
+              if (style === "paragraph") {
+                editor.chain().focus().setParagraph().run();
+                return;
+              }
+              editor.chain().focus().setHeading({ level: Number(style.slice(1)) as 1 | 2 | 3 }).run();
+            }}
+          >
+            <option value="paragraph">Paragraph</option>
+            <option value="h1">Heading 1</option>
+            <option value="h2">Heading 2</option>
+            <option value="h3">Heading 3</option>
+          </select>
+        </label>
         <ToolbarButton title="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold size={18} />
         </ToolbarButton>
         <ToolbarButton title="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
           <Italic size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Underline" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
-          <Underline size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Strike" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
-          <Strikethrough size={18} />
         </ToolbarButton>
         <ToolbarButton title="Link" active={editor.isActive("link")} onMouseDown={(event) => event.preventDefault()} onClick={onEditLink}>
           <Link2 size={18} />
@@ -137,7 +138,43 @@ export function EditorToolbarGroups({
         </ToolbarButton>
       </div>
 
-      <ToolbarMenu label="Text options" icon={<FileText size={17} />}>
+      <div className="toolbar-group primary toolbar-insert-tools" aria-label="Common insert tools">
+        <ToolbarButton title="Insert image" active={editor.isActive("figure")} onClick={onInsertImage}>
+          <Image size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={onInsertTable}>
+          <Table size={18} />
+        </ToolbarButton>
+      </div>
+
+      <ToolbarMenu label="+ Insert" icon={null}>
+        <ToolbarButton title="Insert reference" active={editor.isActive("crossReference")} onClick={onInsertReference}>
+          <Link2 size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Insert data grid" active={editor.isActive("dataGrid")} onClick={onInsertDataGrid}>
+          <FileJson size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Insert inline equation" active={editor.isActive("equation")} onClick={onInsertInlineEquation}>
+          <Sigma size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Insert equation block" active={editor.isActive("equationBlock")} onClick={onInsertEquationBlock}>
+          <Sigma size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Insert Mermaid diagram" active={editor.isActive("diagram", { kind: "mermaid" })} onClick={onInsertMermaid}>
+          <Workflow size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Insert Draw.io diagram" active={editor.isActive("diagram", { kind: "drawio" })} onClick={onInsertDrawio}>
+          <FileJson size={18} />
+        </ToolbarButton>
+      </ToolbarMenu>
+
+      <ToolbarMenu label="More" icon={<MoreHorizontal size={17} />} active={hasCollapsedSections}>
+        <ToolbarButton title="Underline" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+          <Underline size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Strike" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
+          <Strikethrough size={18} />
+        </ToolbarButton>
         <ToolbarButton title="Align text left" active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()}>
           <AlignLeft size={18} />
         </ToolbarButton>
@@ -153,27 +190,11 @@ export function EditorToolbarGroups({
         <ToolbarButton title="Superscript" active={editor.isActive("superscript")} onClick={() => editor.chain().focus().toggleSuperscript().run()}>
           <Superscript size={18} />
         </ToolbarButton>
-      </ToolbarMenu>
-
-      <div className="toolbar-group primary" aria-label="Common insert tools">
-        <span className="toolbar-group-label">Insert</span>
-        <ToolbarButton title="Insert image" active={editor.isActive("figure")} onClick={onInsertImage}>
-          <Image size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Insert table" active={editor.isActive("table")} onClick={onInsertTable}>
-          <Table size={18} />
-        </ToolbarButton>
-      </div>
-
-      <ToolbarMenu label="More insert" icon={<Menu size={17} />}>
         <ToolbarButton title="Blockquote" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
           <Quote size={18} />
         </ToolbarButton>
         <ToolbarButton title="Code block" active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
           <Code2 size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Insert reference" active={editor.isActive("crossReference")} onClick={onInsertReference}>
-          <Link2 size={18} />
         </ToolbarButton>
         <ToolbarButton title="Note callout" active={editor.isActive("callout", { kind: "note" })} onClick={() => onApplyCallout("note")}>
           <Info size={18} />
@@ -181,30 +202,6 @@ export function EditorToolbarGroups({
         <ToolbarButton title="Warning callout" active={editor.isActive("callout", { kind: "warning" })} onClick={() => onApplyCallout("warning")}>
           <AlertTriangle size={18} />
         </ToolbarButton>
-        <ToolbarButton title="Insert data grid" active={editor.isActive("dataGrid")} onClick={onInsertDataGrid}>
-          <FileJson size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Insert inline equation" active={editor.isActive("equation")} onClick={onInsertInlineEquation}>
-          <Sigma size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Insert equation block" active={editor.isActive("equationBlock")} onClick={onInsertEquationBlock}>
-          <Sigma size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Edit selected equation" active={editor.isActive("equation") || editor.isActive("equationBlock")} onClick={onEditEquation}>
-          <Sigma size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Insert Mermaid diagram" active={editor.isActive("diagram", { kind: "mermaid" })} onClick={onInsertMermaid}>
-          <Workflow size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Edit selected Mermaid diagram" active={editor.isActive("diagram", { kind: "mermaid" })} onClick={onEditMermaid}>
-          <Workflow size={18} />
-        </ToolbarButton>
-        <ToolbarButton title="Insert Draw.io diagram" active={editor.isActive("diagram", { kind: "drawio" })} onClick={onInsertDrawio}>
-          <FileJson size={18} />
-        </ToolbarButton>
-      </ToolbarMenu>
-
-      <ToolbarMenu label="Structure" icon={<Wrench size={17} />} active={hasCollapsedSections}>
         <ToolbarButton title="Fold section" onClick={onFoldSection}>
           <ChevronRight size={18} />
         </ToolbarButton>
@@ -221,6 +218,22 @@ export function EditorToolbarGroups({
           <ArrowDown size={18} />
         </ToolbarButton>
       </ToolbarMenu>
+
+      {(editor.isActive("equation") || editor.isActive("equationBlock")) && (
+        <ToolbarMenu label="Equation tools" icon={<Sigma size={17} />} active>
+          <ToolbarButton title="Edit selected equation" active onClick={onEditEquation}>
+            <Sigma size={18} />
+          </ToolbarButton>
+        </ToolbarMenu>
+      )}
+
+      {editor.isActive("diagram", { kind: "mermaid" }) && (
+        <ToolbarMenu label="Mermaid tools" icon={<Workflow size={17} />} active>
+          <ToolbarButton title="Edit selected Mermaid diagram" active onClick={onEditMermaid}>
+            <Workflow size={18} />
+          </ToolbarButton>
+        </ToolbarMenu>
+      )}
 
       {editor.isActive("table") && (
         <ToolbarMenu label="Table tools" icon={<Table size={17} />} active>
@@ -286,6 +299,13 @@ export function EditorToolbarGroups({
       <div className="toolbar-spacer" />
     </>
   );
+}
+
+function activeBlockStyle(editor: Editor): "paragraph" | "h1" | "h2" | "h3" {
+  if (editor.isActive("heading", { level: 1 })) return "h1";
+  if (editor.isActive("heading", { level: 2 })) return "h2";
+  if (editor.isActive("heading", { level: 3 })) return "h3";
+  return "paragraph";
 }
 
 interface ToolbarMenuProps {

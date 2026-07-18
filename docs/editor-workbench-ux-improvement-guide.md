@@ -2,7 +2,7 @@
 
 Created: 2026-07-18
 Target: Phase 5.2 Explorer-First Authoring Workbench
-Status: implementation in progress; Slices 1-4 accepted, Slice 5 next
+Status: implementation in progress; Slices 1-5 accepted, Slice 6 next
 
 ## 1. Purpose
 
@@ -419,6 +419,8 @@ Accepted 2026-07-18. A compact document command bar now presents filename, save 
 - implement the visible/contextual command split in Section 6.2.
 - preserve Bubble Menu, context menu, dialogs and stable-ID behavior.
 - verify image/table/equation/Mermaid flows remain discoverable.
+
+Accepted 2026-07-18. The authoring toolbar now stays on one row at the 1280px acceptance viewport and contains only a paragraph/Heading 1-3 selector, Bold, Italic, Link, Bullet/Ordered/Task lists, Image, Table, `+ Insert`, and `More`. Underline, strike, alignment, subscript/superscript, blockquote, code block, callouts, folding, and block movement live in `More`; stable-ID references, data grids, equations, Mermaid, and Draw.io creation live in `+ Insert`. Equation, Mermaid, table, image, and Draw.io inspectors appear only for applicable selections. Bubble Menu, viewport-safe context menus, validated dialogs, and canonical/stable-ID behavior remain intact. Evidence: focused Playwright authoring flows (7), one-row geometry assertion at 1280px, visual inspection at 1280x900 and 1440x1000, `npm test` (307), `npm run build`, and `npm run test:e2e` (41).
 
 ### Slice 6: Status Bar and document-level recovery
 

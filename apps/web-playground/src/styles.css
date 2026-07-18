@@ -2081,13 +2081,13 @@ button {
 
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   max-width: 100vw;
   overflow: visible;
-  padding: 10px 14px;
+  padding: 7px 12px;
   background: #ffffff;
   border-bottom: 1px solid #d9dee4;
 }
@@ -2095,8 +2095,33 @@ button {
 .toolbar-group {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
   min-width: 0;
+}
+
+.toolbar-block-style select {
+  width: 116px;
+  height: 32px;
+  padding: 0 28px 0 9px;
+  color: #33414f;
+  background: #ffffff;
+  border: 1px solid #d9e1e7;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.toolbar-block-style select:hover,
+.toolbar-block-style select:focus-visible {
+  border-color: #9fb2bf;
+  outline: none;
+}
+
+.toolbar-insert-tools {
+  margin-left: 3px;
+  padding-left: 6px;
+  border-left: 1px solid #d9dee4;
 }
 
 .toolbar-group-label {
@@ -2126,8 +2151,8 @@ button {
   display: inline-flex;
   gap: 6px;
   align-items: center;
-  height: 36px;
-  padding: 0 9px;
+  height: 32px;
+  padding: 0 7px;
   color: #526171;
   background: #fbfcfd;
   border: 1px solid #d9e1e7;
@@ -2585,8 +2610,8 @@ button {
 .tool-button {
   display: inline-grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   color: #33414f;
   background: transparent;

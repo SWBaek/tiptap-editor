@@ -71,10 +71,11 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await expect(settingsPanel).not.toContainText("References");
   await expect(settingsPanel).not.toContainText("Current file");
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
-  await expect(page.getByRole("button", { name: "Heading 1" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Text style" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Insert image" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Insert table" })).toBeVisible();
-  await expect(page.getByLabel("More insert menu")).toBeVisible();
+  await expect(page.getByLabel("+ Insert menu")).toBeVisible();
+  await expect(page.getByLabel("More menu")).toBeVisible();
   await expect(page.getByRole("button", { name: "Insert Mermaid diagram" })).toBeHidden();
   await expect(page.getByRole("button", { name: "Download .sdoc" })).toBeVisible();
 
@@ -117,6 +118,20 @@ test("keeps document identity and commands clear at the 1280px acceptance viewpo
   await expect(page.locator(".editor-surface h1").first()).toHaveText("System Overview");
   await expect(page.getByLabel("Editor toolbar").getByRole("button", { name: "New document" })).toHaveCount(0);
   await expect(page.getByLabel("Editor toolbar").getByRole("button", { name: "Mark saved" })).toHaveCount(0);
+
+  const authoringToolbar = page.getByLabel("Editor toolbar");
+  await expect(authoringToolbar.getByRole("combobox", { name: "Text style" })).toBeVisible();
+  for (const command of ["Bold", "Italic", "Link", "Bullet list", "Ordered list", "Task list", "Insert image", "Insert table"]) {
+    await expect(authoringToolbar.getByRole("button", { name: command, exact: true })).toBeVisible();
+  }
+  await expect(authoringToolbar.getByLabel("+ Insert menu")).toBeVisible();
+  await expect(authoringToolbar.getByLabel("More menu")).toBeVisible();
+  await expect(authoringToolbar.getByRole("button", { name: "Underline", exact: true })).toBeHidden();
+  const toolbarRows = await authoringToolbar.evaluate((toolbar) => {
+    const controls = Array.from(toolbar.querySelectorAll(":scope > .toolbar-group, :scope > .toolbar-menu"));
+    return new Set(controls.map((control) => Math.round(control.getBoundingClientRect().top))).size;
+  });
+  expect(toolbarRows).toBe(1);
 
   const fitsWithoutOverlap = await commandBar.evaluate((bar) => {
     const identity = bar.querySelector(".document-command-identity")?.getBoundingClientRect();
@@ -229,19 +244,19 @@ test("authors subscript and superscript as canonical technical marks", async ({ 
   const editorSurface = page.locator(".editor-surface");
   await paragraph.click();
   await page.keyboard.type("H");
-  await page.getByLabel("Text options menu").click();
+  await page.getByLabel("More menu").click();
   await page.getByRole("button", { name: "Subscript", exact: true }).click();
   await editorSurface.focus();
   await page.keyboard.type("2");
-  await page.getByLabel("Text options menu").click();
+  await page.getByLabel("More menu").click();
   await page.getByRole("button", { name: "Superscript", exact: true }).click();
   await editorSurface.focus();
   await page.keyboard.type("3");
-  await page.getByLabel("Text options menu").click();
+  await page.getByLabel("More menu").click();
   await page.getByRole("button", { name: "Superscript", exact: true }).click();
   await editorSurface.focus();
   await page.keyboard.type("O x");
-  await page.getByLabel("Text options menu").click();
+  await page.getByLabel("More menu").click();
   await page.getByRole("button", { name: "Superscript", exact: true }).click();
   await editorSurface.focus();
   await page.keyboard.type("2");
@@ -266,7 +281,7 @@ test("aligns paragraphs as a canonical text block attribute", async ({ page }) =
   await paragraph.click();
   await page.keyboard.type("Centered requirement");
 
-  await page.getByLabel("Text options menu").click();
+  await page.getByLabel("More menu").click();
   await page.getByRole("button", { name: "Align text center" }).click();
 
   const document = await readPreviewDocument(page);
@@ -301,7 +316,7 @@ test("authors and checks a stable-id task list", async ({ page }) => {
 test("changes heading depth with Tab without replacing block ids", async ({ page }) => {
   await page.goto("/");
   await createNewDocumentFromMenu(page);
-  await page.getByRole("button", { name: "Heading 2" }).click();
+  await page.getByRole("combobox", { name: "Text style" }).selectOption("h2");
   await page.keyboard.type("Converter limits");
 
   let document = await readPreviewDocument(page);
@@ -488,7 +503,7 @@ test("folds editor sections without storing runtime state in document.json", asy
   const beforeFold = await readPreviewDocument(page);
 
   await page.locator('.editor-surface [data-id="blk_overview"]').click();
-  await openToolbarMenu(page, "Structure");
+  await openToolbarMenu(page, "More");
   await page.getByRole("button", { name: "Fold section", exact: true }).click();
   await expect(page.locator(".status-note")).toContainText("Folded section: System Overview");
   await expect(page.locator('.editor-surface [data-id="blk_intro"]')).toBeHidden();
@@ -502,7 +517,7 @@ test("folds editor sections without storing runtime state in document.json", asy
   await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("This document describes the initial SDoc editor shell.");
 
-  await openToolbarMenu(page, "Structure");
+  await openToolbarMenu(page, "More");
   await page.getByRole("button", { name: "Unfold all sections", exact: true }).click();
   await expect(page.locator(".status-note")).toContainText("Unfolded all sections");
   await expect(page.locator("style[data-sdoc-fold-runtime]")).toHaveCount(0);
@@ -1038,7 +1053,7 @@ test("inserts cross references from the target picker", async ({ page }) => {
   await page.goto("/");
   await page.locator(".editor-surface p").first().click();
 
-  await openToolbarMenu(page, "More insert");
+  await openToolbarMenu(page, "+ Insert");
   await page.getByRole("button", { name: "Insert reference" }).click();
   await expect(page.locator(".status-note")).toContainText("Choose a reference target");
   await expect(page.getByRole("button", { name: "Review panel" })).toHaveAttribute("aria-pressed", "true");
@@ -1378,7 +1393,7 @@ test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testIn
 
   await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
-  await openToolbarMenu(page, "More insert");
+  await openToolbarMenu(page, "+ Insert");
   await page.getByRole("button", { name: "Insert data grid" }).click();
   await page.getByLabel("Insert data grid file").setInputFiles(csvPath);
 
@@ -1558,7 +1573,7 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   await page.locator(".editor-surface").click();
   await page.keyboard.type("Energy ");
 
-  await openToolbarMenu(page, "More insert");
+  await openToolbarMenu(page, "+ Insert");
   await page.getByRole("button", { name: "Insert inline equation" }).click();
   const inlineDialog = page.getByRole("dialog", { name: "Insert inline equation" });
   await inlineDialog.getByLabel("LaTeX source").fill("\\notARealCommand{");
@@ -1569,7 +1584,7 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   await expect(page.locator(".status-note")).toContainText("Inserted inline equation");
   await expect(page.locator(".editor-surface .sdoc-inline-equation .katex")).toBeVisible();
 
-  await openToolbarMenu(page, "More insert");
+  await openToolbarMenu(page, "+ Insert");
   await page.getByRole("button", { name: "Insert equation block" }).click();
   const blockDialog = page.getByRole("dialog", { name: "Insert block equation" });
   await blockDialog.getByLabel("LaTeX source").fill("a^2+b^2=c^2");
@@ -1620,7 +1635,7 @@ test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page },
   await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
 
-  await openToolbarMenu(page, "More insert");
+  await openToolbarMenu(page, "+ Insert");
   await page.getByRole("button", { name: "Insert Mermaid diagram" }).click();
   const insertDialog = page.getByRole("dialog", { name: "Insert Mermaid diagram" });
   await expect(insertDialog).toBeVisible();
@@ -1739,7 +1754,7 @@ test("creates a new Draw.io diagram as an asset-backed source", async ({ page })
     expect(dialog.message()).toContain("Create a new Draw.io diagram?");
     await dialog.accept();
   });
-  await openToolbarMenu(page, "More insert");
+  await openToolbarMenu(page, "+ Insert");
   await page.getByRole("button", { name: "Insert Draw.io diagram" }).click();
   await expect(page.locator(".status-note")).toContainText("Created Draw.io diagram");
   await expect(page.locator(".editor-surface .sdoc-diagram pre")).toContainText("Draw.io diagram source:");
@@ -2027,6 +2042,9 @@ async function assertInlineToolbarCommands(page: Page): Promise<void> {
 
   await page.locator(".editor-surface p").first().click({ clickCount: 3 });
   for (const command of inlineToolbarCommands) {
+    if (command === "Underline") {
+      await openToolbarMenu(page, "More");
+    }
     await page.getByRole("button", { name: command, exact: true }).click();
   }
 
@@ -2045,9 +2063,15 @@ async function assertBlockToolbarCommand(page: Page, toolbarCase: BlockToolbarCa
   await createSingleParagraphDocument(page, text);
   await page.locator(".editor-surface p").first().click({ clickCount: 3 });
   if (["Blockquote", "Code block", "Note callout", "Warning callout"].includes(toolbarCase.button)) {
-    await openToolbarMenu(page, "More insert");
+    await openToolbarMenu(page, "More");
   }
-  await page.getByRole("button", { name: toolbarCase.button }).click();
+  if (toolbarCase.button === "Heading 1") {
+    await page.getByRole("combobox", { name: "Text style" }).selectOption("h1");
+  } else if (toolbarCase.button === "Heading 2") {
+    await page.getByRole("combobox", { name: "Text style" }).selectOption("h2");
+  } else {
+    await page.getByRole("button", { name: toolbarCase.button }).click();
+  }
 
   await expect.poll(async () => firstTopLevelNodeContainingText(await readPreviewDocument(page), text)?.type).toBe(toolbarCase.topType);
 
@@ -2076,7 +2100,7 @@ async function assertMoveToolbarActions(page: Page): Promise<void> {
   expect(initialIds.slice(0, 3)).toEqual(["blk_overview", "blk_intro", "blk_note"]);
 
   await page.locator(".editor-surface h1").click();
-  await openToolbarMenu(page, "Structure");
+  await openToolbarMenu(page, "More");
   await page.getByRole("button", { name: "Move block down" }).click();
   await selectPreviewTab(page, "JSON");
   await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).slice(0, 3).join("|")).toBe("blk_intro|blk_overview|blk_note");
@@ -2086,7 +2110,7 @@ async function assertMoveToolbarActions(page: Page): Promise<void> {
   expectUniqueIds(collectBlockIds(await readPreviewDocument(page)));
 
   await page.locator(".editor-surface h1").click();
-  await openToolbarMenu(page, "Structure");
+  await openToolbarMenu(page, "More");
   await page.getByRole("button", { name: "Move block up" }).click();
   await selectPreviewTab(page, "JSON");
   await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).slice(0, initialIds.length).join("|")).toBe(initialIds.join("|"));

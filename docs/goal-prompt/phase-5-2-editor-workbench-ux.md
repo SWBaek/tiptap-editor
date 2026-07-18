@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.2 Explorer-First Authoring Workbench Goal"
 status: in_progress
-progress_percent: 50
-current_slice: one-row-authoring-toolbar
+progress_percent: 63
+current_slice: status-and-recovery-relocation
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -20,8 +20,8 @@ completed_slices:
   - accessible-desktop-tree
   - activity-and-panel-consolidation
   - document-header-and-command-hierarchy
-remaining_slices:
   - one-row-authoring-toolbar
+remaining_slices:
   - status-and-recovery-relocation
   - settings-export-browser-language
   - responsive-accessibility-review-gate
@@ -44,6 +44,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 50
     note: "Document header and command hierarchy completed: a compact bar provides one Save/Export hierarchy with New/Open/Save As/preview/Document Properties in overflow; title is edited at the top of the canvas; author/version live in Document Properties; duplicate file commands and Mark saved were removed from authoring and Review. Existing links can be edited from a caret position. Visual checks at 1440x1000 and 1280px showed no command-bar overlap. Evidence passed: focused Playwright checks, npm test (307), npm run build, and npm run test:e2e (41)."
+  - date: 2026-07-18
+    progress_percent: 63
+    note: "One-row authoring toolbar completed: paragraph/heading selection, Bold/Italic/Link, three list types, Image, Table, + Insert, and More are the visible 1280px controls; secondary formatting/structure and technical inserts moved into progressive-disclosure menus; equation/Mermaid/table/image/Draw.io inspectors are selection-only. Bubble/context/dialog behavior and stable IDs remain intact. Evidence passed: focused Playwright flows (7), one-row 1280px geometry assertion, visual checks at 1280x900 and 1440x1000, npm test (307), npm run build, and npm run test:e2e (41)."
 done_rule: "Set status to done and progress_percent to 100 only after all eight slices are implemented, validated, committed, pushed, and the packaged-app plus 3-5-person review kit is ready. Stop at user review required; do not claim that human review passed without session records."
 ---
 

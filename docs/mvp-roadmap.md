@@ -134,9 +134,9 @@
 
 ## Phase 5.2: Explorer-First Authoring Workbench
 
-Implementation evidence: Slices 1-4 are accepted. Explorer visual declutter and accessible desktop tree interactions are complete. The accepted tree uses normalized full-path identity, natural folders-first ordering, ARIA/roving keyboard navigation, inline create/rename, context menus, current-document reveal, and Collapse All while preserving the Tauri/browser boundary.
+Implementation evidence: Slices 1-5 are accepted. Explorer visual declutter and accessible desktop tree interactions are complete. The accepted tree uses normalized full-path identity, natural folders-first ordering, ARIA/roving keyboard navigation, inline create/rename, context menus, current-document reveal, and Collapse All while preserving the Tauri/browser boundary.
 
-Slice 3 is accepted: the normal Activity Bar is Explorer/Outline/Review with Settings at the bottom, Review owns Changes/History/Document Health tabs, Developer is runtime opt-in, and Git/CLI content is removed from the author-facing review path. Slice 4 is accepted: the canvas owns title editing, Document Properties owns author/version, the compact command bar owns the single Save/Export hierarchy, and duplicate file commands and `Mark saved` are removed. The one-row authoring toolbar is next.
+Slice 3 is accepted: the normal Activity Bar is Explorer/Outline/Review with Settings at the bottom, Review owns Changes/History/Document Health tabs, Developer is runtime opt-in, and Git/CLI content is removed from the author-facing review path. Slice 4 is accepted: the canvas owns title editing, Document Properties owns author/version, the compact command bar owns the single Save/Export hierarchy, and duplicate file commands and `Mark saved` are removed. Slice 5 is accepted: core writing controls remain visible in one row at 1280px, while technical inserts, structural commands, and inspectors are progressive-disclosure controls. Status and recovery relocation is next.
 
 상태: 진행 중. `docs/editor-workbench-ux-improvement-guide.md`의 확정 정보구조와 8개 ordered slice를 따른다.
 

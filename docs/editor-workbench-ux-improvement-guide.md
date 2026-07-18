@@ -2,7 +2,7 @@
 
 Created: 2026-07-18
 Target: Phase 5.2 Explorer-First Authoring Workbench
-Status: implementation in progress; Slices 1-3 accepted, Slice 4 next
+Status: implementation in progress; Slices 1-4 accepted, Slice 5 next
 
 ## 1. Purpose
 
@@ -411,6 +411,8 @@ Accepted 2026-07-18. The 48px icon-only Activity Bar now exposes Explorer, Outli
 - define one New/Open/Save/Save As path and one Export entry.
 - remove file commands and `Mark saved` from the authoring toolbar.
 - guarantee no overlap at 1280px.
+
+Accepted 2026-07-18. A compact document command bar now presents filename, save state, document health, Save, and one Export entry without competing with the canvas. New, Open, Save As, preview, and Document Properties live in a single overflow path. The editable document title is the first element inside the canvas, while author and version live in Document Properties. Duplicate file commands and `Mark saved` were removed from the authoring toolbar and Review. Existing `.sdoc` save/open/export behavior remains intact, and an existing link can now be edited with only the caret inside it. Evidence: focused command-hierarchy and link Playwright checks, visual inspection at 1440x1000 and 1280px with no command-bar overlap, `npm test` (307), `npm run build`, and `npm run test:e2e` (41).
 
 ### Slice 5: One-row authoring toolbar
 

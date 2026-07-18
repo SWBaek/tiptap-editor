@@ -39,20 +39,17 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   return (
     <div className="side-panel-section settings-panel">
-      <section className="settings-section" aria-label="Document metadata">
-        <h3>Metadata</h3>
+      <section className="settings-section" aria-label="Document properties">
+        <h3>Document Properties</h3>
         <label className="metadata-field">
-          <span>Metadata title</span>
-          <input value={metadata.title} onChange={(event) => onMetadataChange({ ...metadata, title: event.target.value })} />
-        </label>
-        <label className="metadata-field">
-          <span>Metadata author</span>
+          <span>Author</span>
           <input value={String(metadata.author ?? "")} onChange={(event) => onMetadataChange({ ...metadata, author: event.target.value })} />
         </label>
         <label className="metadata-field">
-          <span>Metadata version</span>
+          <span>Version</span>
           <input value={String(metadata.version ?? "")} onChange={(event) => onMetadataChange({ ...metadata, version: event.target.value })} />
         </label>
+        <p className="settings-note">Edit the document title directly above the writing canvas.</p>
       </section>
 
       <section className="settings-section" aria-label="Authoring settings">

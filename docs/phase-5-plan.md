@@ -62,7 +62,7 @@ Phase 5.2 removes the remaining management-dashboard character without adding ne
 
 Slices 1-2 are accepted. Files is now a compact tree-first surface, and its desktop tree uses full-path identity, folders-first natural ordering, ARIA tree semantics, roving keyboard focus, inline create/rename, shared context actions, active-document reveal, and Collapse All.
 
-Slice 3 is accepted. The icon-only Activity Bar is reduced to Explorer, Outline, Review, and bottom Settings; Changes, History, and Document Health are keyboard-operable Review tabs; Developer is a runtime-only opt-in; and Git/CLI content is absent from normal Review. Slice 4 next simplifies the document header and command hierarchy.
+Slices 3-4 are accepted. The icon-only Activity Bar is reduced to Explorer, Outline, Review, and bottom Settings; Changes, History, and Document Health are keyboard-operable Review tabs; Developer is a runtime-only opt-in; and Git/CLI content is absent from normal Review. The document command bar now has one Save/Export hierarchy, title is edited in the canvas, author/version live in Document Properties, and duplicate file commands and `Mark saved` are absent from authoring controls. Slice 5 next makes the authoring toolbar one row at 1280px.
 
 The phase stops at a refreshed packaged-app and 3-5-person review gate. It reports `user review required`; it does not claim human acceptance without recorded sessions.
 

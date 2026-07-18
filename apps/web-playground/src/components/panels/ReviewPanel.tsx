@@ -24,7 +24,6 @@ export function ReviewPanel({
   onCompareSavedBaseline,
   onApplyReviewAction,
   onApplyReviewBatch,
-  onMarkSaved,
   onSelectVisualDiff,
   onSetVisualDiffFilter,
   onToggleDiffOverlay
@@ -43,7 +42,6 @@ export function ReviewPanel({
   onCompareSavedBaseline: () => void;
   onApplyReviewAction: (item: ReviewActionPlanItem, action: ReviewActionKind) => void;
   onApplyReviewBatch: (action: ReviewActionKind) => void;
-  onMarkSaved: () => void;
   onSelectVisualDiff: (item: VisualDiffOverlayItem) => void;
   onSetVisualDiffFilter: (filter: VisualDiffFilterKind) => void;
   onToggleDiffOverlay: () => void;
@@ -184,10 +182,6 @@ export function ReviewPanel({
           Use saved baseline
         </button>
       )}
-      <button type="button" onClick={onMarkSaved}>
-        Mark saved
-      </button>
-
     </div>
   );
 }

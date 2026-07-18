@@ -127,6 +127,7 @@ import {
   type VisualDiffOverlayItem
 } from "./documentState";
 import { ActivityBar } from "./components/editor-shell/ActivityBar";
+import { CanvasDocumentHeader } from "./components/editor-shell/CanvasDocumentHeader";
 import { DesktopStartScreen } from "./components/editor-shell/DesktopStartScreen";
 import { DocumentCommandBar } from "./components/editor-shell/DocumentCommandBar";
 import { EDITOR_ZOOM_STORAGE_KEY, loadStoredEditorZoom, ZoomControl } from "./components/editor-shell/ZoomControl";
@@ -472,7 +473,11 @@ export function App() {
   }
 
   function openLinkDialog() {
-    const { from, to } = editor.state.selection;
+    let { from, to } = editor.state.selection;
+    if (from === to && editor.isActive("link")) {
+      editor.chain().focus().extendMarkRange("link").run();
+      ({ from, to } = editor.state.selection);
+    }
     if (from === to) {
       setStatusMessage("Select text to add or edit a link");
       return;
@@ -852,18 +857,6 @@ export function App() {
   function markSaved(message: string) {
     setSavedAt(new Date().toLocaleTimeString());
     setStatusMessage(message);
-  }
-
-  function markCurrentAsBaseline() {
-    if (!requireValidDocument("mark saved")) {
-      return;
-    }
-
-    setBaselineDocument(document);
-    setBaselineMetadata(metadata);
-    setBaselineAssets(assets);
-    setSelectedHistoryId(null);
-    markSaved("Marked current state as saved");
   }
 
   function addRecentFile(name: string, title: string, action: RecentFileAction, nativePath: string | null = null) {
@@ -2631,7 +2624,6 @@ export function App() {
                     onCompareSavedBaseline={compareSavedBaseline}
                     onApplyReviewAction={applyReviewAction}
                     onApplyReviewBatch={applyVisibleReviewBatch}
-                    onMarkSaved={markCurrentAsBaseline}
                     onSelectVisualDiff={selectVisualDiffItem}
                     onSetVisualDiffFilter={setVisualDiffFilter}
                     onToggleDiffOverlay={() => setIsDiffOverlayEnabled((current) => !current)}
@@ -2708,22 +2700,18 @@ export function App() {
         ) : (
           <>
         <DocumentCommandBar
-          title={metadata.title}
-          author={metadata.author ?? ""}
-          version={metadata.version ?? ""}
           fileLabel={fileLabel}
           savedLabel={savedLabel}
           isValid={validation.ok}
           statusMessage={statusMessage}
           saveLabel={sdocSaveRoute.label}
           isPreviewOpen={isPreviewOpen}
-          onTitleChange={(title) => setMetadata({ ...metadata, title })}
-          onAuthorChange={(author) => setMetadata({ ...metadata, author })}
-          onVersionChange={(version) => setMetadata({ ...metadata, version })}
           onNewDocument={createNewDocument}
           onOpenDocument={() => void openDocumentAction()}
           onSaveDocument={() => void downloadSdoc()}
+          onSaveAsDocument={() => void downloadSdoc(true)}
           onOpenExport={() => openActivityPanel("export")}
+          onOpenProperties={() => openActivityPanel("settings")}
           onTogglePreview={() => setIsPreviewOpen((open) => !open)}
         />
 
@@ -2764,11 +2752,6 @@ export function App() {
           onInsertImageFile={(file) => void insertImageFile(file)}
           onInsertDataGridFile={(file) => void insertDataGridFile(file)}
           onInsertDrawioFile={(file) => void insertDrawioFile(file)}
-          onNewDocument={createNewDocument}
-          onOpenDocument={() => void openDocumentAction()}
-          onDownloadMarkdown={downloadMarkdown}
-          onSaveSdoc={() => void downloadSdoc()}
-          onMarkSaved={markCurrentAsBaseline}
         />
 
         <div className={isPreviewOpen ? "editor-grid" : "editor-grid preview-collapsed"}>
@@ -2824,7 +2807,16 @@ export function App() {
               <ZoomControl zoom={editorZoom} onZoomChange={setEditorZoom} />
             </div>
             <div className="editor-zoom-layer" style={{ zoom: `${editorZoom}%` }}>
-              <EditorContent editor={editor} />
+              <div className="document-canvas">
+                <CanvasDocumentHeader
+                  title={metadata.title}
+                  author={metadata.author ?? ""}
+                  version={metadata.version ?? ""}
+                  onTitleChange={(title) => setMetadata({ ...metadata, title })}
+                  onOpenProperties={() => openActivityPanel("settings")}
+                />
+                <EditorContent editor={editor} />
+              </div>
             </div>
             {highlightOverlay && (
               <div

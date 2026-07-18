@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.2 Explorer-First Authoring Workbench Goal"
 status: in_progress
-progress_percent: 38
-current_slice: document-header-and-command-hierarchy
+progress_percent: 50
+current_slice: one-row-authoring-toolbar
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -19,8 +19,8 @@ completed_slices:
   - explorer-visual-declutter
   - accessible-desktop-tree
   - activity-and-panel-consolidation
-remaining_slices:
   - document-header-and-command-hierarchy
+remaining_slices:
   - one-row-authoring-toolbar
   - status-and-recovery-relocation
   - settings-export-browser-language
@@ -41,6 +41,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 38
     note: "Activity and panel consolidation completed: the 48px icon-only rail now contains Explorer, Outline, Review, and bottom Settings; Review provides keyboard-operable Changes/History/Document Health tabs; History and health now share the sidebar theme; normal Changes no longer exposes Git/CLI or raw event IDs. Developer is hidden by default and is revealed only by a runtime-only Settings preference. Export remains temporarily command-opened but absent from the rail until its dialog slice. Evidence passed: focused Playwright flows (9), 1440x1000 visual inspection, npm test (307), npm run build, and npm run test:e2e (40)."
+  - date: 2026-07-18
+    progress_percent: 50
+    note: "Document header and command hierarchy completed: a compact bar provides one Save/Export hierarchy with New/Open/Save As/preview/Document Properties in overflow; title is edited at the top of the canvas; author/version live in Document Properties; duplicate file commands and Mark saved were removed from authoring and Review. Existing links can be edited from a caret position. Visual checks at 1440x1000 and 1280px showed no command-bar overlap. Evidence passed: focused Playwright checks, npm test (307), npm run build, and npm run test:e2e (41)."
 done_rule: "Set status to done and progress_percent to 100 only after all eight slices are implemented, validated, committed, pushed, and the packaged-app plus 3-5-person review kit is ready. Stop at user review required; do not claim that human review passed without session records."
 ---
 

@@ -1,92 +1,111 @@
-import { Braces, Download, FilePlus, FileText, FolderOpen } from "lucide-react";
+import {
+  Braces,
+  ChevronDown,
+  FileOutput,
+  FilePlus,
+  FileText,
+  FolderOpen,
+  Save,
+  SaveAll,
+  Settings2
+} from "lucide-react";
+import type { ReactNode } from "react";
 
 export interface DocumentCommandBarProps {
-  title: string;
-  author: string;
-  version: string;
   fileLabel: string;
   savedLabel: string;
   isValid: boolean;
   statusMessage: string;
   saveLabel: string;
   isPreviewOpen: boolean;
-  onTitleChange: (title: string) => void;
-  onAuthorChange: (author: string) => void;
-  onVersionChange: (version: string) => void;
   onNewDocument: () => void;
   onOpenDocument: () => void;
   onSaveDocument: () => void;
+  onSaveAsDocument: () => void;
   onOpenExport: () => void;
+  onOpenProperties: () => void;
   onTogglePreview: () => void;
 }
 
 export function DocumentCommandBar({
-  title,
-  author,
-  version,
   fileLabel,
   savedLabel,
   isValid,
   statusMessage,
   saveLabel,
   isPreviewOpen,
-  onTitleChange,
-  onAuthorChange,
-  onVersionChange,
   onNewDocument,
   onOpenDocument,
   onSaveDocument,
+  onSaveAsDocument,
   onOpenExport,
+  onOpenProperties,
   onTogglePreview
 }: DocumentCommandBarProps) {
   return (
     <div className="document-command-bar" role="region" aria-label="Document workflow">
-      <div className="document-command-main">
-        <div className="document-identity-fields" aria-label="Document identity">
-          <label className="document-title-field">
-            <span>Title</span>
-            <input value={title} onChange={(event) => onTitleChange(event.target.value)} />
-          </label>
-          <label className="document-core-field">
-            <span>Author</span>
-            <input value={author} placeholder="Add author" onChange={(event) => onAuthorChange(event.target.value)} />
-          </label>
-          <label className="document-core-field document-version-field">
-            <span>Version</span>
-            <input value={version} placeholder="0.1" onChange={(event) => onVersionChange(event.target.value)} />
-          </label>
-        </div>
-        <div className="document-command-meta">
-          <strong title={fileLabel}>{fileLabel}</strong>
-          <span>{savedLabel}</span>
-          <span className={isValid ? "validation-badge ok" : "validation-badge error"}>{isValid ? "Valid" : "Invalid"}</span>
-        </div>
-        <div className="status-note" aria-label="Current status">
-          {statusMessage}
-        </div>
+      <div className="document-command-identity">
+        <FileText size={15} aria-hidden="true" />
+        <strong title={fileLabel}>{fileLabel}</strong>
+        <span className={savedLabel === "Unsaved" ? "document-save-state unsaved" : "document-save-state"}>{savedLabel}</span>
+        <span className={isValid ? "document-health-state healthy" : "document-health-state"}>
+          {isValid ? "Document healthy" : "Needs attention"}
+        </span>
+      </div>
+      <div className="status-note document-status-note" aria-label="Current status" aria-live="polite">
+        {statusMessage}
       </div>
       <div className="document-command-actions">
-        <button type="button" onClick={onNewDocument}>
-          <FilePlus size={16} />
-          <span>New</span>
-        </button>
-        <button type="button" onClick={onOpenDocument}>
-          <FolderOpen size={16} />
-          <span>Open .sdoc</span>
-        </button>
-        <button type="button" onClick={onSaveDocument}>
-          <Download size={16} />
+        <button className="primary" type="button" onClick={onSaveDocument}>
+          <Save size={15} />
           <span>{saveLabel}</span>
         </button>
         <button type="button" onClick={onOpenExport}>
-          <FileText size={16} />
+          <FileOutput size={15} />
           <span>Export</span>
         </button>
-        <button type="button" onClick={onTogglePreview}>
-          <Braces size={16} />
-          <span>{isPreviewOpen ? "Hide preview" : "Preview"}</span>
-        </button>
+        <details
+          className="document-more-menu"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.currentTarget.removeAttribute("open");
+              event.currentTarget.querySelector("summary")?.focus();
+            }
+          }}
+        >
+          <summary aria-label="More document actions" title="More document actions">
+            <span>More</span>
+            <ChevronDown size={14} />
+          </summary>
+          <div role="menu" aria-label="Document actions">
+            <DocumentMenuButton icon={<FilePlus size={14} />} label="New document" onClick={onNewDocument} />
+            <DocumentMenuButton icon={<FolderOpen size={14} />} label="Open document" onClick={onOpenDocument} />
+            <DocumentMenuButton icon={<SaveAll size={14} />} label="Save As" onClick={onSaveAsDocument} />
+            <DocumentMenuButton
+              icon={<Braces size={14} />}
+              label={isPreviewOpen ? "Hide preview" : "Show preview"}
+              onClick={onTogglePreview}
+            />
+            <DocumentMenuButton icon={<Settings2 size={14} />} label="Document Properties" onClick={onOpenProperties} />
+          </div>
+        </details>
       </div>
     </div>
+  );
+}
+
+function DocumentMenuButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={(event) => {
+        event.currentTarget.closest("details")?.removeAttribute("open");
+        onClick();
+      }}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }

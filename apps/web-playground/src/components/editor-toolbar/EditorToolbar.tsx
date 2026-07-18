@@ -1,7 +1,5 @@
 import type { RefObject } from "react";
-import { Download, FilePlus, FileText, FolderOpen, Save } from "lucide-react";
 import { EditorToolbarGroups, type EditorToolbarGroupsProps } from "./EditorToolbarGroups";
-import { ToolbarButton } from "./ToolbarButton";
 
 export interface EditorToolbarProps {
   groups: EditorToolbarGroupsProps;
@@ -13,11 +11,6 @@ export interface EditorToolbarProps {
   onInsertImageFile: (file: File) => void;
   onInsertDataGridFile: (file: File) => void;
   onInsertDrawioFile: (file: File) => void;
-  onNewDocument: () => void;
-  onOpenDocument: () => void;
-  onDownloadMarkdown: () => void;
-  onSaveSdoc: () => void;
-  onMarkSaved: () => void;
 }
 
 export function EditorToolbar({
@@ -29,12 +22,7 @@ export function EditorToolbar({
   onOpenFile,
   onInsertImageFile,
   onInsertDataGridFile,
-  onInsertDrawioFile,
-  onNewDocument,
-  onOpenDocument,
-  onDownloadMarkdown,
-  onSaveSdoc,
-  onMarkSaved
+  onInsertDrawioFile
 }: EditorToolbarProps) {
   return (
     <div className="toolbar" aria-label="Editor toolbar">
@@ -43,21 +31,6 @@ export function EditorToolbar({
       <HiddenFileInput inputRef={imageInputRef} label="Insert image file" accept="image/*" onFile={onInsertImageFile} />
       <HiddenFileInput inputRef={dataGridInputRef} label="Insert data grid file" accept=".csv,.json,text/csv,application/json" onFile={onInsertDataGridFile} />
       <HiddenFileInput inputRef={drawioInputRef} label="Import Draw.io source file" accept=".drawio,.drawio.xml,application/xml,text/xml" onFile={onInsertDrawioFile} />
-      <ToolbarButton title="New document" onClick={onNewDocument}>
-        <FilePlus size={18} />
-      </ToolbarButton>
-      <ToolbarButton title="Open .sdoc or document.json" onClick={onOpenDocument}>
-        <FolderOpen size={18} />
-      </ToolbarButton>
-      <ToolbarButton title="Download Markdown" onClick={onDownloadMarkdown}>
-        <FileText size={18} />
-      </ToolbarButton>
-      <ToolbarButton title="Save current .sdoc" onClick={onSaveSdoc}>
-        <Download size={18} />
-      </ToolbarButton>
-      <ToolbarButton title="Mark saved" onClick={onMarkSaved}>
-        <Save size={18} />
-      </ToolbarButton>
     </div>
   );
 }

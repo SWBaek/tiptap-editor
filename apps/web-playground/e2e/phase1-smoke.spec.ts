@@ -50,9 +50,9 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await expect(page.getByRole("button", { name: "Export panel" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Developer panel" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Document workflow" })).toContainText("Playground Document.sdoc");
-  await expect(page.getByRole("button", { name: "New", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open .sdoc", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Preview" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New", exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("More document actions")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Explorer panel" }).click();
   const filesPanel = page.getByRole("complementary", { name: "Explorer side panel" });
   await expect(filesPanel.getByRole("heading", { name: "Explorer" })).toBeVisible();
@@ -65,7 +65,7 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await page.getByRole("button", { name: "Settings panel" }).click();
   const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
   await expect(settingsPanel).toBeVisible();
-  await expect(settingsPanel.getByLabel("Document metadata")).toContainText("Metadata");
+  await expect(settingsPanel.getByLabel("Document properties")).toContainText("Document Properties");
   await expect(settingsPanel.getByLabel("Schema status")).toContainText("Valid");
   await expect(settingsPanel).not.toContainText("Review");
   await expect(settingsPanel).not.toContainText("References");
@@ -91,15 +91,55 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await expect(page.locator(".preview-output")).toContainText('Metadata title changed: "Playground Document" -> "Smoke Spec"');
   await expect(page.locator(".diff-review-summary")).toContainText("1");
 
-  await page.getByRole("button", { name: "Mark saved" }).click();
+  const baselineDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  await baselineDownload;
   await expect(page.locator(".diff-empty")).toContainText("No changes");
 
   const markdownDownload = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download Markdown" }).click();
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  await page.getByRole("complementary", { name: "Export side panel" }).getByRole("button", { name: "Export Markdown" }).click();
   expect((await markdownDownload).suggestedFilename()).toBe("Smoke Spec.md");
 
   const screenshot = await page.screenshot({ fullPage: true });
   expect(screenshot.length).toBeGreaterThan(1_000);
+});
+
+test("keeps document identity and commands clear at the 1280px acceptance viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explorer panel" }).click();
+
+  const commandBar = page.getByRole("region", { name: "Document workflow" });
+  await expect(commandBar.getByRole("button", { name: "Download .sdoc" })).toBeVisible();
+  await expect(commandBar.getByRole("button", { name: "Export", exact: true })).toBeVisible();
+  await expect(page.locator(".canvas-document-header").getByLabel("Title", { exact: true })).toHaveValue("Playground Document");
+  await expect(page.locator(".editor-surface h1").first()).toHaveText("System Overview");
+  await expect(page.getByLabel("Editor toolbar").getByRole("button", { name: "New document" })).toHaveCount(0);
+  await expect(page.getByLabel("Editor toolbar").getByRole("button", { name: "Mark saved" })).toHaveCount(0);
+
+  const fitsWithoutOverlap = await commandBar.evaluate((bar) => {
+    const identity = bar.querySelector(".document-command-identity")?.getBoundingClientRect();
+    const status = bar.querySelector(".document-status-note")?.getBoundingClientRect();
+    const actions = bar.querySelector(".document-command-actions")?.getBoundingClientRect();
+    const bounds = bar.getBoundingClientRect();
+    return Boolean(
+      identity && status && actions &&
+      identity.right <= status.left &&
+      status.right <= actions.left &&
+      actions.right <= bounds.right + 0.5
+    );
+  });
+  expect(fitsWithoutOverlap).toBe(true);
+
+  await page.getByLabel("More document actions").click();
+  const documentMenu = page.getByRole("menu", { name: "Document actions" });
+  await expect(documentMenu.getByRole("menuitem", { name: "New document" })).toBeVisible();
+  await expect(documentMenu.getByRole("menuitem", { name: "Open document" })).toBeVisible();
+  await expect(documentMenu.getByRole("menuitem", { name: "Save As" })).toBeVisible();
+  await expect(documentMenu.getByRole("menuitem", { name: "Document Properties" })).toBeVisible();
+  await documentMenu.getByRole("menuitem", { name: "Document Properties" }).click();
+  await expect(page.getByRole("complementary", { name: "Settings side panel" }).getByLabel("Document properties")).toBeVisible();
 });
 
 test("shows authoring structure projections without changing heading text", async ({ page }) => {
@@ -184,7 +224,7 @@ test("adds, edits, validates, and removes normal links separately from reference
 
 test("authors subscript and superscript as canonical technical marks", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   const paragraph = page.locator(".editor-surface p").first();
   const editorSurface = page.locator(".editor-surface");
   await paragraph.click();
@@ -221,7 +261,7 @@ test("authors subscript and superscript as canonical technical marks", async ({ 
 
 test("aligns paragraphs as a canonical text block attribute", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   const paragraph = page.locator(".editor-surface p").first();
   await paragraph.click();
   await page.keyboard.type("Centered requirement");
@@ -239,7 +279,7 @@ test("aligns paragraphs as a canonical text block attribute", async ({ page }) =
 
 test("authors and checks a stable-id task list", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.getByRole("button", { name: "Task list" }).click();
   await page.keyboard.type("Verify converter limits");
 
@@ -260,7 +300,7 @@ test("authors and checks a stable-id task list", async ({ page }) => {
 
 test("changes heading depth with Tab without replacing block ids", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.getByRole("button", { name: "Heading 2" }).click();
   await page.keyboard.type("Converter limits");
 
@@ -433,8 +473,10 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
     'Metadata title changed: "Playground Document" -> "Review Panel Spec"'
   );
 
-  await reviewPanel.getByRole("button", { name: "Mark saved" }).click();
-  await expect(page.locator(".status-note")).toContainText("Marked current state as saved");
+  const reviewBaselineDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  await reviewBaselineDownload;
+  await expect(page.locator(".status-note")).toContainText("Downloaded Review Panel Spec.sdoc");
   await expect(reviewPanel.locator(".status-block").filter({ hasText: "Review" })).toContainText("No changes");
   await expect(page.locator(".diff-empty")).toContainText("No changes");
   await expect(page.locator("style[data-sdoc-diff-overlay-runtime]")).toBeHidden();
@@ -1149,6 +1191,8 @@ test("round-trips a downloaded .sdoc through the browser open flow", async ({ pa
   await page.goto("/");
 
   await page.getByLabel("Title", { exact: true }).fill("Round Trip E2E");
+  await page.getByLabel("More document actions").click();
+  await page.getByRole("menuitem", { name: "Document Properties" }).click();
   await page.getByLabel("Author", { exact: true }).fill("QA");
   await page.getByLabel("Version", { exact: true }).fill("1.0");
 
@@ -1160,7 +1204,7 @@ test("round-trips a downloaded .sdoc through the browser open flow", async ({ pa
   const sdocPath = testInfo.outputPath("Round Trip E2E.sdoc");
   await sdocDownload.saveAs(sdocPath);
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Untitled");
 
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
@@ -1169,11 +1213,11 @@ test("round-trips a downloaded .sdoc through the browser open flow", async ({ pa
   await expect(page.getByLabel("Author", { exact: true })).toHaveValue("QA");
   await expect(page.getByLabel("Version", { exact: true })).toHaveValue("1.0");
   await page.getByRole("button", { name: "Settings panel" }).click();
-  if ((await page.getByLabel("Metadata author").count()) === 0) {
+  if ((await page.getByLabel("Author", { exact: true }).count()) === 0) {
     await page.getByRole("button", { name: "Settings panel" }).click();
   }
-  await expect(page.getByLabel("Metadata author")).toHaveValue("QA");
-  await expect(page.getByLabel("Metadata version")).toHaveValue("1.0");
+  await expect(page.getByLabel("Author", { exact: true })).toHaveValue("QA");
+  await expect(page.getByLabel("Version", { exact: true })).toHaveValue("1.0");
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
 
   await selectPreviewTab(page, "JSON");
@@ -1197,7 +1241,7 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   );
   await writeFile(replacementImagePath, imageBytes);
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
   await page.getByRole("button", { name: "Insert image" }).click();
   await page.getByLabel("Insert image file").setInputFiles(imagePath);
@@ -1218,7 +1262,7 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   expect(insertedFigure.attrs?.alt).toBe("architecture diagram");
   expect(JSON.stringify(insertedDocument)).not.toContain("data:image/png");
   expectUniqueIds(collectBlockIds(insertedDocument));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 
   await page.locator('.editor-surface figure[data-type="figure"] img').click({ button: "right" });
   const imageContextMenu = page.getByRole("menu", { name: "Image context menu" });
@@ -1260,7 +1304,7 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   const sdocPath = testInfo.outputPath("Figure Round Trip.sdoc");
   await sdocDownload.saveAs(sdocPath);
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Figure Round Trip.sdoc");
   await expect(page.locator('.editor-surface figure[data-type="figure"] img')).toBeVisible();
@@ -1289,7 +1333,7 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
 
 test("names and stores a pasted clipboard image through a dialog", async ({ page }, testInfo) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
   const pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
   await page.locator(".editor-surface").evaluate((surface, encoded) => {
@@ -1318,7 +1362,7 @@ test("names and stores a pasted clipboard image through a dialog", async ({ page
   await page.getByRole("button", { name: "Download .sdoc" }).click();
   const sdocPath = testInfo.outputPath("Pasted Image Round Trip.sdoc");
   await (await downloadPromise).saveAs(sdocPath);
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".editor-surface")).toContainText("Converter scope capture");
   const reopenedFigure = findFirstNodeByType(await readPreviewDocument(page), "figure");
@@ -1332,7 +1376,7 @@ test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testIn
   const csvPath = testInfo.outputPath("pinout.csv");
   await writeFile(csvPath, "pin,signal\n1,VCC\n2,GND\n");
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
   await openToolbarMenu(page, "More insert");
   await page.getByRole("button", { name: "Insert data grid" }).click();
@@ -1349,7 +1393,7 @@ test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testIn
   expect(insertedGrid.attrs?.title).toBe("pinout");
   expect(JSON.stringify(insertedDocument)).not.toContain("pin,signal");
   expectUniqueIds(collectBlockIds(insertedDocument));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 
   await page.getByRole("button", { name: "Settings panel" }).click();
   await page.getByLabel("Enable developer tools").check();
@@ -1372,7 +1416,7 @@ test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testIn
   const sdocPath = testInfo.outputPath("Data Grid Round Trip.sdoc");
   await sdocDownload.saveAs(sdocPath);
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Data Grid Round Trip.sdoc");
   await expect(page.locator('.editor-surface div[data-type="dataGrid"]')).toBeVisible();
@@ -1389,7 +1433,7 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   await page.goto("/");
   await selectPreviewTab(page, "JSON");
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
   await page.getByRole("button", { name: "Insert table" }).click();
   const insertDialog = page.getByRole("dialog", { name: "Insert table" });
@@ -1435,7 +1479,7 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   expect(findFirstNodeByType(insertedDocument, "table").attrs?.caption).toBe("API readiness matrix");
   expect(JSON.stringify(findFirstNodeByType(insertedDocument, "table"))).toContain('"align":"center"');
   expectUniqueIds(collectBlockIds(insertedDocument));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 
   await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("| Name | Status |");
@@ -1448,7 +1492,7 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   const sdocPath = testInfo.outputPath("Table Round Trip.sdoc");
   await sdocDownload.saveAs(sdocPath);
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Table Round Trip.sdoc");
   await expect(page.locator(".editor-surface table")).toBeVisible();
@@ -1466,7 +1510,7 @@ test("uses advanced table controls without storing transient table UI state", as
   await page.goto("/");
   await selectPreviewTab(page, "JSON");
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
   await page.getByRole("button", { name: "Insert table" }).click();
   await page.getByRole("dialog", { name: "Insert table" }).getByRole("button", { name: "Insert table" }).click();
@@ -1510,7 +1554,7 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   await page.goto("/");
   await selectPreviewTab(page, "JSON");
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
   await page.keyboard.type("Energy ");
 
@@ -1544,7 +1588,7 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   expect(findFirstNodeByType(insertedDocument, "equation").attrs?.latex).toBe("E=mc^2");
   expect(findFirstNodeByType(insertedDocument, "equationBlock").attrs?.latex).toBe("x^2+y^2=z^2");
   expectUniqueIds(collectBlockIds(insertedDocument));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 
   await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("Energy $E=mc^2$");
@@ -1556,7 +1600,7 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   const sdocPath = testInfo.outputPath("Equation Round Trip.sdoc");
   await sdocDownload.saveAs(sdocPath);
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Equation Round Trip.sdoc");
   await expect(page.locator(".editor-surface .sdoc-inline-equation .katex")).toBeVisible();
@@ -1573,7 +1617,7 @@ test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page },
   await page.goto("/");
   await selectPreviewTab(page, "JSON");
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
 
   await openToolbarMenu(page, "More insert");
@@ -1625,7 +1669,7 @@ test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page },
   const sdocPath = testInfo.outputPath("Diagram Round Trip.sdoc");
   await sdocDownload.saveAs(sdocPath);
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Diagram Round Trip.sdoc");
   await expect(page.locator(".editor-surface .sdoc-diagram svg")).toBeVisible();
@@ -1643,7 +1687,7 @@ test("imports a Draw.io source asset and round-trips through .sdoc", async ({ pa
   await page.goto("/");
   await selectPreviewTab(page, "JSON");
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
 
   const sourcePath = testInfo.outputPath("architecture.drawio");
@@ -1660,7 +1704,7 @@ test("imports a Draw.io source asset and round-trips through .sdoc", async ({ pa
   expect(insertedDiagram.attrs?.previewAssetId).toBeUndefined();
   expect(JSON.stringify(insertedDocument)).not.toContain("diagram-source");
   expectUniqueIds(collectBlockIds(insertedDocument));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 
   await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("Draw.io diagram: source asset");
@@ -1671,7 +1715,7 @@ test("imports a Draw.io source asset and round-trips through .sdoc", async ({ pa
   const sdocPath = testInfo.outputPath("Drawio Round Trip.sdoc");
   await sdocDownload.saveAs(sdocPath);
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.getByLabel("Open document file").setInputFiles(sdocPath);
   await expect(page.locator(".status-note")).toContainText("Opened Drawio Round Trip.sdoc");
   await expect(page.locator(".editor-surface .sdoc-diagram pre")).toContainText("Draw.io diagram source:");
@@ -1689,7 +1733,7 @@ test("creates a new Draw.io diagram as an asset-backed source", async ({ page })
   await page.goto("/");
   await selectPreviewTab(page, "JSON");
 
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
   page.once("dialog", async (dialog) => {
     expect(dialog.message()).toContain("Create a new Draw.io diagram?");
@@ -1756,7 +1800,7 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
   await selectPreviewTab(page, "JSON");
   await page.getByRole("button", { name: "Settings panel" }).click();
   await page.getByLabel("Draw.io executable").fill("C:\\Program Files\\draw.io\\draw.io.exe");
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await page.locator(".editor-surface").click();
 
   const sourcePath = testInfo.outputPath("architecture.drawio");
@@ -1810,7 +1854,7 @@ test("reports unsupported files without replacing the current document", async (
 
   await expect(page.locator(".status-note")).toContainText("Unsupported file type: notes.txt");
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 });
 
 test("preserves unique block ids across split undo and redo", async ({ page }) => {
@@ -1844,7 +1888,7 @@ test("preserves unique block ids across split undo and redo", async ({ page }) =
   const redoIds = collectBlockIds(await readPreviewDocument(page));
   expectUniqueIds(redoIds);
   expect(redoIds).toEqual(expect.arrayContaining(initialIds));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 });
 
 test("repairs duplicate block ids from pasted editor HTML", async ({ page, context }) => {
@@ -1873,7 +1917,7 @@ test("repairs duplicate block ids from pasted editor HTML", async ({ page, conte
   expectUniqueIds(pastedIds);
   expect(pastedIds.filter((id) => id === "blk_intro")).toHaveLength(1);
   expect(pastedIds).toEqual(expect.arrayContaining(initialIds));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 });
 
 test("applies inline mark toolbar commands to selected text", async ({ page }) => {
@@ -1906,7 +1950,7 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("region", { name: "Document workflow" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open .sdoc", exact: true })).toBeVisible();
+  await expect(page.getByLabel("More document actions")).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
 
   const fitsViewport = await page.evaluate(() => {
@@ -1928,7 +1972,8 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
 
 async function selectPreviewTab(page: Page, tab: "JSON" | "Markdown" | "Diff"): Promise<void> {
   if ((await page.locator(".tabs").count()) === 0) {
-    await page.getByRole("button", { name: "Preview" }).click();
+    await page.getByLabel("More document actions").click();
+    await page.getByRole("menuitem", { name: "Show preview" }).click();
   }
   await page.locator(".tabs").getByRole("button", { name: tab }).click();
 }
@@ -1990,7 +2035,7 @@ async function assertInlineToolbarCommands(page: Page): Promise<void> {
   const textNode = findTextNode(intro, "This document describes the initial SDoc editor shell.");
   expect(markTypes(textNode)).toEqual(expect.arrayContaining([...inlineToolbarCommands.map((command) => command.toLowerCase())]));
   expectUniqueIds(collectBlockIds(document));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 }
 
 async function assertBlockToolbarCommand(page: Page, toolbarCase: BlockToolbarCase): Promise<void> {
@@ -2010,7 +2055,7 @@ async function assertBlockToolbarCommand(page: Page, toolbarCase: BlockToolbarCa
   const transformed = firstTopLevelNodeContainingText(document, text);
   expect(transformed?.attrs).toMatchObject(toolbarCase.attrs ?? {});
   expectUniqueIds(collectBlockIds(document));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
 }
 
 async function openToolbarMenu(page: Page, label: string): Promise<void> {
@@ -2045,11 +2090,17 @@ async function assertMoveToolbarActions(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Move block up" }).click();
   await selectPreviewTab(page, "JSON");
   await expect.poll(async () => collectTopLevelIds(await readPreviewDocument(page)).slice(0, initialIds.length).join("|")).toBe(initialIds.join("|"));
-  await expect(page.getByText("Valid")).toBeVisible();
+  await expect(page.getByText("Document healthy")).toBeVisible();
+}
+
+async function createNewDocumentFromMenu(page: Page): Promise<void> {
+  const moreActions = page.getByLabel("More document actions");
+  await moreActions.click();
+  await page.getByRole("menuitem", { name: "New document" }).click();
 }
 
 async function createSingleParagraphDocument(page: Page, text: string): Promise<void> {
-  await page.getByRole("button", { name: "New document" }).click();
+  await createNewDocumentFromMenu(page);
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Untitled");
   await page.locator(".editor-surface").click();
   await page.keyboard.type(text);

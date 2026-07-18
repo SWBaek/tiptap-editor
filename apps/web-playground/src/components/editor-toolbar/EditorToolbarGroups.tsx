@@ -123,7 +123,7 @@ export function EditorToolbarGroups({
         <ToolbarButton title="Strike" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
           <Strikethrough size={18} />
         </ToolbarButton>
-        <ToolbarButton title="Link" active={editor.isActive("link")} onClick={onEditLink}>
+        <ToolbarButton title="Link" active={editor.isActive("link")} onMouseDown={(event) => event.preventDefault()} onClick={onEditLink}>
           <Link2 size={18} />
         </ToolbarButton>
         <ToolbarButton title="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>

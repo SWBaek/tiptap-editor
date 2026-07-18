@@ -174,6 +174,43 @@ test("adds, edits, validates, and removes normal links separately from reference
   expect(JSON.stringify(document)).not.toContain('"type":"link"');
 });
 
+test("authors subscript and superscript as canonical technical marks", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "New document" }).click();
+  const paragraph = page.locator(".editor-surface p").first();
+  const editorSurface = page.locator(".editor-surface");
+  await paragraph.click();
+  await page.keyboard.type("H");
+  await page.getByLabel("Text options menu").click();
+  await page.getByRole("button", { name: "Subscript", exact: true }).click();
+  await editorSurface.focus();
+  await page.keyboard.type("2");
+  await page.getByLabel("Text options menu").click();
+  await page.getByRole("button", { name: "Superscript", exact: true }).click();
+  await editorSurface.focus();
+  await page.keyboard.type("3");
+  await page.getByLabel("Text options menu").click();
+  await page.getByRole("button", { name: "Superscript", exact: true }).click();
+  await editorSurface.focus();
+  await page.keyboard.type("O x");
+  await page.getByLabel("Text options menu").click();
+  await page.getByRole("button", { name: "Superscript", exact: true }).click();
+  await editorSurface.focus();
+  await page.keyboard.type("2");
+
+  const document = await readPreviewDocument(page);
+  const serialized = JSON.stringify(document);
+  expect(serialized).toContain('"text":"2","marks":[{"type":"subscript"}]');
+  expect(serialized).toContain('"text":"3","marks":[{"type":"superscript"}]');
+  expect(serialized).toContain('"text":"2","marks":[{"type":"superscript"}]');
+  expect(serialized).not.toContain('"type":"subscript"},{"type":"superscript"');
+  expect(serialized).not.toContain("textStyle");
+  expectUniqueIds(collectBlockIds(document));
+
+  await selectPreviewTab(page, "Markdown");
+  await expect(page.locator(".preview-output")).toContainText("H<sub>2</sub><sup>3</sup>O x<sup>2</sup>");
+});
+
 test("uses viewport-safe runtime editor and table context menus", async ({ page }) => {
   await page.goto("/");
   await selectPreviewTab(page, "JSON");

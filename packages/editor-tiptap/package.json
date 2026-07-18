@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@sdoc/schema": "0.0.0",
-    "@tiptap/core": "^3.27.1",
-    "@tiptap/extension-table": "^3.27.1",
+    "@tiptap/core": "3.27.1",
+    "@tiptap/extension-table": "3.27.1",
     "katex": "^0.17.0",
     "mermaid": "^11.16.0"
   }

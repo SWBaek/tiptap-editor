@@ -505,6 +505,26 @@ describe("validateDocument", () => {
     expect(result.ok).toBe(false);
     expect(result.issues.some((issue) => issue.message.includes("unsupported mark type: customMark"))).toBe(true);
   });
+
+  it("accepts attribute-free subscript and superscript marks", () => {
+    const document = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_test" },
+      content: [
+        {
+          type: "paragraph",
+          attrs: { id: "blk_text" },
+          content: [
+            { type: "text", text: "2", marks: [{ type: "subscript" }] },
+            { type: "text", text: "2", marks: [{ type: "superscript" }] }
+          ]
+        }
+      ]
+    };
+
+    expect(validateDocument(document).ok).toBe(true);
+  });
 });
 
 describe("id generation", () => {

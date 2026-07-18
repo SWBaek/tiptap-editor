@@ -3,6 +3,8 @@ import type { AnyExtension, Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
   FileJson,
@@ -131,6 +133,9 @@ import { DeveloperPanel, type DerivedOutputName } from "./components/panels/Deve
 import { DiffReview, ReviewPanel } from "./components/panels/ReviewPanel";
 import { LinkDialog } from "./components/dialogs/LinkDialog";
 
+const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
+const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
+
 type CalloutKind = "note" | "warning";
 interface EditorHighlightOverlay {
   nodeId: string;
@@ -235,6 +240,8 @@ export function App() {
         }
       }),
       Underline,
+      ExclusiveSubscript,
+      ExclusiveSuperscript,
       Placeholder.configure({ placeholder: "Write the technical document..." }),
       ...sdocExtensions
     ],

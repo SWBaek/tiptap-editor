@@ -65,6 +65,8 @@ export const MARK_TYPES = new Set([
   "strike",
   "code",
   "link",
+  "subscript",
+  "superscript",
   "textColor",
   "highlight"
 ]);

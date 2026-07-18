@@ -41,6 +41,29 @@ describe("exportMarkdown", () => {
     expect(exportMarkdown(document)).toContain("[the overview](#overview)");
   });
 
+  it("exports technical subscript and superscript marks semantically", () => {
+    const technicalText: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_marks" },
+      content: [
+        {
+          type: "paragraph",
+          attrs: { id: "blk_marks" },
+          content: [
+            { type: "text", text: "H" },
+            { type: "text", text: "2", marks: [{ type: "subscript" }] },
+            { type: "text", text: "O x" },
+            { type: "text", text: "2", marks: [{ type: "superscript" }] }
+          ]
+        }
+      ]
+    };
+
+    expect(exportMarkdown(technicalText)).toContain("H<sub>2</sub>O x<sup>2</sup>");
+    expect(exportHtml(technicalText)).toContain("H<sub>2</sub>O x<sup>2</sup>");
+  });
+
   it("includes human-facing ids in AI/RAG derived outputs", () => {
     const withHumanId: SDocDocument = {
       schemaVersion: 1,

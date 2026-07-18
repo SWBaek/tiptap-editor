@@ -34,6 +34,8 @@ sdoc export document.sdoc --format references
 
 ## Markdown Export
 
+Inline subscript and superscript use portable HTML fragments (`<sub>` and `<sup>`) because CommonMark has no native syntax for these technical-writing marks. The HTML export uses the corresponding semantic elements. These are derived projections; canonical `document.json` stores attribute-free `subscript` or `superscript` marks.
+
 Markdown은 canonical이 아니다. Markdown export는 리뷰, 외부 협업, LLM 입력을 위한 projection이다.
 
 규칙:

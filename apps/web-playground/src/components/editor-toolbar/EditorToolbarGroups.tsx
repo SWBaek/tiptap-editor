@@ -30,6 +30,8 @@ import {
   Rows3,
   Sigma,
   Strikethrough,
+  Subscript,
+  Superscript,
   Table,
   Trash2,
   Underline,
@@ -126,6 +128,15 @@ export function EditorToolbarGroups({
           <ListOrdered size={18} />
         </ToolbarButton>
       </div>
+
+      <ToolbarMenu label="Text options" icon={<FileText size={17} />}>
+        <ToolbarButton title="Subscript" active={editor.isActive("subscript")} onClick={() => editor.chain().focus().toggleSubscript().run()}>
+          <Subscript size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Superscript" active={editor.isActive("superscript")} onClick={() => editor.chain().focus().toggleSuperscript().run()}>
+          <Superscript size={18} />
+        </ToolbarButton>
+      </ToolbarMenu>
 
       <div className="toolbar-group primary" aria-label="Common insert tools">
         <span className="toolbar-group-label">Insert</span>

@@ -1478,6 +1478,10 @@ function applyMarks(text: string, marks: SDocMark[]): string {
         return `\`${current}\``;
       case "strike":
         return `~~${current}~~`;
+      case "subscript":
+        return `<sub>${current}</sub>`;
+      case "superscript":
+        return `<sup>${current}</sup>`;
       case "link": {
         const href = mark.attrs?.href;
         return typeof href === "string" ? `[${current}](${href})` : current;
@@ -1638,6 +1642,10 @@ function applyHtmlMarks(html: string, marks: SDocMark[]): string {
         return `<code>${current}</code>`;
       case "strike":
         return `<s>${current}</s>`;
+      case "subscript":
+        return `<sub>${current}</sub>`;
+      case "superscript":
+        return `<sup>${current}</sup>`;
       case "link": {
         const href = sanitizeHref(mark.attrs?.href);
         return href ? `<a href="${escapeHtmlAttribute(href)}">${current}</a>` : current;

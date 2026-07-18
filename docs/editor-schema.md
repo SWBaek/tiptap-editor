@@ -180,7 +180,7 @@ Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tab
 
 ## Mark
 
-초기 mark는 `bold`, `italic`, `underline`, `strike`, `code`, `link`, `textColor`, `highlight`를 허용한다. mark attribute는 필요한 값만 저장하고 deterministic key ordering을 따른다.
+v1 authoring marks are `bold`, `italic`, `underline`, `strike`, `code`, `link`, `subscript`, `superscript`, `textColor`, and `highlight`. `subscript` and `superscript` are attribute-free semantic marks and should not be active on the same text range. Mark attributes store only authored values and follow deterministic key ordering.
 
 ## ID와 Anchor
 

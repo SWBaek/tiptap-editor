@@ -2,7 +2,7 @@
 
 Created: 2026-07-18
 Target: Phase 5.2 Explorer-First Authoring Workbench
-Status: implementation in progress; Slices 1-7 accepted, Slice 8 next
+Status: implementation complete; Slices 1-8 accepted, user review required
 
 ## 1. Purpose
 
@@ -447,6 +447,8 @@ Accepted 2026-07-18. Settings now separates Document, Application, and Developer
 - packaged Tauri manual smoke update and execution checklist.
 - update 3-5 person review scenarios and facilitator record.
 - stop feature expansion and report `user review required`.
+
+Accepted 2026-07-18. Playwright now fixes the shell acceptance geometry at 1920x1080, 1440x900, and 1280x720, including no page-level horizontal overflow and one-row authoring controls. A keyboard-only flow covers Activity activation, Settings arrow/Home/End tabs, Export modal initial focus, trapped Tab/Shift-Tab, Escape dismissal, and invoker focus restoration; shared `:focus-visible` styling makes interactive focus explicit. The Windows desktop typecheck and Tauri release build passed, and the packaged executable launched as a responsive `SDoc Editor` window. `docs/desktop-native-smoke.md` records the artifact evidence and separates it from still-required native interaction checks; `docs/author-first-ux-review-gate.md` contains the updated 3-5-person scenarios, individual record, and batch summary. Final evidence: `npm test` (307), `npm run build`, `npm run test:e2e` (46), `npm run typecheck:desktop`, and `npm run build:desktop`. Feature expansion stops here at `user review required`; no human review pass is claimed.
 
 ## 12. Validation And Commit Loop
 

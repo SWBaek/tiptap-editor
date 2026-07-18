@@ -2,11 +2,11 @@
 
 Created: 2026-07-06
 First Tauri review: 2026-07-06
-Phase 5.1 review kit prepared: 2026-07-18
+Phase 5.2 review kit prepared: 2026-07-18
 
 ## Gate Status
 
-**Ready for 3-5 real-user sessions; user review is now required.** Phase 5.1 implementation and automated validation are complete. The packaged Tauri smoke checklist is prepared in `docs/desktop-native-smoke.md`, but its interactive run and the user sessions must be recorded by people on the target Windows environment.
+**Ready for 3-5 real-user sessions; user review is now required.** Phase 5.2 implementation, automated viewport/keyboard validation, desktop typecheck/build, and basic packaged executable launch are complete. The full native interaction checklist remains in `docs/desktop-native-smoke.md`; its manual scenarios and the user sessions must be recorded by people on the target Windows environment.
 
 Feature expansion stops at this gate. Findings are triaged after the sessions; they do not justify changing `.sdoc`, stable IDs, or browser/native boundaries without a separate architecture decision.
 
@@ -26,6 +26,7 @@ Recruit 3-5 people who write specifications, manuals, engineering notes, test pr
 - Do not demonstrate controls before a task. If help is requested, record the prompt needed.
 - Mark each task `unassisted`, `assisted`, `failed`, or `not applicable`; record time, hesitation, wrong turns, and quotes.
 - Do not open Developer, raw JSON, schema, Git, or AI/RAG surfaces unless the participant finds or requests them.
+- Run the primary session at 1280x720 or larger. Include one keyboard-only pass across Explorer, Settings, and Export; accessibility-tool users may use their normal assistive technology.
 
 ## Review Checklist
 
@@ -34,7 +35,7 @@ Run these scenarios with each participant:
 1. **Orientation and entry**
    - Launch the app and ask, “What do you think this product is for?”
    - Ask the participant to create a workspace folder and a new `.sdoc` without guidance.
-   - Observe whether Files, Outline, writing canvas, save state, and Export read as the primary workflow.
+   - Observe whether Explorer, Outline, writing canvas, Status Bar save state, and Export read as the primary workflow.
 
 2. **Routine writing**
    - Enter a document title, author, version, two headings, paragraphs, a bulleted list, and a task item.
@@ -56,8 +57,9 @@ Run these scenarios with each participant:
 5. **Save, reopen, and export**
    - Save, close/restart as practical, and reopen the `.sdoc` from Files or Recent Documents.
    - Confirm the title, metadata, image, table, equation, and Mermaid content are present.
-   - Export one readable deliverable such as Markdown, HTML, or DOCX without visiting Developer.
+   - Export one available readable deliverable, Markdown or HTML, without visiting Developer.
    - Ask the participant to explain the difference between Save `.sdoc` and deliverable Export.
+   - Ask whether unavailable deliverable formats are clear and whether the suggested alternative is useful.
 
 6. **Product impression**
    - Ask what the participant would do next without guidance.
@@ -79,6 +81,22 @@ Ratings (editor/common/advanced/trust, 1-5):
 Critical observations or quotes:
 Potential data-loss/security issue:
 Top follow-up candidate:
+```
+
+## Batch Summary Template
+
+Complete this only after 3-5 session records exist:
+
+```text
+Packaged smoke record/date/operator:
+Participants completed (target 3-5):
+Unassisted completion count by scenario (1-5):
+Median ratings (editor/common/advanced/trust):
+Repeated finding (2+ participants):
+Single-participant finding:
+Data-loss/security blocker:
+Recommended next slice and evidence:
+Gate decision: passed / changes required / blocked
 ```
 
 ## Gate Decision

@@ -162,6 +162,75 @@ test("keeps document identity and commands clear at the 1280px acceptance viewpo
   await expect(page.getByRole("complementary", { name: "Settings side panel" }).getByLabel("Document properties")).toBeVisible();
 });
 
+for (const viewport of [
+  { width: 1920, height: 1080 },
+  { width: 1440, height: 900 },
+  { width: 1280, height: 720 }
+]) {
+  test(`keeps the authoring workbench composed at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Documents panel" }).click();
+
+    await expect(page.getByRole("complementary", { name: "Documents side panel" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Document workflow" })).toBeVisible();
+    await expect(page.getByLabel("Editor toolbar")).toBeVisible();
+    await expect(page.locator(".document-canvas")).toBeVisible();
+    await expect(page.getByRole("contentinfo", { name: "Workbench status" })).toBeVisible();
+
+    const geometry = await page.evaluate(() => {
+      const shell = document.querySelector(".app-shell")?.getBoundingClientRect();
+      const toolbar = document.querySelector(".toolbar")?.getBoundingClientRect();
+      const controls = Array.from(document.querySelectorAll(".toolbar > .toolbar-group, .toolbar > .toolbar-menu"));
+      return {
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+        shellLeft: shell?.left,
+        shellRight: shell?.right,
+        toolbarRows: new Set(controls.map((control) => Math.round(control.getBoundingClientRect().top))).size,
+        toolbarRight: toolbar?.right
+      };
+    });
+    expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+    expect(geometry.shellLeft).toBeGreaterThanOrEqual(0);
+    expect(geometry.shellRight).toBeLessThanOrEqual(geometry.viewportWidth + 0.5);
+    expect(geometry.toolbarRows).toBe(1);
+    expect(geometry.toolbarRight).toBeLessThanOrEqual(geometry.viewportWidth + 0.5);
+  });
+}
+
+test("supports keyboard-only settings and export dialog navigation", async ({ page }) => {
+  await page.goto("/");
+
+  const settingsButton = page.getByRole("button", { name: "Settings panel" });
+  await settingsButton.focus();
+  await page.keyboard.press("Enter");
+  const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
+  const documentTab = settingsPanel.getByRole("tab", { name: "Document" });
+  await documentTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(settingsPanel.getByRole("tab", { name: "Application" })).toBeFocused();
+  await expect(settingsPanel.getByRole("tab", { name: "Application" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("End");
+  await expect(settingsPanel.getByRole("tab", { name: "Developer" })).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(documentTab).toBeFocused();
+
+  const exportButton = page.getByRole("button", { name: "Export", exact: true });
+  await exportButton.focus();
+  await page.keyboard.press("Enter");
+  const exportDialog = page.getByRole("dialog", { name: "Export document" });
+  const closeButton = exportDialog.getByRole("button", { name: "Close export" });
+  await expect(closeButton).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(exportDialog.getByRole("button", { name: "Export Markdown" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(closeButton).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(exportDialog).toHaveCount(0);
+  await expect(exportButton).toBeFocused();
+});
+
 test("keeps routine feedback transient in the Status Bar", async ({ page }) => {
   await page.goto("/");
   await createNewDocumentFromMenu(page);

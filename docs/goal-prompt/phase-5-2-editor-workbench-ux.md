@@ -1,11 +1,11 @@
 ---
 title: "Phase 5.2 Explorer-First Authoring Workbench Goal"
-status: in_progress
-progress_percent: 88
-current_slice: responsive-accessibility-review-gate
+status: done
+progress_percent: 100
+current_slice: user-review-required
 created_at: 2026-07-18
 started_at: 2026-07-18
-completed_at: null
+completed_at: 2026-07-18
 source_reviews:
   - docs/editor-workbench-ux-improvement-guide.md
 planning_docs:
@@ -23,8 +23,8 @@ completed_slices:
   - one-row-authoring-toolbar
   - status-and-recovery-relocation
   - settings-export-browser-language
-remaining_slices:
   - responsive-accessibility-review-gate
+remaining_slices: []
 progress_log:
   - date: 2026-07-18
     progress_percent: 0
@@ -53,6 +53,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 88
     note: "Settings/export/browser language completed: keyboard-operable Document/Application/Developer tabs separate author metadata, runtime preferences, desktop integration, and opt-in technical details; Export is a deliverable dialog with Markdown/HTML available and unsupported formats stated honestly; browser Documents exposes explicit New/Open/download/recent activity without native filesystem claims; raw JSON remains hidden until Developer is enabled. Visual inspection covered Documents and Export. Evidence passed: npm test (307), npm run build, and npm run test:e2e (42)."
+  - date: 2026-07-18
+    progress_percent: 100
+    note: "Responsive/accessibility/review gate completed: automated geometry covers 1920x1080, 1440x900, and 1280x720; keyboard-only Settings and Export cover roving tabs, focus-visible, modal Tab trapping, Escape, and invoker focus return. Desktop typecheck and Tauri release build passed, and the packaged executable launched as a responsive SDoc Editor window. Native interactive smoke and 3-5-person review records are prepared and explicitly remain human evidence. Final validation passed: npm test (307), npm run build, npm run test:e2e (46), npm run typecheck:desktop, and npm run build:desktop. Feature expansion stops at user review required."
 done_rule: "Set status to done and progress_percent to 100 only after all eight slices are implemented, validated, committed, pushed, and the packaged-app plus 3-5-person review kit is ready. Stop at user review required; do not claim that human review passed without session records."
 ---
 

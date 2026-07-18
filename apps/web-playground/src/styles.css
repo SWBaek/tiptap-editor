@@ -36,6 +36,11 @@ button {
   font: inherit;
 }
 
+:where(button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid #44b8ca;
+  outline-offset: 2px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 48px 320px minmax(0, 1fr);
@@ -84,6 +89,11 @@ button {
   background: rgba(111, 179, 193, 0.12);
   border-color: transparent;
   box-shadow: inset 2px 0 0 #85d5de;
+}
+
+.activity-button:focus-visible {
+  color: #ffffff;
+  background: rgba(111, 179, 193, 0.16);
 }
 
 .activity-spacer {
@@ -287,6 +297,12 @@ button {
 .side-panel-section .settings-tabs button[aria-selected="true"] {
   color: #ffffff;
   border-bottom-color: #85d5de;
+}
+
+.side-panel-section .settings-tabs button:focus-visible {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+  outline-offset: -2px;
 }
 
 .settings-tab-content,

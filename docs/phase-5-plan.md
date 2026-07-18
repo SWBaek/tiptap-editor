@@ -3,6 +3,7 @@
 Created: 2026-07-03
 Realigned: 2026-07-06 after first Tauri app user review
 Realigned: 2026-07-18 for existing-product experience parity
+Realigned: 2026-07-18 for Phase 5.2 Explorer-first workbench UX
 
 ## Goal
 
@@ -52,6 +53,14 @@ The explorer extension is delivered in bounded operations: recursive typed listi
 8. Run the full review gate, update native smoke and 3-5-user scenarios, then stop for user review.
 
 Every slice requires docs, implementation, tests, `npm test`, `npm run build`, and `npm run test:e2e`, followed by a separate commit and push. Desktop slices additionally require `npm run typecheck:desktop` and `npm run build:desktop`.
+
+## Phase 5.2 Explorer-First Authoring Workbench
+
+Status: in progress from the accepted Phase 5.1 UX review. `docs/editor-workbench-ux-improvement-guide.md` is the authoritative specification and `docs/goal-prompt/phase-5-2-editor-workbench-ux.md` is the active evidence record.
+
+Phase 5.2 removes the remaining management-dashboard character without adding new canonical document features. The ordered work is Explorer declutter and accessible tree behavior, Activity/panel consolidation, document-header and toolbar command cleanup, Status Bar/recovery relocation, normal-user Settings/Export/browser language, and responsive/accessibility hardening. Each bounded slice preserves the typed Tauri adapter, browser boundary, canonical JSON, asset ownership, and stable IDs and ends in a separate validated commit/push.
+
+The phase stops at a refreshed packaged-app and 3-5-person review gate. It reports `user review required`; it does not claim human acceptance without recorded sessions.
 
 ## Priority Slice 1: Desktop Workspace Entry
 

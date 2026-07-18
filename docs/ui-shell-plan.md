@@ -3,12 +3,15 @@
 Created: 2026-07-02
 Realigned: 2026-07-06 after Tauri app user review
 Realigned: 2026-07-18 for Phase 5.1 existing-product experience parity
+Realigned: 2026-07-18 for Phase 5.2 Explorer-first authoring workbench
 
 ## Decision
 
 The final shell still follows a VS Code-like structure, but the left rail must not make every feature look equally important. The product should open as a technical writing environment with a clear file/workspace entry point, document outline, editor body, and save/export workflow.
 
 Review, references, traceability, data-grid review, raw JSON, and CLI/debug tools are secondary surfaces. They must be reachable without defining the first-run experience.
+
+Phase 5.2 sharpens this decision: the normal Activity Bar converges on Explorer, Outline, Review, and bottom Settings; Export becomes a document command, History and Document Health become Review tabs, and Developer is opt-in. Files no longer hosts product branding, persistent status, current-file cards, duplicated file commands, Recent Documents, absolute paths, row metadata, or developer pack/unpack controls. The accepted target and slice evidence live in `docs/editor-workbench-ux-improvement-guide.md`.
 
 ## Target Desktop Layout
 

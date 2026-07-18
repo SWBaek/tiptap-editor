@@ -131,3 +131,11 @@
 - user-review gate 이전의 새로운 enterprise/review 기능 확장
 
 완료 기준은 모든 자동 검증과 desktop 수동 smoke 준비를 마친 뒤 기능 확장을 멈추고 `user review required`로 보고하는 것이다.
+
+## Phase 5.2: Explorer-First Authoring Workbench
+
+상태: 진행 중. `docs/editor-workbench-ux-improvement-guide.md`의 확정 정보구조와 8개 ordered slice를 따른다.
+
+목표는 Phase 5.1 기능을 유지하면서 Explorer를 파일 트리 중심으로 재구성하고, Activity Bar·Review·Settings·Export·document header·toolbar·status/recovery feedback을 일반 작성자 중심으로 통합하는 것이다. canonical `.sdoc`, stable block ID, asset, browser/Tauri 경계는 변경하지 않는다.
+
+완료 기준은 1280/1440/1920 desktop viewport와 keyboard-only 흐름, 전체 자동 검증, packaged Tauri smoke 및 3-5명 사용자 리뷰 kit를 준비한 뒤 `user review required`로 멈추는 것이다.

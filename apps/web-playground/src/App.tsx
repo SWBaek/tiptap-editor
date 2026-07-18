@@ -8,10 +8,7 @@ import Superscript from "@tiptap/extension-superscript";
 import TextAlign from "@tiptap/extension-text-align";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import Placeholder from "@tiptap/extension-placeholder";
-import {
-  FileJson,
-  Settings
-} from "lucide-react";
+import { Settings } from "lucide-react";
 import {
   applyDiffEventAcceptanceToBaseline,
   applyDiffEventAction,
@@ -2521,20 +2518,15 @@ export function App() {
       <ActivityBar activePanel={activePanel} isOpen={isSidePanelOpen} onSelect={selectActivityPanel} />
 
       {isSidePanelOpen && (
-        <aside className="sidebar side-panel" aria-label={`${activePanelLabel} side panel`}>
-          <div className="brand">
-            <FileJson size={22} />
-            <div>
-              <strong>SDoc</strong>
-              <span>Phase 3 Playground</span>
+        <aside
+          className={activePanel === "files" ? "sidebar side-panel files-side-panel" : "sidebar side-panel"}
+          aria-label={`${activePanelLabel} side panel`}
+        >
+          {activePanel !== "files" && (
+            <div className="side-panel-title">
+              <span>{activePanelLabel}</span>
             </div>
-          </div>
-
-          <div className="side-panel-title">
-            <span>{activePanelLabel}</span>
-          </div>
-
-          <div className="side-status-note">{statusMessage}</div>
+          )}
           {activePanel === "settings" && (
             <SettingsPanel
               metadata={metadata}
@@ -2557,9 +2549,7 @@ export function App() {
           {activePanel === "files" && (
             <FilesPanel
               currentFile={fileLabel}
-              sdocFilename={exportFilenames.sdoc}
-              savedLabel={savedLabel}
-              recentFiles={recentFiles}
+              isCurrentFileUnsaved={hasUnsavedChanges}
               isDesktopRuntime={documentFileRuntime.kind === "desktop"}
               workspaceDirectory={workspaceDirectory}
               workspaceEntries={workspaceEntries}
@@ -2568,13 +2558,8 @@ export function App() {
               externalChangeMessage={workspaceExternalChange
                 ? `${filenameFromNativePath(workspaceExternalChange.path)} changed outside the editor. ${hasUnsavedChanges ? "Unsaved edits are preserved. " : ""}No content was reloaded automatically.`
                 : null}
-              onNewDocument={createNewDocument}
-              onOpenDocument={openDocumentAction}
-              onSaveSdoc={() => void downloadSdoc(false)}
               onRetrySave={() => void downloadSdoc(false)}
               onSaveAs={() => void downloadSdoc(true)}
-              sdocSaveLabel={sdocSaveRoute.label}
-              onSelectRecentFile={(entry) => void openRecentFile(entry)}
               onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
               onRefreshWorkspace={() => void refreshWorkspaceEntries()}
               onOpenWorkspaceEntry={openWorkspaceEntry}
@@ -2583,7 +2568,6 @@ export function App() {
               onReloadExternalChange={() => void reloadExternalDocument()}
               onKeepExternalChange={keepCurrentAfterExternalChange}
               onCompareExternalChange={() => void compareExternalDocument()}
-              onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
 

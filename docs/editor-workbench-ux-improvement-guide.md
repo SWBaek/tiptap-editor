@@ -2,7 +2,7 @@
 
 Created: 2026-07-18
 Target: Phase 5.2 Explorer-First Authoring Workbench
-Status: implementation in progress; Slices 1-5 accepted, Slice 6 next
+Status: implementation in progress; Slices 1-6 accepted, Slice 7 next
 
 ## 1. Purpose
 
@@ -428,6 +428,8 @@ Accepted 2026-07-18. The authoring toolbar now stays on one row at the 1280px ac
 - make routine success transient/silent.
 - move save failure/external change banners from Files to the editor document level.
 - preserve all recovery semantics and runtime-only state.
+
+Accepted 2026-07-18. A fixed workbench Status Bar now owns filename/save state, document validity, transient feedback, word/block counts, cursor-history Back/Forward, and 60-200% zoom. The former floating runtime control is gone, routine messages expire after 4.5 seconds, and zoom/history remain runtime-only under existing canonical non-mutation checks. Native save failure now persists above the document with Retry/Save As, external current-document changes persist there with Reload/Keep Current/Compare, and blocking schema validation names the reason and links to Document Health. Explorer no longer owns document recovery alerts; the Draw.io conflict remains its dedicated dialog. Evidence: focused Status Bar, transient-feedback, zoom/history, and desktop bridge Playwright flows; visual inspection at 1280x900; `npm test` (307), `npm run build`, and `npm run test:e2e` (42).
 
 ### Slice 7: Settings, Export, browser mode, and product language
 

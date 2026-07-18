@@ -130,8 +130,9 @@ import { ActivityBar } from "./components/editor-shell/ActivityBar";
 import { CanvasDocumentHeader } from "./components/editor-shell/CanvasDocumentHeader";
 import { DesktopStartScreen } from "./components/editor-shell/DesktopStartScreen";
 import { DocumentCommandBar } from "./components/editor-shell/DocumentCommandBar";
-import { EDITOR_ZOOM_STORAGE_KEY, loadStoredEditorZoom, ZoomControl } from "./components/editor-shell/ZoomControl";
-import { CursorHistoryControl } from "./components/editor-shell/CursorHistoryControl";
+import { DocumentRecoveryBanners } from "./components/editor-shell/DocumentRecoveryBanners";
+import { StatusBar } from "./components/editor-shell/StatusBar";
+import { EDITOR_ZOOM_STORAGE_KEY, loadStoredEditorZoom } from "./components/editor-shell/ZoomControl";
 import {
   canNavigateCursorHistory,
   createCursorHistory,
@@ -174,6 +175,31 @@ import { DrawioConflictDialog } from "./components/dialogs/DrawioConflictDialog"
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
+
+function countDocumentWords(document: SDocDocument): number {
+  let count = 0;
+  visitDocumentNodes(document, (node) => {
+    if (typeof node.text === "string") {
+      count += node.text.trim().split(/\s+/u).filter(Boolean).length;
+    }
+  });
+  return count;
+}
+
+function countDocumentBlocks(document: SDocDocument): number {
+  let count = 0;
+  visitDocumentNodes(document, (node) => {
+    if (node !== document && typeof node.attrs?.id === "string") {
+      count += 1;
+    }
+  });
+  return count;
+}
+
+function visitDocumentNodes(node: SDocNode, visitor: (node: SDocNode) => void): void {
+  visitor(node);
+  node.content?.forEach((child) => visitDocumentNodes(child, visitor));
+}
 
 type CalloutKind = "note" | "warning";
 interface EditorHighlightOverlay {
@@ -261,7 +287,7 @@ export function App() {
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [savedAt, setSavedAt] = useState<string>("Not saved");
-  const [statusMessage, setStatusMessage] = useState<string>("Ready");
+  const [statusMessage, setStatusMessage] = useState<string>("");
   const [documentId, setDocumentId] = useState<string>(initialDocument.attrs.id);
   const [metadata, setMetadata] = useState<SDocMetadata>(initialMetadata);
   const [baselineDocument, setBaselineDocument] = useState<SDocDocument>(initialDocument);
@@ -371,6 +397,14 @@ export function App() {
       // Storage can be unavailable in restricted browser contexts; zoom remains session-local.
     }
   }, [editorZoom]);
+
+  useEffect(() => {
+    if (!statusMessage) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setStatusMessage(""), 4_500);
+    return () => window.clearTimeout(timeout);
+  }, [statusMessage]);
 
   useEffect(() => {
     const selection = editor.state.selection;
@@ -577,6 +611,8 @@ export function App() {
   const hasUnsavedChanges = hasDocumentChanges || hasMetadataChanges || hasAssetChanges;
   const fileLabel = getFileLabel(currentFilename, metadata);
   const savedLabel = getSavedLabel(savedAt, hasUnsavedChanges);
+  const wordCount = countDocumentWords(document);
+  const blockCount = countDocumentBlocks(document);
   const documentFileRuntime = useMemo(() => detectDocumentFileRuntime(), []);
   const nativeSdocSaveAdapter = useMemo(() => getWindowSdocNativeSaveAdapter(), []);
   const nativeSdocOpenAdapter = useMemo(() => getWindowSdocNativeOpenAdapter(), []);
@@ -2563,21 +2599,12 @@ export function App() {
               workspaceDirectory={workspaceDirectory}
               workspaceEntries={workspaceEntries}
               isWorkspaceLoading={isWorkspaceLoading}
-              saveFailureMessage={saveFailureMessage}
-              externalChangeMessage={workspaceExternalChange
-                ? `${filenameFromNativePath(workspaceExternalChange.path)} changed outside the editor. ${hasUnsavedChanges ? "Unsaved edits are preserved. " : ""}No content was reloaded automatically.`
-                : null}
-              onRetrySave={() => void downloadSdoc(false)}
-              onSaveAs={() => void downloadSdoc(true)}
               onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
               onRefreshWorkspace={() => void refreshWorkspaceEntries()}
               onOpenWorkspaceEntry={openWorkspaceEntry}
               onCreateWorkspaceEntry={createWorkspaceEntry}
               onRenameWorkspaceEntry={renameWorkspaceEntry}
               onTrashWorkspaceEntry={(entry) => openWorkspaceEntryActionDialog(entry, "trash")}
-              onReloadExternalChange={() => void reloadExternalDocument()}
-              onKeepExternalChange={keepCurrentAfterExternalChange}
-              onCompareExternalChange={() => void compareExternalDocument()}
             />
           )}
 
@@ -2701,9 +2728,6 @@ export function App() {
           <>
         <DocumentCommandBar
           fileLabel={fileLabel}
-          savedLabel={savedLabel}
-          isValid={validation.ok}
-          statusMessage={statusMessage}
           saveLabel={sdocSaveRoute.label}
           isPreviewOpen={isPreviewOpen}
           onNewDocument={createNewDocument}
@@ -2754,6 +2778,24 @@ export function App() {
           onInsertDrawioFile={(file) => void insertDrawioFile(file)}
         />
 
+        <DocumentRecoveryBanners
+          fileLabel={fileLabel}
+          saveFailureMessage={saveFailureMessage}
+          externalChangeMessage={workspaceExternalChange
+            ? `${filenameFromNativePath(workspaceExternalChange.path)} changed outside the editor. ${hasUnsavedChanges ? "Unsaved edits are preserved. " : ""}No content was reloaded automatically.`
+            : null}
+          validationMessage={validation.ok ? null : validation.issues[0]?.message ?? "The document is not valid."}
+          onRetrySave={() => void downloadSdoc(false)}
+          onSaveAs={() => void downloadSdoc(true)}
+          onReloadExternalChange={() => void reloadExternalDocument()}
+          onKeepExternalChange={keepCurrentAfterExternalChange}
+          onCompareExternalChange={() => void compareExternalDocument()}
+          onReviewDocumentHealth={() => {
+            setActiveReviewTab("health");
+            openActivityPanel("review");
+          }}
+        />
+
         <div className={isPreviewOpen ? "editor-grid" : "editor-grid preview-collapsed"}>
           <section
             className="editor-pane"
@@ -2797,15 +2839,6 @@ export function App() {
                 onDeleteTableColumn={() => runTableCommand("deleteColumn", "Deleted table column")}
               />
             )}
-            <div className="editor-runtime-controls">
-              <CursorHistoryControl
-                canGoBack={canNavigateCursorHistory(cursorHistory, "back")}
-                canGoForward={canNavigateCursorHistory(cursorHistory, "forward")}
-                onGoBack={() => navigateEditorCursor("back")}
-                onGoForward={() => navigateEditorCursor("forward")}
-              />
-              <ZoomControl zoom={editorZoom} onZoomChange={setEditorZoom} />
-            </div>
             <div className="editor-zoom-layer" style={{ zoom: `${editorZoom}%` }}>
               <div className="document-canvas">
                 <CanvasDocumentHeader
@@ -2853,6 +2886,21 @@ export function App() {
           </section>
           )}
         </div>
+        <StatusBar
+          fileLabel={fileLabel}
+          savedLabel={savedLabel}
+          isValid={validation.ok}
+          issueCount={validation.issues.length}
+          statusMessage={statusMessage}
+          wordCount={wordCount}
+          blockCount={blockCount}
+          zoom={editorZoom}
+          canGoBack={canNavigateCursorHistory(cursorHistory, "back")}
+          canGoForward={canNavigateCursorHistory(cursorHistory, "forward")}
+          onZoomChange={setEditorZoom}
+          onGoBack={() => navigateEditorCursor("back")}
+          onGoForward={() => navigateEditorCursor("forward")}
+        />
           </>
         )}
       </section>

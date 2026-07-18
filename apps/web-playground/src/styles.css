@@ -1794,12 +1794,32 @@ button {
 
 .workspace {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   min-width: 0;
   max-width: 100vw;
   min-height: 0;
   overflow: hidden;
   background: #eef1f4;
+}
+
+.workspace > .document-command-bar {
+  grid-row: 1;
+}
+
+.workspace > .toolbar {
+  grid-row: 2;
+}
+
+.workspace > .document-recovery-region {
+  grid-row: 3;
+}
+
+.workspace > .editor-grid {
+  grid-row: 4;
+}
+
+.workspace > .workbench-status-bar {
+  grid-row: 5;
 }
 
 .desktop-start-screen {
@@ -1934,7 +1954,7 @@ button {
 
 .document-command-bar {
   display: grid;
-  grid-template-columns: minmax(180px, auto) minmax(120px, 1fr) auto;
+  grid-template-columns: minmax(180px, 1fr) auto;
   gap: 12px;
   align-items: center;
   min-width: 0;
@@ -1961,35 +1981,6 @@ button {
   overflow: hidden;
   color: #22313d;
   font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.document-save-state,
-.document-health-state {
-  flex: 0 0 auto;
-  color: #657484;
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.document-save-state.unsaved {
-  color: #9a6610;
-}
-
-.document-health-state {
-  color: #a33a32;
-}
-
-.document-health-state.healthy {
-  color: #317053;
-}
-
-.document-status-note {
-  min-width: 0;
-  overflow: hidden;
-  color: #657484;
-  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2219,6 +2210,73 @@ button {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.document-recovery-region {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  background: #f8fafb;
+}
+
+.document-recovery-region:empty {
+  display: none;
+}
+
+.document-recovery-banner {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid;
+}
+
+.document-recovery-banner > div:first-child {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.document-recovery-banner strong,
+.document-recovery-banner span {
+  font-size: 12px;
+}
+
+.document-recovery-banner span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-recovery-banner.error {
+  color: #7d2525;
+  background: #fff1f0;
+  border-color: #e9b6b2;
+}
+
+.document-recovery-banner.warning {
+  color: #6e4a0b;
+  background: #fff8e7;
+  border-color: #e6cc91;
+}
+
+.document-recovery-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.document-recovery-actions button {
+  min-height: 28px;
+  padding: 0 9px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid currentColor;
+  border-radius: 5px;
 }
 
 .editor-context-menu {
@@ -2726,24 +2784,69 @@ button {
   outline: none;
 }
 
-.editor-runtime-controls {
-  position: sticky;
-  top: calc(100% - 42px);
-  z-index: 18;
-  float: right;
+.workbench-status-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px 8px 2px 12px;
+  color: #dce5ea;
+  background: #1f2b34;
+  border-top: 1px solid #111923;
+  font-size: 11px;
+}
+
+.workbench-status-document,
+.workbench-status-tools {
   display: flex;
   align-items: center;
-  gap: 5px;
-  width: max-content;
-  min-height: 36px;
-  margin: 0 0 -36px 12px;
-  padding: 4px 6px;
-  color: #e8edf2;
-  background: rgba(30, 41, 51, 0.94);
-  border: 1px solid #111923;
-  border-radius: 7px;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.22);
-  backdrop-filter: blur(8px);
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.workbench-status-document {
+  min-width: 0;
+}
+
+.workbench-status-document > span:first-child {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workbench-status-document strong {
+  color: #a9c4ce;
+  font-weight: 600;
+}
+
+.workbench-status-document strong.unsaved,
+.workbench-status-document .attention {
+  color: #ffd27c;
+}
+
+.workbench-status-document .healthy {
+  color: #9ed7b7;
+}
+
+.workbench-status-message {
+  flex: 1 1 auto;
+  min-width: 40px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  color: #c3cdd4;
+  background: transparent;
+  border-radius: 0;
+  font-size: 11px;
+  line-height: normal;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workbench-status-tools {
+  flex: 0 0 auto;
 }
 
 .editor-zoom-control,
@@ -2758,10 +2861,10 @@ button {
   border-right: 1px solid #52606d;
 }
 
-.editor-runtime-controls button {
+.workbench-status-bar button {
   display: grid;
-  width: 27px;
-  height: 27px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   padding: 0;
   color: inherit;
@@ -2770,22 +2873,24 @@ button {
   border-radius: 4px;
 }
 
-.editor-runtime-controls button:hover:not(:disabled) {
+.workbench-status-bar button:hover:not(:disabled),
+.workbench-status-bar button:focus-visible {
   background: #334452;
   border-color: #526572;
+  outline: none;
 }
 
-.editor-runtime-controls button:disabled {
+.workbench-status-bar button:disabled {
   opacity: 0.4;
 }
 
 .editor-zoom-control input[type="range"] {
-  width: 104px;
+  width: 82px;
 }
 
 .editor-zoom-control output {
-  min-width: 38px;
-  font-size: 12px;
+  min-width: 34px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
@@ -4297,7 +4402,7 @@ button {
   }
 
   .workspace {
-    grid-template-rows: auto 52px minmax(0, 1fr);
+    grid-template-rows: auto 52px auto minmax(0, 1fr) auto;
   }
 
   .desktop-start-screen {
@@ -4328,6 +4433,32 @@ button {
     flex: 0 0 auto;
     height: 32px;
     padding: 0 9px;
+  }
+
+  .document-recovery-banner {
+    display: grid;
+    gap: 7px;
+  }
+
+  .document-recovery-banner > div:first-child {
+    display: grid;
+    gap: 3px;
+  }
+
+  .document-recovery-banner span {
+    white-space: normal;
+  }
+
+  .workbench-status-bar {
+    gap: 6px;
+    padding-left: 7px;
+  }
+
+  .workbench-status-document > span:first-child,
+  .workbench-status-tools > span,
+  .workbench-status-message,
+  .editor-zoom-control input[type="range"] {
+    display: none;
   }
 
   .toolbar-group {

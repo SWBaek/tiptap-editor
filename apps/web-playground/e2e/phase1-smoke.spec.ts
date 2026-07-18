@@ -135,17 +135,20 @@ test("keeps document identity and commands clear at the 1280px acceptance viewpo
 
   const fitsWithoutOverlap = await commandBar.evaluate((bar) => {
     const identity = bar.querySelector(".document-command-identity")?.getBoundingClientRect();
-    const status = bar.querySelector(".document-status-note")?.getBoundingClientRect();
     const actions = bar.querySelector(".document-command-actions")?.getBoundingClientRect();
     const bounds = bar.getBoundingClientRect();
     return Boolean(
-      identity && status && actions &&
-      identity.right <= status.left &&
-      status.right <= actions.left &&
+      identity && actions &&
+      identity.right <= actions.left &&
       actions.right <= bounds.right + 0.5
     );
   });
   expect(fitsWithoutOverlap).toBe(true);
+  const statusBar = page.getByRole("contentinfo", { name: "Workbench status" });
+  await expect(statusBar).toContainText("Document healthy");
+  await expect(statusBar.getByLabel("Cursor history controls")).toBeVisible();
+  await expect(statusBar.getByLabel("Editor zoom controls")).toBeVisible();
+  await expect(page.locator(".editor-pane .editor-runtime-controls")).toHaveCount(0);
 
   await page.getByLabel("More document actions").click();
   const documentMenu = page.getByRole("menu", { name: "Document actions" });
@@ -155,6 +158,16 @@ test("keeps document identity and commands clear at the 1280px acceptance viewpo
   await expect(documentMenu.getByRole("menuitem", { name: "Document Properties" })).toBeVisible();
   await documentMenu.getByRole("menuitem", { name: "Document Properties" }).click();
   await expect(page.getByRole("complementary", { name: "Settings side panel" }).getByLabel("Document properties")).toBeVisible();
+});
+
+test("keeps routine feedback transient in the Status Bar", async ({ page }) => {
+  await page.goto("/");
+  await createNewDocumentFromMenu(page);
+  const statusBar = page.getByRole("contentinfo", { name: "Workbench status" });
+  await expect(statusBar.locator(".status-note")).toHaveText("Created new document");
+  await expect(page.getByRole("region", { name: "Document workflow" })).not.toContainText("Created new document");
+  await page.waitForTimeout(4_700);
+  await expect(statusBar.locator(".status-note")).toHaveText("");
 });
 
 test("shows authoring structure projections without changing heading text", async ({ page }) => {
@@ -852,14 +865,15 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await filesPanel.getByRole("button", { name: "Expand folder Guides" }).click();
   await filesPanel.getByRole("button", { name: "Expand folder Reference" }).click();
   await page.waitForTimeout(3_200);
-  await expect(filesPanel.getByRole("alert")).toHaveCount(0);
+  const documentAlerts = page.getByLabel("Document alerts");
+  await expect(documentAlerts.getByRole("alert")).toHaveCount(0);
   await page.evaluate(() => {
     (window as typeof window & {
       __QUEUE_WORKSPACE_EVENT__?: (event: { kind: "modified"; path: string; isSdoc: boolean }) => void;
     }).__QUEUE_WORKSPACE_EVENT__?.({ kind: "modified", path: "C:\\Docs\\Guides\\Reference\\Review.sdoc", isSdoc: true });
   });
-  const externalChangeAlert = filesPanel.getByRole("alert");
-  await expect(externalChangeAlert).toContainText("External change detected");
+  const externalChangeAlert = documentAlerts.getByRole("alert", { name: "External change detected" });
+  await expect(externalChangeAlert).toContainText("External change: Review.sdoc");
   await expect(externalChangeAlert).toContainText("No content was reloaded automatically");
   await expect(externalChangeAlert.getByRole("button", { name: "Reload from disk" })).toBeVisible();
   await expect(externalChangeAlert.getByRole("button", { name: "Keep current" })).toBeVisible();
@@ -895,7 +909,7 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
     (window as typeof window & { __FAIL_NEXT_SAVE__?: boolean }).__FAIL_NEXT_SAVE__ = true;
   });
   await page.getByRole("button", { name: "Save .sdoc", exact: true }).click();
-  const saveFailureAlert = filesPanel.getByRole("alert", { name: "Save failed" });
+  const saveFailureAlert = documentAlerts.getByRole("alert", { name: "Save failed" });
   await expect(saveFailureAlert).toContainText("temporarily unwritable");
   await expect(saveFailureAlert.getByRole("button", { name: "Retry" })).toBeVisible();
   await expect(saveFailureAlert.getByRole("button", { name: "Save As" })).toBeVisible();
@@ -906,7 +920,7 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
     "C:\\Docs\\Guides\\Reference\\Review.sdoc"
   );
   await page.waitForTimeout(900);
-  await expect(filesPanel.getByRole("alert")).toHaveCount(0);
+  await expect(documentAlerts.getByRole("alert")).toHaveCount(0);
   await filesPanel.getByRole("button", { name: "Actions for Review.sdoc" }).click();
   await filesPanel.getByRole("menu", { name: "Workspace actions for Review.sdoc" }).getByRole("menuitem", { name: "Move to Trash" }).click();
   const trashDialog = page.getByRole("dialog", { name: "Move workspace entry to Trash" });

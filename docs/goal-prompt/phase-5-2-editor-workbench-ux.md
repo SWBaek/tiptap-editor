@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.2 Explorer-First Authoring Workbench Goal"
 status: in_progress
-progress_percent: 63
-current_slice: status-and-recovery-relocation
+progress_percent: 75
+current_slice: settings-export-browser-language
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -21,8 +21,8 @@ completed_slices:
   - activity-and-panel-consolidation
   - document-header-and-command-hierarchy
   - one-row-authoring-toolbar
-remaining_slices:
   - status-and-recovery-relocation
+remaining_slices:
   - settings-export-browser-language
   - responsive-accessibility-review-gate
 progress_log:
@@ -47,6 +47,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 63
     note: "One-row authoring toolbar completed: paragraph/heading selection, Bold/Italic/Link, three list types, Image, Table, + Insert, and More are the visible 1280px controls; secondary formatting/structure and technical inserts moved into progressive-disclosure menus; equation/Mermaid/table/image/Draw.io inspectors are selection-only. Bubble/context/dialog behavior and stable IDs remain intact. Evidence passed: focused Playwright flows (7), one-row 1280px geometry assertion, visual checks at 1280x900 and 1440x1000, npm test (307), npm run build, and npm run test:e2e (41)."
+  - date: 2026-07-18
+    progress_percent: 75
+    note: "Status and recovery relocation completed: the fixed Status Bar owns save/validity state, transient feedback, word/block counts, runtime-only zoom, and cursor history; routine messages expire after 4.5 seconds. Save failure, external current-document change, and blocking validation are persistent document-level banners with recovery actions, while Explorer is alert-free and Draw.io keeps its dedicated conflict dialog. Evidence passed: focused Playwright flows, 1280x900 visual inspection, npm test (307), npm run build, and npm run test:e2e (42)."
 done_rule: "Set status to done and progress_percent to 100 only after all eight slices are implemented, validated, committed, pushed, and the packaged-app plus 3-5-person review kit is ready. Stop at user review required; do not claim that human review passed without session records."
 ---
 

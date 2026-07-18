@@ -37,19 +37,12 @@ export interface FilesPanelProps {
   workspaceDirectory: string | null;
   workspaceEntries: WindowSdocWorkspaceEntry[];
   isWorkspaceLoading: boolean;
-  saveFailureMessage: string | null;
-  externalChangeMessage: string | null;
-  onRetrySave: () => void;
-  onSaveAs: () => void;
   onChooseWorkspaceDirectory: () => void;
   onRefreshWorkspace: () => void;
   onOpenWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
   onCreateWorkspaceEntry: (parent: WindowSdocWorkspaceEntry | null, kind: WorkspaceCreateKind, name: string) => Promise<boolean>;
   onRenameWorkspaceEntry: (entry: WindowSdocWorkspaceEntry, name: string) => Promise<boolean>;
   onTrashWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
-  onReloadExternalChange: () => void;
-  onKeepExternalChange: () => void;
-  onCompareExternalChange: () => void;
 }
 
 type InlineEditState =
@@ -63,19 +56,12 @@ export function FilesPanel({
   workspaceDirectory,
   workspaceEntries,
   isWorkspaceLoading,
-  saveFailureMessage,
-  externalChangeMessage,
-  onRetrySave,
-  onSaveAs,
   onChooseWorkspaceDirectory,
   onRefreshWorkspace,
   onOpenWorkspaceEntry,
   onCreateWorkspaceEntry,
   onRenameWorkspaceEntry,
-  onTrashWorkspaceEntry,
-  onReloadExternalChange,
-  onKeepExternalChange,
-  onCompareExternalChange
+  onTrashWorkspaceEntry
 }: FilesPanelProps) {
   const [expandedWorkspacePaths, setExpandedWorkspacePaths] = useState<Set<string>>(() => new Set());
   const [selectedWorkspacePath, setSelectedWorkspacePath] = useState<string | null>(null);
@@ -333,17 +319,6 @@ export function FilesPanel({
           )}
         </header>
 
-        {saveFailureMessage && (
-          <section className="save-recovery-alert explorer-notice" role="alert" aria-label="Save failed">
-            <strong>Save failed</strong>
-            <span>{saveFailureMessage}</span>
-            <div>
-              <button type="button" onClick={onRetrySave}>Retry</button>
-              {isDesktopRuntime && <button type="button" onClick={onSaveAs}>Save As</button>}
-            </div>
-          </section>
-        )}
-
         <div className="explorer-tree-scroll">
           {isDesktopRuntime ? (
             <>
@@ -356,17 +331,6 @@ export function FilesPanel({
                 <div className="explorer-empty-state">
                   <span>No workspace folder is open.</span>
                   <button type="button" onClick={onChooseWorkspaceDirectory}>Open folder</button>
-                </div>
-              )}
-              {externalChangeMessage && (
-                <div className="workspace-external-change explorer-notice" role="alert">
-                  <strong>External change detected</strong>
-                  <span>{externalChangeMessage}</span>
-                  <div className="workspace-external-change-actions">
-                    <button type="button" onClick={onReloadExternalChange}>Reload from disk</button>
-                    <button type="button" onClick={onKeepExternalChange}>Keep current</button>
-                    <button type="button" onClick={onCompareExternalChange}>Compare</button>
-                  </div>
                 </div>
               )}
               {workspaceDirectory && workspaceEntries.length === 0 && !inlineEdit ? (

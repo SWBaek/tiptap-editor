@@ -13,9 +13,6 @@ import type { ReactNode } from "react";
 
 export interface DocumentCommandBarProps {
   fileLabel: string;
-  savedLabel: string;
-  isValid: boolean;
-  statusMessage: string;
   saveLabel: string;
   isPreviewOpen: boolean;
   onNewDocument: () => void;
@@ -29,9 +26,6 @@ export interface DocumentCommandBarProps {
 
 export function DocumentCommandBar({
   fileLabel,
-  savedLabel,
-  isValid,
-  statusMessage,
   saveLabel,
   isPreviewOpen,
   onNewDocument,
@@ -47,13 +41,6 @@ export function DocumentCommandBar({
       <div className="document-command-identity">
         <FileText size={15} aria-hidden="true" />
         <strong title={fileLabel}>{fileLabel}</strong>
-        <span className={savedLabel === "Unsaved" ? "document-save-state unsaved" : "document-save-state"}>{savedLabel}</span>
-        <span className={isValid ? "document-health-state healthy" : "document-health-state"}>
-          {isValid ? "Document healthy" : "Needs attention"}
-        </span>
-      </div>
-      <div className="status-note document-status-note" aria-label="Current status" aria-live="polite">
-        {statusMessage}
       </div>
       <div className="document-command-actions">
         <button className="primary" type="button" onClick={onSaveDocument}>

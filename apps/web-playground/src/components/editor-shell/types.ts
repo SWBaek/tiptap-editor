@@ -1,6 +1,8 @@
 export type PreviewTab = "json" | "markdown" | "diff";
 
-export type ActivityPanel = "files" | "outline" | "export" | "settings" | "review" | "diagnostics" | "history" | "developer";
+export type ActivityPanel = "files" | "outline" | "export" | "settings" | "review" | "developer";
+
+export type ReviewWorkspaceTab = "changes" | "history" | "health";
 
 export type RecentFileAction = "opened" | "saved";
 

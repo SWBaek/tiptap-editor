@@ -2,7 +2,7 @@
 
 Created: 2026-07-18
 Target: Phase 5.2 Explorer-First Authoring Workbench
-Status: implementation in progress; Slices 1-2 accepted, Slice 3 next
+Status: implementation in progress; Slices 1-3 accepted, Slice 4 next
 
 ## 1. Purpose
 
@@ -401,6 +401,8 @@ Accepted 2026-07-18. The tree now uses normalized full-path identity and folders
 - merge Changes/History/Document Health into Review tabs.
 - hide Developer unless runtime developer-tools preference is enabled.
 - remove Git/CLI cards from normal Review.
+
+Accepted 2026-07-18. The 48px icon-only Activity Bar now exposes Explorer, Outline, Review, and bottom Settings with an edge-indicator active state; Export remains reachable from the document command until its later dialog slice, but is absent from the rail. Review owns keyboard-operable Changes, History, and Document Health tabs, and the moved History/health surfaces share the dark sidebar theme. Git/CLI and raw event IDs were removed from normal Changes. Developer is hidden by default and appears only after the runtime-only `Enable developer tools` preference is enabled in Settings. Evidence: focused Review/History/Health/Developer Playwright flows (9), visual inspection at 1440x1000, `npm test` (307), `npm run build`, and `npm run test:e2e` (40).
 
 ### Slice 4: Document header and command hierarchy
 

@@ -140,7 +140,7 @@ import {
   type CursorLocation
 } from "./components/editor-shell/cursorHistory";
 import { PreviewTabButton as TabButton } from "./components/editor-shell/PreviewTabButton";
-import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry } from "./components/editor-shell/types";
+import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry, ReviewWorkspaceTab } from "./components/editor-shell/types";
 import { EditorToolbar } from "./components/editor-toolbar/EditorToolbar";
 import { EditorContextMenu, type EditorContextMenuKind, type EditorContextMenuState } from "./components/editor-toolbar/EditorContextMenu";
 import { SelectionBubbleToolbar, type BubbleToolbarPosition, type BubbleSelectionCommand } from "./components/editor-toolbar/SelectionBubbleToolbar";
@@ -152,6 +152,7 @@ import { HistoryPanel } from "./components/panels/HistoryPanel";
 import { DiagnosticsPanel } from "./components/panels/DiagnosticsPanel";
 import { DeveloperPanel, type DerivedOutputName } from "./components/panels/DeveloperPanel";
 import { DiffReview, ReviewPanel } from "./components/panels/ReviewPanel";
+import { ReviewWorkspaceTabs } from "./components/panels/ReviewWorkspaceTabs";
 import { LinkDialog } from "./components/dialogs/LinkDialog";
 import { ImagePasteDialog, type PastedImageDetails } from "./components/dialogs/ImagePasteDialog";
 import { EquationDialog, type EquationDialogMode } from "./components/dialogs/EquationDialog";
@@ -229,6 +230,7 @@ interface WorkspaceEntryActionDialogState {
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
 const RECENT_FILES_STORAGE_KEY = "sdoc.recentFiles.v1";
 const DRAWIO_EXECUTABLE_PATH_STORAGE_KEY = "sdoc.drawioExecutablePath.v1";
+const DEVELOPER_TOOLS_STORAGE_KEY = "sdoc.developerToolsEnabled.v1";
 const RECENT_FILES_LIMIT = 6;
 
 const initialDocument = toSdocDocument(initialContent);
@@ -254,6 +256,7 @@ const sdocExtensions = [
 export function App() {
   const [activeTab, setActiveTab] = useState<PreviewTab>("markdown");
   const [activePanel, setActivePanel] = useState<ActivityPanel>("files");
+  const [activeReviewTab, setActiveReviewTab] = useState<ReviewWorkspaceTab>("changes");
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [savedAt, setSavedAt] = useState<string>("Not saved");
@@ -273,6 +276,7 @@ export function App() {
   const [isWorkspaceLoading, setIsWorkspaceLoading] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>(loadStoredHistory);
   const [drawioExecutablePath, setDrawioExecutablePath] = useState<string>(loadStoredDrawioExecutablePath);
+  const [developerToolsEnabled, setDeveloperToolsEnabled] = useState<boolean>(loadStoredDeveloperToolsEnabled);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [highlightOverlay, setHighlightOverlay] = useState<EditorHighlightOverlay | null>(null);
@@ -539,6 +543,8 @@ export function App() {
   );
   const referenceDiagnostics = createReferenceDiagnostics(document);
   const requirementTraceability = useMemo(() => createRequirementTraceability(document), [document]);
+  const documentHealthIssueCount = referenceDiagnostics.brokenReferences.length + referenceDiagnostics.staleReferences.length +
+    requirementTraceability.duplicateCount + requirementTraceability.formatIssueCount + requirementTraceability.coverageGapCount;
   const dataGridDiagnostics = useMemo(() => createDataGridDiagnostics(document, assets), [assets, document]);
   const dataGridRowReview = useMemo(
     () => createDataGridRowReviewModel(baselineDocument, document, baselineAssets, assets),
@@ -1196,7 +1202,7 @@ export function App() {
     const nextEntries = addLocalHistoryEntry(historyEntries, entry);
     persistHistory(nextEntries);
     setSelectedHistoryId(entry.id);
-    openActivityPanel("history");
+    openReviewTab("history");
     setStatusMessage(`Saved history snapshot: ${entry.title}`);
   }
 
@@ -1264,6 +1270,12 @@ export function App() {
 
   function openActivityPanel(panel: ActivityPanel) {
     setActivePanel(panel);
+    setIsSidePanelOpen(true);
+  }
+
+  function openReviewTab(tab: ReviewWorkspaceTab) {
+    setActiveReviewTab(tab);
+    setActivePanel("review");
     setIsSidePanelOpen(true);
   }
 
@@ -1738,7 +1750,7 @@ export function App() {
   }
 
   function openReferencePicker() {
-    openActivityPanel("diagnostics");
+    openReviewTab("health");
     setStatusMessage("Choose a reference target");
   }
 
@@ -1750,7 +1762,7 @@ export function App() {
     }
 
     const inserted = insertCrossReference(editor, target.id, undefined, target.label);
-    openActivityPanel("diagnostics");
+    openReviewTab("health");
     setStatusMessage(inserted ? `Inserted reference to ${target.label}` : `Cannot insert reference to ${target.label}`);
   }
 
@@ -1764,7 +1776,7 @@ export function App() {
     const nextDocument = updateCrossReferenceLabel(document, reference.id, reference.targetLabel);
     editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
     repairEditorBlockIds(editor);
-    openActivityPanel("diagnostics");
+    openReviewTab("health");
     setStatusMessage(`Updated reference label: ${reference.targetLabel}`);
   }
 
@@ -1778,7 +1790,7 @@ export function App() {
     const nextDocument = retargetCrossReference(document, referenceId, target);
     editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
     repairEditorBlockIds(editor);
-    openActivityPanel("diagnostics");
+    openReviewTab("health");
     setStatusMessage(`Retargeted reference to ${target.label}`);
   }
 
@@ -1792,7 +1804,7 @@ export function App() {
     const nextDocument = removeCrossReference(document, reference.id);
     editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(assets)), { emitUpdate: true });
     repairEditorBlockIds(editor);
-    openActivityPanel("diagnostics");
+    openReviewTab("health");
     setStatusMessage(`Removed broken reference: ${reference.label}`);
   }
 
@@ -1816,7 +1828,7 @@ export function App() {
     }
 
     const updated = setSelectedBlockHumanId(editor, normalized);
-    openActivityPanel("diagnostics");
+    openReviewTab("health");
     setStatusMessage(updated ? `Set requirement ID ${normalized} on ${target.id}` : `Cannot set requirement ID on ${target.id}`);
   }
 
@@ -1828,7 +1840,7 @@ export function App() {
     }
 
     const updated = setSelectedBlockHumanId(editor, null);
-    openActivityPanel("diagnostics");
+    openReviewTab("health");
     setStatusMessage(updated ? `Cleared requirement ID on ${target.id}` : `Cannot clear requirement ID on ${target.id}`);
   }
 
@@ -2509,7 +2521,12 @@ export function App() {
 
   return (
     <main className={isSidePanelOpen ? "app-shell" : "app-shell side-panel-collapsed"}>
-      <ActivityBar activePanel={activePanel} isOpen={isSidePanelOpen} onSelect={selectActivityPanel} />
+      <ActivityBar
+        activePanel={activePanel}
+        isOpen={isSidePanelOpen}
+        showDeveloperTools={developerToolsEnabled}
+        onSelect={selectActivityPanel}
+      />
 
       {isSidePanelOpen && (
         <aside
@@ -2528,6 +2545,7 @@ export function App() {
               document={document}
               assetCount={Object.keys(assets).length}
               drawioExecutablePath={drawioExecutablePath}
+              developerToolsEnabled={developerToolsEnabled}
               headingNumbering={headingNumbering}
               outlineDepth={outlineDepth}
               onMetadataChange={setMetadata}
@@ -2536,6 +2554,10 @@ export function App() {
               onDrawioExecutablePathChange={(path) => {
                 setDrawioExecutablePath(path);
                 storeDrawioExecutablePath(path);
+              }}
+              onDeveloperToolsEnabledChange={(enabled) => {
+                setDeveloperToolsEnabled(enabled);
+                storeDeveloperToolsEnabled(enabled);
               }}
             />
           )}
@@ -2579,54 +2601,69 @@ export function App() {
           )}
 
           {activePanel === "review" && (
-            <ReviewPanel
-              review={changeReview}
-              baseLabel={reviewBaseLabel}
-              savedLabel={savedLabel}
-              hasUnsavedChanges={hasUnsavedChanges}
-              isDiffOverlayEnabled={isDiffOverlayEnabled}
-              visualDiffItems={visibleReviewActionItems}
-              visualDiffCounts={visualDiffFilterCounts}
-              visualDiffFilter={visualDiffFilter}
-              selectedVisualDiffId={selectedVisualDiffId}
-              batchSummary={lastReviewBatchSummary}
-              onShowDiff={() => showPreview("diff")}
-              onCompareSavedBaseline={compareSavedBaseline}
-              onApplyReviewAction={applyReviewAction}
-              onApplyReviewBatch={applyVisibleReviewBatch}
-              onMarkSaved={markCurrentAsBaseline}
-              onSelectVisualDiff={selectVisualDiffItem}
-              onSetVisualDiffFilter={setVisualDiffFilter}
-              onToggleDiffOverlay={() => setIsDiffOverlayEnabled((current) => !current)}
-              onCopyDeveloperCommand={showDeveloperCommand}
-            />
-          )}
-
-          {activePanel === "diagnostics" && (
-            <DiagnosticsPanel
-              diagnostics={referenceDiagnostics}
-              traceability={requirementTraceability}
-              highlightedNodeId={highlightedNodeId}
-              onInsertReference={insertCrossReferenceToTarget}
-              onRevealNode={revealEditorNode}
-              onRetargetReference={retargetBrokenReference}
-              onRemoveReference={removeBrokenReference}
-              onUpdateReferenceLabel={updateReferenceLabel}
-              onSetSelectedTag={tagSelectedBlock}
-              onClearSelectedTag={clearSelectedBlockTag}
-            />
-          )}
-
-          {activePanel === "history" && (
-            <HistoryPanel
-              entries={historyEntries}
-              selectedId={selectedHistoryId}
-              onSaveSnapshot={saveHistorySnapshot}
-              onCompareSnapshot={compareHistorySnapshot}
-              onDeleteSnapshot={deleteHistorySnapshot}
-              onRenameSnapshot={renameHistorySnapshot}
-              onCompareSavedBaseline={compareSavedBaseline}
-            />
+            <div className="review-workspace-panel">
+              <ReviewWorkspaceTabs
+                activeTab={activeReviewTab}
+                changeCount={changeReview.total}
+                historyCount={historyEntries.length}
+                issueCount={documentHealthIssueCount}
+                onSelect={setActiveReviewTab}
+              />
+              <div
+                className="review-workspace-content"
+                id={`review-panel-${activeReviewTab}`}
+                role="tabpanel"
+                aria-labelledby={`review-tab-${activeReviewTab}`}
+              >
+                {activeReviewTab === "changes" && (
+                  <ReviewPanel
+                    review={changeReview}
+                    baseLabel={reviewBaseLabel}
+                    savedLabel={savedLabel}
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    isDiffOverlayEnabled={isDiffOverlayEnabled}
+                    visualDiffItems={visibleReviewActionItems}
+                    visualDiffCounts={visualDiffFilterCounts}
+                    visualDiffFilter={visualDiffFilter}
+                    selectedVisualDiffId={selectedVisualDiffId}
+                    batchSummary={lastReviewBatchSummary}
+                    onShowDiff={() => showPreview("diff")}
+                    onCompareSavedBaseline={compareSavedBaseline}
+                    onApplyReviewAction={applyReviewAction}
+                    onApplyReviewBatch={applyVisibleReviewBatch}
+                    onMarkSaved={markCurrentAsBaseline}
+                    onSelectVisualDiff={selectVisualDiffItem}
+                    onSetVisualDiffFilter={setVisualDiffFilter}
+                    onToggleDiffOverlay={() => setIsDiffOverlayEnabled((current) => !current)}
+                  />
+                )}
+                {activeReviewTab === "history" && (
+                  <HistoryPanel
+                    entries={historyEntries}
+                    selectedId={selectedHistoryId}
+                    onSaveSnapshot={saveHistorySnapshot}
+                    onCompareSnapshot={compareHistorySnapshot}
+                    onDeleteSnapshot={deleteHistorySnapshot}
+                    onRenameSnapshot={renameHistorySnapshot}
+                    onCompareSavedBaseline={compareSavedBaseline}
+                  />
+                )}
+                {activeReviewTab === "health" && (
+                  <DiagnosticsPanel
+                    diagnostics={referenceDiagnostics}
+                    traceability={requirementTraceability}
+                    highlightedNodeId={highlightedNodeId}
+                    onInsertReference={insertCrossReferenceToTarget}
+                    onRevealNode={revealEditorNode}
+                    onRetargetReference={retargetBrokenReference}
+                    onRemoveReference={removeBrokenReference}
+                    onUpdateReferenceLabel={updateReferenceLabel}
+                    onSetSelectedTag={tagSelectedBlock}
+                    onClearSelectedTag={clearSelectedBlockTag}
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {activePanel === "export" && (
@@ -2640,7 +2677,7 @@ export function App() {
             />
           )}
 
-          {activePanel === "developer" && (
+          {activePanel === "developer" && developerToolsEnabled && (
             <DeveloperPanel
               filenames={exportFilenames}
               derivedOutputs={derivedOutputs}
@@ -2942,13 +2979,11 @@ export function App() {
 
 function getActivityPanelLabel(panel: ActivityPanel): string {
   const labels: Record<ActivityPanel, string> = {
-    files: "Files",
+    files: "Explorer",
     outline: "Outline",
     export: "Export",
     settings: "Settings",
     review: "Review",
-    diagnostics: "Diagnostics",
-    history: "History",
     developer: "Developer"
   };
   return labels[panel];
@@ -3418,6 +3453,27 @@ function storeDrawioExecutablePath(path: string) {
   }
 
   window.localStorage.removeItem(DRAWIO_EXECUTABLE_PATH_STORAGE_KEY);
+}
+
+function loadStoredDeveloperToolsEnabled(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage.getItem(DEVELOPER_TOOLS_STORAGE_KEY) === "true";
+}
+
+function storeDeveloperToolsEnabled(enabled: boolean) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (enabled) {
+    window.localStorage.setItem(DEVELOPER_TOOLS_STORAGE_KEY, "true");
+    return;
+  }
+
+  window.localStorage.removeItem(DEVELOPER_TOOLS_STORAGE_KEY);
 }
 
 function parseRecentFiles(value: string | null): RecentFileEntry[] {

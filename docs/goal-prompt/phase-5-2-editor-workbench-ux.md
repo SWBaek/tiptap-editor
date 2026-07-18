@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.2 Explorer-First Authoring Workbench Goal"
 status: in_progress
-progress_percent: 25
-current_slice: activity-and-panel-consolidation
+progress_percent: 38
+current_slice: document-header-and-command-hierarchy
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -18,8 +18,8 @@ planning_docs:
 completed_slices:
   - explorer-visual-declutter
   - accessible-desktop-tree
-remaining_slices:
   - activity-and-panel-consolidation
+remaining_slices:
   - document-header-and-command-hierarchy
   - one-row-authoring-toolbar
   - status-and-recovery-relocation
@@ -38,6 +38,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 25
     note: "Accessible desktop tree completed: active identity now uses normalized full paths instead of basenames; folders sort first with natural names; the Explorer exposes ARIA tree/treeitem/group semantics, roving focus, arrows/Home/End/Enter/F2/Delete/Shift+F10/Escape, inline create/rename, pointer and keyboard context menus, current-document auto reveal, and Collapse All. Existing typed Tauri mutations, dirty-delete guard, Trash confirmation, watcher/external-change feedback, and browser boundary were preserved. Evidence passed: focused model tests (4), focused desktop bridge Playwright flow, npm test (307), npm run build, and npm run test:e2e (40)."
+  - date: 2026-07-18
+    progress_percent: 38
+    note: "Activity and panel consolidation completed: the 48px icon-only rail now contains Explorer, Outline, Review, and bottom Settings; Review provides keyboard-operable Changes/History/Document Health tabs; History and health now share the sidebar theme; normal Changes no longer exposes Git/CLI or raw event IDs. Developer is hidden by default and is revealed only by a runtime-only Settings preference. Export remains temporarily command-opened but absent from the rail until its dialog slice. Evidence passed: focused Playwright flows (9), 1440x1000 visual inspection, npm test (307), npm run build, and npm run test:e2e (40)."
 done_rule: "Set status to done and progress_percent to 100 only after all eight slices are implemented, validated, committed, pushed, and the packaged-app plus 3-5-person review kit is ready. Stop at user review required; do not claim that human review passed without session records."
 ---
 

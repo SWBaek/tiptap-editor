@@ -12,12 +12,14 @@ export interface SettingsPanelProps {
   document: SDocDocument;
   assetCount: number;
   drawioExecutablePath: string;
+  developerToolsEnabled: boolean;
   headingNumbering: HeadingNumberingSettings;
   outlineDepth: number;
   onMetadataChange: (metadata: SDocMetadata) => void;
   onHeadingNumberingChange: (settings: HeadingNumberingSettings) => void;
   onOutlineDepthChange: (depth: number) => void;
   onDrawioExecutablePathChange: (path: string) => void;
+  onDeveloperToolsEnabledChange: (enabled: boolean) => void;
 }
 
 export function SettingsPanel({
@@ -26,12 +28,14 @@ export function SettingsPanel({
   document,
   assetCount,
   drawioExecutablePath,
+  developerToolsEnabled,
   headingNumbering,
   outlineDepth,
   onMetadataChange,
   onHeadingNumberingChange,
   onOutlineDepthChange,
-  onDrawioExecutablePathChange
+  onDrawioExecutablePathChange,
+  onDeveloperToolsEnabledChange
 }: SettingsPanelProps) {
   return (
     <div className="side-panel-section settings-panel">
@@ -93,6 +97,19 @@ export function SettingsPanel({
           <span>Draw.io launch</span>
           <strong>{drawioExecutablePath.trim() ? "Explicit executable" : "OS default"}</strong>
         </div>
+      </section>
+
+      <section className="settings-section" aria-label="Advanced settings">
+        <h3>Advanced</h3>
+        <label className="metadata-field inline">
+          <span>Enable developer tools</span>
+          <input
+            type="checkbox"
+            checked={developerToolsEnabled}
+            onChange={(event) => onDeveloperToolsEnabledChange(event.target.checked)}
+          />
+        </label>
+        <p className="settings-note">Shows raw format, AI/RAG, CLI, and data-grid diagnostics for development workflows.</p>
       </section>
 
       <section className="settings-section" aria-label="Schema status">

@@ -27,8 +27,7 @@ export function ReviewPanel({
   onMarkSaved,
   onSelectVisualDiff,
   onSetVisualDiffFilter,
-  onToggleDiffOverlay,
-  onCopyDeveloperCommand
+  onToggleDiffOverlay
 }: {
   review: ChangeReviewModel;
   baseLabel: string;
@@ -48,10 +47,8 @@ export function ReviewPanel({
   onSelectVisualDiff: (item: VisualDiffOverlayItem) => void;
   onSetVisualDiffFilter: (filter: VisualDiffFilterKind) => void;
   onToggleDiffOverlay: () => void;
-  onCopyDeveloperCommand: (command: string) => void;
 }) {
   const isHistoryBase = baseLabel !== "Saved baseline";
-  const semanticDiffCommand = 'npm run sdoc -- diff "old.document.json" "new.document.json"';
   const batchableCount = visualDiffItems.filter((item) => item.kind !== "reference-broken").length;
   const filterOptions: Array<{ value: VisualDiffFilterKind; label: string; count: number }> = [
     { value: "all", label: "All", count: visualDiffCounts.total },
@@ -163,7 +160,6 @@ export function ReviewPanel({
                   <span className={`review-event-kind ${item.kind}`}>{item.label}</span>
                   <strong>{item.summary}</strong>
                   <small>{item.detail}</small>
-                  <code>{item.anchorable ? item.id : "review-only"}</code>
                 </button>
                 <div className="review-event-actions" aria-label={`${item.summary} review actions`}>
                   {item.actions.map((action) => (
@@ -192,16 +188,6 @@ export function ReviewPanel({
         Mark saved
       </button>
 
-      <section className="git-workflow" aria-label="Git integration boundary">
-        <h3>Git workflow</h3>
-        <div className="workspace-boundary">
-          <strong>Git is optional</strong>
-          <span>Use semantic diff or unpacked folders for developer review; normal authors do not need Git.</span>
-        </div>
-        <button type="button" onClick={() => onCopyDeveloperCommand(semanticDiffCommand)}>
-          Copy semantic diff command
-        </button>
-      </section>
     </div>
   );
 }

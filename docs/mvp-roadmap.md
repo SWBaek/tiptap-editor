@@ -134,7 +134,9 @@
 
 ## Phase 5.2: Explorer-First Authoring Workbench
 
-Implementation evidence: Slices 1-2 are accepted. Explorer visual declutter and accessible desktop tree interactions are complete; Activity Bar and panel consolidation is next. The accepted tree uses normalized full-path identity, natural folders-first ordering, ARIA/roving keyboard navigation, inline create/rename, context menus, current-document reveal, and Collapse All while preserving the Tauri/browser boundary.
+Implementation evidence: Slices 1-2 are accepted. Explorer visual declutter and accessible desktop tree interactions are complete. The accepted tree uses normalized full-path identity, natural folders-first ordering, ARIA/roving keyboard navigation, inline create/rename, context menus, current-document reveal, and Collapse All while preserving the Tauri/browser boundary.
+
+Slice 3 is accepted: the normal Activity Bar is Explorer/Outline/Review with Settings at the bottom, Review owns Changes/History/Document Health tabs, Developer is runtime opt-in, and Git/CLI content is removed from the author-facing review path. Document header and command hierarchy is next.
 
 상태: 진행 중. `docs/editor-workbench-ux-improvement-guide.md`의 확정 정보구조와 8개 ordered slice를 따른다.
 

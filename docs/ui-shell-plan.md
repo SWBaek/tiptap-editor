@@ -13,6 +13,8 @@ Review, references, traceability, data-grid review, raw JSON, and CLI/debug tool
 
 Phase 5.2 sharpens this decision: the normal Activity Bar converges on Explorer, Outline, Review, and bottom Settings; Export becomes a document command, History and Document Health become Review tabs, and Developer is opt-in. Files no longer hosts product branding, persistent status, current-file cards, duplicated file commands, Recent Documents, absolute paths, row metadata, or developer pack/unpack controls. The accepted target and slice evidence live in `docs/editor-workbench-ux-improvement-guide.md`.
 
+Slices 1-3 are accepted. The 48px Activity Bar is icon-only and uses a restrained edge indicator; Review tabs use roving keyboard tab behavior and contain Changes, History, and Document Health; Developer is hidden until its runtime preference is enabled. Export is absent from the rail and remains temporarily opened by the document command until the dedicated command/dialog slice.
+
 ## Target Desktop Layout
 
 - `StartScreen`: shown in desktop mode when no workspace/document is active.

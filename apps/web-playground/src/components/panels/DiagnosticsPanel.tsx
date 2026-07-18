@@ -29,8 +29,8 @@ export function DiagnosticsPanel({
 }: DiagnosticsPanelProps) {
   return (
     <div className="side-panel-section diagnostics-panel">
-      <section className="diagnostics-summary" aria-label="Diagnostics summary">
-        <h3>Diagnostics</h3>
+      <section className="diagnostics-summary" aria-label="Document health summary">
+        <h3>Document Health</h3>
         <div>
           <span>References</span>
           <strong>{diagnostics.label}</strong>

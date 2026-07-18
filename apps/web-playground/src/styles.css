@@ -26,7 +26,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 54px 320px minmax(0, 1fr);
+  grid-template-columns: 48px 320px minmax(0, 1fr);
   width: 100%;
   max-width: 100vw;
   height: 100vh;
@@ -35,46 +35,30 @@ button {
 }
 
 .app-shell.side-panel-collapsed {
-  grid-template-columns: 54px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr);
 }
 
 .activity-bar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
-  padding: 10px 6px;
+  padding: 8px 4px;
   background: #0f151c;
   border-right: 1px solid #0a0f14;
-}
-
-.activity-group-label {
-  width: 100%;
-  margin: 2px 0 4px;
-  color: #71808d;
-  font-size: 9px;
-  font-weight: 700;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.activity-group-label.advanced {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .activity-button {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   color: #aeb8c2;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 3px;
   cursor: pointer;
 }
 
@@ -85,9 +69,9 @@ button {
 
 .activity-button.active {
   color: #ffffff;
-  background: #244b55;
-  border-color: #3f7785;
-  box-shadow: inset 3px 0 0 #85d5de;
+  background: rgba(111, 179, 193, 0.12);
+  border-color: transparent;
+  box-shadow: inset 2px 0 0 #85d5de;
 }
 
 .activity-spacer {
@@ -297,6 +281,74 @@ button {
 
 .review-panel {
   align-content: start;
+}
+
+.review-workspace-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+
+.review-workspace-tabs {
+  display: grid;
+  grid-template-columns: 0.9fr 0.85fr 1.4fr;
+  min-width: 0;
+  margin: -4px 0 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.review-workspace-tabs button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 6px;
+  color: #9eacb7;
+  font-size: 11px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+}
+
+.review-workspace-tabs button:hover,
+.review-workspace-tabs button:focus-visible {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.review-workspace-tabs button:focus-visible {
+  outline: 1px solid #79b8c6;
+  outline-offset: -2px;
+}
+
+.review-workspace-tabs button[aria-selected="true"] {
+  color: #ffffff;
+  border-bottom-color: #79b8c6;
+}
+
+.review-workspace-tabs span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-workspace-tabs strong {
+  min-width: 16px;
+  padding: 1px 4px;
+  color: #c9d3da;
+  font-size: 10px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+}
+
+.review-workspace-content {
+  min-width: 0;
 }
 
 .diagnostics-panel {
@@ -3334,11 +3386,15 @@ button {
 
 .side-panel .history-panel {
   margin: 0 -18px -18px;
+  color: #f7f9fb;
+  background: transparent;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .side-panel .history-toolbar {
   padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
 }
 
 .side-panel .history-list {
@@ -3347,6 +3403,38 @@ button {
 
 .side-panel .history-item {
   grid-template-columns: minmax(0, 1fr);
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+.side-panel .history-title-input {
+  color: #f7f9fb;
+  background: transparent;
+}
+
+.side-panel .history-title-input:hover,
+.side-panel .history-title-input:focus {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #4c95a3;
+}
+
+.side-panel .history-item span,
+.side-panel .history-empty {
+  color: #aeb8c2;
+}
+
+.side-panel .history-primary,
+.side-panel .history-secondary,
+.side-panel .history-item button {
+  color: #e8eff3;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.side-panel .history-primary {
+  color: #ffffff;
+  background: #244b55;
+  border-color: #3f7785;
 }
 
 .side-panel .history-actions {
@@ -3867,13 +3955,122 @@ button {
   justify-content: flex-end;
 }
 
+.review-workspace-content .reference-panel,
+.review-workspace-content .traceability-panel {
+  color: #e8eff3;
+  background: transparent;
+}
+
+.review-workspace-content .reference-summary,
+.review-workspace-content .traceability-summary {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.review-workspace-content .reference-summary div,
+.review-workspace-content .traceability-summary div {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.review-workspace-content .reference-summary span,
+.review-workspace-content .traceability-summary span,
+.review-workspace-content .reference-muted,
+.review-workspace-content .reference-target-list span,
+.review-workspace-content .reference-target-list code,
+.review-workspace-content .traceability-gap-list code,
+.review-workspace-content .traceability-tag-list code,
+.review-workspace-content .traceability-tag-list span,
+.review-workspace-content .traceability-tag-list small,
+.review-workspace-content .traceability-empty {
+  color: #aeb8c2;
+}
+
+.review-workspace-content .reference-summary strong,
+.review-workspace-content .traceability-summary strong,
+.review-workspace-content .reference-section h3,
+.review-workspace-content .traceability-section h3,
+.review-workspace-content .reference-target-list strong,
+.review-workspace-content .reference-issue-list strong,
+.review-workspace-content .reference-stale-list strong,
+.review-workspace-content .traceability-issue-list strong,
+.review-workspace-content .traceability-gap-list strong,
+.review-workspace-content .traceability-tag-list strong {
+  color: #f7f9fb;
+}
+
+.review-workspace-content .reference-section,
+.review-workspace-content .traceability-section,
+.review-workspace-content .reference-empty,
+.review-workspace-content .traceability-actions {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.review-workspace-content .reference-target-list li,
+.review-workspace-content .traceability-issue-list li,
+.review-workspace-content .traceability-gap-list li,
+.review-workspace-content .traceability-tag-list li {
+  color: #e8eff3;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+.review-workspace-content .reference-issue-list li {
+  color: #ffc2ba;
+  background: rgba(145, 55, 45, 0.18);
+  border-color: rgba(224, 115, 101, 0.38);
+}
+
+.review-workspace-content .reference-stale-list li {
+  color: #ffe1a4;
+  background: rgba(151, 104, 20, 0.18);
+  border-color: rgba(230, 173, 69, 0.38);
+}
+
+.review-workspace-content .reference-issue-list span,
+.review-workspace-content .reference-stale-list span,
+.review-workspace-content .traceability-issue-list span {
+  color: #c5d0d8;
+}
+
+.review-workspace-content .reference-search {
+  color: #aeb8c2;
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.review-workspace-content .reference-search input {
+  color: #f7f9fb;
+}
+
+.review-workspace-content .reference-issue-list button,
+.review-workspace-content .reference-stale-list button,
+.review-workspace-content .reference-target-list button,
+.review-workspace-content .reference-repair-actions button,
+.review-workspace-content .traceability-actions button,
+.review-workspace-content .traceability-block-links button,
+.review-workspace-content .traceability-gap-list button,
+.review-workspace-content .traceability-tag-list button {
+  color: #e8eff3;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.17);
+}
+
+.review-workspace-content .reference-repair-actions strong {
+  color: #f7f9fb;
+}
+
+.review-workspace-content .reference-repair-actions span,
+.review-workspace-content .reference-repair-actions small {
+  color: #aeb8c2;
+}
+
 @media (max-width: 980px) {
   .app-shell {
-    grid-template-columns: 50px 300px minmax(0, 1fr);
+    grid-template-columns: 48px 300px minmax(0, 1fr);
   }
 
   .app-shell.side-panel-collapsed {
-    grid-template-columns: 50px minmax(0, 1fr);
+    grid-template-columns: 48px minmax(0, 1fr);
   }
 
   .activity-bar {

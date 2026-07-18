@@ -100,7 +100,7 @@ Extraction progress on 2026-07-18:
 - Developer moved under `components/panels/DeveloperPanel.tsx` together with data-grid row review and derived-output presentation; canonical export actions and asset mutations remain `App` callbacks, keeping these advanced surfaces outside default authoring UX.
 - Review moved under `components/panels/ReviewPanel.tsx` together with the side-by-side Diff preview; review model derivation, acceptance/rejection, and baseline ownership remain in `App`.
 - Component props preserve the existing callbacks, accessible labels, and CSS class contract.
-- Prompt-based authoring workflows remain in `App.tsx`; the technical-content slice will replace them with typed dialog/inspector components rather than extracting obsolete prompts.
+- Equation, Mermaid, image, table, link, workspace, and Draw.io-conflict authoring now use typed dialog/inspector components. `App.tsx` coordinates validated apply/cancel callbacks; transient dialog state is never canonical.
 
 Author-header progress on 2026-07-18:
 

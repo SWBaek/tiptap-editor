@@ -1,77 +1,88 @@
 # Author-First UX Review Gate
 
 Created: 2026-07-06
-Reviewed: 2026-07-06 Tauri app user review
+First Tauri review: 2026-07-06
+Phase 5.1 review kit prepared: 2026-07-18
+
+## Gate Status
+
+**Ready for 3-5 real-user sessions; user review is now required.** Phase 5.1 implementation and automated validation are complete. The packaged Tauri smoke checklist is prepared in `docs/desktop-native-smoke.md`, but its interactive run and the user sessions must be recorded by people on the target Windows environment.
+
+Feature expansion stops at this gate. Findings are triaged after the sessions; they do not justify changing `.sdoc`, stable IDs, or browser/native boundaries without a separate architecture decision.
 
 ## Purpose
 
-This gate prepares the product for the first real-user review. The goal is not to add more technical-document features; it is to make the current app feel like a writing tool first while preserving `.sdoc/document.json` as the canonical source of truth.
+The second review determines whether the app now feels like a technical document editor rather than a management/debug tool. It tests the carried-forward Structured Doc Editor experience against the current SDoc architecture, not feature recall from the previous implementation.
 
-## Target Users
+## Participants
 
-- Non-developer technical authors who need to write structured specs, manuals, or engineering notes.
-- Reviewers who need semantic change review, references, and traceability without seeing raw JSON first.
-- Developers remain supported through debug previews, CLI commands, and derived exports, but they are not the first-run audience.
+Recruit 3-5 people who write specifications, manuals, engineering notes, test procedures, or similar structured documents. Prefer at least two non-developers. A reviewer/developer may participate, but raw JSON, Git, schema, or AI/RAG knowledge must not be assumed.
 
-## Minimum UX Criteria Before Review
+## Facilitator Setup
 
-- The first screen centers the editor body, not Settings, schema status, JSON, or diff output.
-- A user can see the document workflow immediately: New document, Open `.sdoc`, Save or download `.sdoc`, and Export.
-- Basic authoring controls are prioritized: headings, bold/italic/underline, lists, image, reference, table, and callouts.
-- Advanced insertions and review/debug tools remain available but do not dominate the first experience.
-- Side panel, preview tab, selected review event, folder listing, export settings, cursor, and selection remain runtime-only state.
+- Record date, platform, packaged build/commit hash, participant role, and whether the session is in Korean or English.
+- Start from a clean temporary workspace and the desktop Start Screen.
+- Prepare one PNG/JPEG clipboard image and a small valid Mermaid example. Prepare Draw.io only when it is installed.
+- Do not demonstrate controls before a task. If help is requested, record the prompt needed.
+- Mark each task `unassisted`, `assisted`, `failed`, or `not applicable`; record time, hesitation, wrong turns, and quotes.
+- Do not open Developer, raw JSON, schema, Git, or AI/RAG surfaces unless the participant finds or requests them.
 
-## Review Outcome
+## Review Checklist
 
-The first Tauri app review found that the current direction is closer, but still too much like a document management/debug tool. The next gate must happen before adding more advanced review or enterprise features.
+Run these scenarios with each participant:
 
-Accepted review findings:
+1. **Orientation and entry**
+   - Launch the app and ask, “What do you think this product is for?”
+   - Ask the participant to create a workspace folder and a new `.sdoc` without guidance.
+   - Observe whether Files, Outline, writing canvas, save state, and Export read as the primary workflow.
 
-- Desktop should start with workspace/document choices instead of opening an arbitrary sample document.
-- Files should behave like a file explorer and show actual workspace `.sdoc` files.
-- Review, References, and Traceability feel unclear as top-level primary panels.
-- Export needs clearer separation between Save `.sdoc`, deliverable export, and developer/AI debug output.
-- Data Grid and raw `document.json` controls should not be visible to ordinary authors unless relevant.
-- Essential authoring gaps are heading numbering, outline/TOC navigation, captions, table/figure lists, equation editing, and selected-text formatting.
+2. **Routine writing**
+   - Enter a document title, author, version, two headings, paragraphs, a bulleted list, and a task item.
+   - Format selected text with bold and strike, add a normal web link, and promote/demote a heading with Tab/Shift-Tab.
+   - Ask which controls feel common versus advanced and whether any basic command is hard to find.
 
-## Exclusions
+3. **Technical content**
+   - Paste an image from the clipboard, name it, and edit its alt text/caption.
+   - Insert a captioned table and change one table property from its context menu or inspector.
+   - Insert and edit an equation through the validated preview dialog.
+   - Insert and edit Mermaid, including one invalid attempt, and explain the validation feedback.
+   - If Draw.io is available, create/import a source and verify that external-edit conflict choices are understandable.
 
-- No `.sdoc` schema, serialization, diff, or export behavior changes.
-- No richer data-grid UX, approval workflow modeling, or Git-first review workflow before the desktop authoring shell is clarified.
-- No Git-first workflow and no requirement that users understand unpacked folders or raw JSON.
+4. **Navigation and recovery**
+   - Navigate from Outline, change zoom, move the cursor back/forward, and return to writing.
+   - Create a nested folder/document, rename it, refresh the explorer, and explain where the current document is saved.
+   - With facilitator help to produce an external file change, choose Compare, Keep, or Reload and explain the expected result before clicking.
 
-## Next Review Gate Criteria
+5. **Save, reopen, and export**
+   - Save, close/restart as practical, and reopen the `.sdoc` from Files or Recent Documents.
+   - Confirm the title, metadata, image, table, equation, and Mermaid content are present.
+   - Export one readable deliverable such as Markdown, HTML, or DOCX without visiting Developer.
+   - Ask the participant to explain the difference between Save `.sdoc` and deliverable Export.
 
-Before the next real-user review:
+6. **Product impression**
+   - Ask what the participant would do next without guidance.
+   - Rate 1-5: “This feels like a document editor,” “Common writing tools are easy to find,” “Advanced tools appear when needed,” and “I trust save/reopen.”
+   - Ask for the three most confusing moments, one missing essential capability, and one feature that felt distracting.
 
-- Desktop launches to a StartScreen when no workspace/document is active.
-- Files panel reads as a simple explorer.
-- Outline/TOC navigation is available or explicitly represented in the near-term UI.
-- Export shows deliverables first; Save/Save As owns `.sdoc`.
-- Review/Diagnostics/Developer features are available but visually secondary.
-- Top toolbar is grouped or reduced, and selected-text formatting is easier than hunting through all icons.
-- Heading numbering is visible as a runtime/export projection and can be disabled without changing heading text.
-- Figure and table lists are visible from the Outline surface.
-- Equations can be edited from the writing surface without touching JSON.
+## Session Record Template
 
-Current status on 2026-07-06:
+```text
+Participant/role:
+Date/platform/commit:
+Scenario results (unassisted/assisted/failed/N/A):
+1 Orientation:
+2 Routine writing:
+3 Technical content:
+4 Navigation/recovery:
+5 Save/reopen/export:
+Ratings (editor/common/advanced/trust, 1-5):
+Critical observations or quotes:
+Potential data-loss/security issue:
+Top follow-up candidate:
+```
 
-- Implemented: desktop start screen, explorer-first Files, primary/advanced panel IA, heading outline, runtime heading numbering, figure/table structure lists, canonical table captions, toolbar grouping, selected-text bubble formatting, equation edit flow, publishing style profiles, and Draw.io create/import choice.
-- Remaining before the stronger authoring review gate: manual Tauri smoke review and 3-5 user review sessions.
+## Gate Decision
 
-## Review Scenarios
+Review evidence is sufficient after 3-5 completed sessions and one recorded packaged Tauri smoke run. Any data loss, canonical format/stable-ID regression, native path escape, or silent overwrite is a blocker. Usability findings are grouped by frequency and severity; prioritize repeated routine-writing/save blockers before adding deferred features.
 
-Ask 3-5 users to run these scenarios with minimal guidance:
-
-1. Open the app and explain what they think the tool is for.
-2. Choose or create a workspace/document from the first screen.
-3. Create a new document, write a title, body paragraph, and second section.
-4. Use the explorer to understand where the document is saved.
-5. Save and reopen the `.sdoc`.
-6. Navigate using headings or outline.
-7. Export to at least one readable format such as Markdown, HTML, PDF, or DOCX.
-8. Open Review/Diagnostics only after authoring and report whether it feels helpful or distracting.
-
-## Review Stop Rule
-
-After the next gate is implemented and validated, pause feature development again. Phase 5 priorities should be adjusted only after reviewing user feedback from the scenarios above.
+The gate currently reports **user review required**, not “user review passed.” After evidence is collected, update this document and reprioritize Phase 5 from observed findings.

@@ -1,6 +1,8 @@
 # Desktop Native Smoke Checklist
 
 Created: 2026-07-05
+Phase 5.1 checklist updated: 2026-07-18
+Execution status: prepared; interactive packaged-app run required
 
 ## Purpose
 
@@ -82,8 +84,8 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
    - Confirm heading numbering appears as a runtime projection and can be disabled from Settings without changing heading text.
    - Confirm Outline supports heading navigation and visible depth control.
    - Confirm Outline shows figure and table lists after inserting a figure or table.
-   - Confirm double-clicking an equation opens an edit prompt and updates rendered math without exposing raw JSON.
-   - Confirm selecting text shows a compact bubble toolbar for bold, italic, underline, code, and reference entry.
+   - Confirm double-clicking an equation opens the validated edit/preview dialog and updates rendered math without exposing raw JSON.
+   - Confirm selecting text shows a compact bubble toolbar for bold, italic, underline, strike, subscript, superscript, code, link, and reference entry.
    - Confirm the Export panel offers publishing profile selection for derived HTML/PDF output without changing authored content.
    - Confirm Draw.io insertion asks whether to create a new diagram or import an existing source.
    - Confirm importing Draw.io preserves editable source in `.sdoc/assets/`.
@@ -103,5 +105,17 @@ For each run, record:
 - sample file path pattern, without committing private documents;
 - pass/fail result for each scenario;
 - any screenshots or recordings for UI regressions.
+
+Use this result header in the smoke record:
+
+```text
+Date/platform/commit:
+Operator:
+Required commands:
+Scenarios 1-7 (pass/fail/not applicable):
+Blocking issue:
+Evidence paths:
+Overall result: pass/fail
+```
 
 Manual failures should block declaring Phase 5 desktop-native workflow complete, but they should not change canonical `.sdoc` rules unless a separate format issue is found.

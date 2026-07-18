@@ -34,7 +34,7 @@ Accepted changes:
 
 ## Phase 5.1 Existing Product Experience Parity
 
-Status: in progress. The authoritative feature classification, current evidence, ordered slices, and stop rule are in `docs/existing-product-parity-plan.md`.
+Status: review gate ready on 2026-07-18. Feature expansion is stopped and real-user review is required. The authoritative feature classification, evidence, ordered slices, and stop rule are in `docs/existing-product-parity-plan.md`.
 
 Phase 5.1 does not clone the previous product. It adopts or adapts author-facing interactions that improve writing while rejecting the previous plain JSON `.sdoc`, derived/position-based identity, frontend mirrors, and developer-first defaults.
 
@@ -230,6 +230,16 @@ Acceptance evidence:
 - The `main` capability now grants only `dialog:allow-open` and `dialog:allow-save`. Workspace/filesystem/watcher/trash/Draw.io access remains behind path-validating application commands rather than broad plugin scopes.
 - Configuration regression tests lock the exact CSP/capability boundary. `npm test` (301), `npm run build`, `npm run test:e2e` (40), `npm run typecheck:desktop`, and `npm run build:desktop` pass.
 
+## Phase 5.1 Review Gate
+
+Status: ready; user review required.
+
+- `docs/desktop-native-smoke.md` is the packaged Tauri checklist and explicitly distinguishes prepared scenarios from a recorded human run.
+- `docs/author-first-ux-review-gate.md` provides facilitator setup, six realistic authoring scenarios, a per-participant record, and the decision rule for 3-5 users.
+- Final automated evidence: `npm test` (301), `npm run build`, `npm run test:e2e` (40), `npm run typecheck:desktop`, and `npm run build:desktop` pass. One parallel E2E timing failure passed focused reproduction and the complete rerun.
+- Implementation stops at this gate. A manual packaged-app smoke and 3-5 real-user sessions are the next evidence; neither is claimed as already passed.
+- Findings must prioritize repeated writing/save/reopen blockers and must not weaken canonical `.sdoc`, stable-ID, asset, or browser/native boundaries without a separate architecture decision.
+
 ## Reprioritized Existing Work
 
 Already implemented foundations remain valuable but are no longer Phase 5's next visible product goal:
@@ -262,4 +272,4 @@ npm run typecheck:desktop
 npm run build:desktop
 ```
 
-When interactive native UX changes, update `docs/desktop-native-smoke.md` and run a manual Tauri smoke pass.
+When interactive native UX changes, update `docs/desktop-native-smoke.md`. Record a packaged-app manual pass before reporting the subsequent user-review gate as passed; Phase 5.1 currently reports the checklist as prepared and user review required.

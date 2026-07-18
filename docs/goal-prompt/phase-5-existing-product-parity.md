@@ -1,11 +1,11 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
-status: in_progress
-progress_percent: 99
-current_slice: review-gate
+status: done
+progress_percent: 100
+current_slice: user-review-required
 created_at: 2026-07-18
 started_at: 2026-07-18
-completed_at: null
+completed_at: 2026-07-18
 source_material:
   - EXISTING_PRODUCT.md
 planning_docs:
@@ -24,8 +24,8 @@ completed_slices:
   - runtime-navigation
   - desktop-explorer
   - recovery-and-security
-remaining_slices:
   - review-gate
+remaining_slices: []
 progress_log:
   - date: 2026-07-18
     progress_percent: 0
@@ -141,6 +141,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 99
     note: "Recovery-and-security completed with a non-null production CSP limited to local bundles, Tauri IPC, and in-memory editor assets, plus a main-window capability containing only dialog:allow-open and dialog:allow-save. Exact-boundary configuration tests reject the former broad defaults. npm test (301), npm run build, npm run test:e2e (40), npm run typecheck:desktop, and npm run build:desktop passed. Only the final review-gate documentation and handoff remain."
+  - date: 2026-07-18
+    progress_percent: 100
+    note: "Phase 5.1 reached the second user-review gate. The packaged Tauri smoke checklist and 3-5-user facilitator/scenario/record kit are prepared, all delivery slices are complete, and feature expansion is stopped. Final npm test (301), npm run build, npm run test:e2e (40; one transient parallel failure passed focused reproduction and the full rerun), npm run typecheck:desktop, and npm run build:desktop passed. Interactive packaged-app smoke and real-user sessions are the next evidence and are not claimed as already executed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

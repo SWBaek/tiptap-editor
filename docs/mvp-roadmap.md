@@ -109,7 +109,7 @@
 
 ## Phase 5.1: Existing Product Experience Parity
 
-상태: 진행 중. 세부 분류와 acceptance evidence는 `docs/existing-product-parity-plan.md`를 기준으로 한다.
+상태: 2차 사용자 리뷰 준비 완료. 기능 확장을 중지하고 `user review required` 상태이며, 세부 분류와 acceptance evidence는 `docs/existing-product-parity-plan.md`를 기준으로 한다.
 
 목표는 이전 Structured Doc Editor에서 검증된 작성 UX를 현재 SDoc 포맷과 단일 frontend/Tauri adapter 구조에 맞게 계승하여 2차 실제 사용자 리뷰 gate를 준비하는 것이다.
 

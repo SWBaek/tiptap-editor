@@ -11,14 +11,15 @@ import type { ActivityPanel } from "./types";
 export interface ActivityBarProps {
   activePanel: ActivityPanel;
   isOpen: boolean;
+  filesLabel: "Explorer" | "Documents";
   showDeveloperTools: boolean;
   onSelect: (panel: ActivityPanel) => void;
 }
 
-export function ActivityBar({ activePanel, isOpen, showDeveloperTools, onSelect }: ActivityBarProps) {
+export function ActivityBar({ activePanel, isOpen, filesLabel, showDeveloperTools, onSelect }: ActivityBarProps) {
   return (
     <nav className="activity-bar" aria-label="Primary">
-      <ActivityButton active={activePanel === "files" && isOpen} label="Explorer" onClick={() => onSelect("files")}>
+      <ActivityButton active={activePanel === "files" && isOpen} label={filesLabel} onClick={() => onSelect("files")}>
         <FolderOpen size={20} />
       </ActivityButton>
       <ActivityButton active={activePanel === "outline" && isOpen} label="Outline" onClick={() => onSelect("outline")}>

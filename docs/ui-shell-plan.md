@@ -13,7 +13,7 @@ Review, references, traceability, data-grid review, raw JSON, and CLI/debug tool
 
 Phase 5.2 sharpens this decision: the normal Activity Bar converges on Explorer, Outline, Review, and bottom Settings; Export becomes a document command, History and Document Health become Review tabs, and Developer is opt-in. Files no longer hosts product branding, persistent status, current-file cards, duplicated file commands, Recent Documents, absolute paths, row metadata, or developer pack/unpack controls. The accepted target and slice evidence live in `docs/editor-workbench-ux-improvement-guide.md`.
 
-Slices 1-6 are accepted. The 48px Activity Bar is icon-only and uses a restrained edge indicator; Review tabs use roving keyboard tab behavior and contain Changes, History, and Document Health; Developer is hidden until its runtime preference is enabled. The canvas owns title editing, Document Properties owns author/version, and a compact document command bar provides the single Save/Export hierarchy without overlap at 1280px. The one-row authoring toolbar keeps core writing, lists, Image, and Table visible; `+ Insert`, `More`, and selection-only inspectors contain secondary commands. A fixed Status Bar owns save/health feedback, counts, zoom, and cursor history; document recovery banners are above the editor rather than inside Explorer. Export is absent from the rail and remains command-opened until its dedicated dialog slice.
+Slices 1-7 are accepted. The 48px Activity Bar is icon-only and uses a restrained edge indicator; Review tabs use roving keyboard tab behavior and contain Changes, History, and Document Health; Developer is hidden until its runtime preference is enabled. The canvas owns title editing, Document Properties owns author/version, and a compact document command bar provides the single Save/Export hierarchy without overlap at 1280px. The one-row authoring toolbar keeps core writing, lists, Image, and Table visible; `+ Insert`, `More`, and selection-only inspectors contain secondary commands. A fixed Status Bar owns save/health feedback, counts, zoom, and cursor history; document recovery banners are above the editor rather than inside Explorer. Settings separates Document/Application/Developer, Export opens a deliverable dialog, and browser mode presents Documents/open/download language without native filesystem claims.
 
 ## Target Desktop Layout
 
@@ -86,7 +86,7 @@ Phase 5.1 completion sharpens these rules:
 - `components/editor-shell/`: document header, command bar, Activity Bar, side/preview layout, status.
 - `components/editor-toolbar/`: common toolbar, Insert menu, Bubble Menu, node context menus.
 - `components/panels/`: Files, Outline, Export, Settings, Review, Diagnostics, History, Developer.
-- `components/dialogs/`: link, image, table, equation, Mermaid, Draw.io choice/conflict, external-change/save recovery.
+- `components/dialogs/`: link, image, table, equation, Mermaid, Draw.io choice/conflict, export, external-change/save recovery.
 - `hooks/` or small runtime models: zoom, cursor history, dialog/context-menu state, typed workspace event state.
 
 The web app remains the single frontend. `apps/desktop` adds only typed native adapters and Rust commands; it must not mirror React components.
@@ -97,10 +97,10 @@ Extraction progress on 2026-07-18:
 - Existing Text, Insert, Structure, and Advanced button groups moved into a typed `EditorToolbarGroups` component.
 - The enclosing toolbar, hidden document/image/data-grid/Draw.io file inputs, and document actions moved into `EditorToolbar`; `App` retains refs and behavior callbacks until the command hierarchy slice changes UX.
 - The selected-text Bubble Menu moved into `SelectionBubbleToolbar`, with its selection-preserving mouse behavior and command union explicit in component props.
-- Settings moved under `components/panels/SettingsPanel.tsx`; metadata callbacks and runtime-only heading/outline settings remain owned by `App`.
+- Settings moved under `components/panels/SettingsPanel.tsx`; keyboard-operable Document/Application/Developer tabs separate metadata, runtime authoring preferences, desktop integration, and opt-in technical details while state remains owned by `App`.
 - Outline moved under `components/panels/OutlinePanel.tsx`; heading, figure, and table projection types are explicit while projection generation remains in `App`.
-- Export moved under `components/panels/ExportPanel.tsx` together with its reusable export action and CLI command formatting; actual exports and profile state remain `App` callbacks.
-- Files moved under `components/panels/FilesPanel.tsx`; browser/desktop boundaries, typed workspace entries, recent-file rendering, and developer pack/unpack commands remain explicit while native actions and state remain `App` callbacks.
+- Export actions and filenames remain reusable under `components/panels/ExportPanel.tsx`; the ordinary workflow is now the command-opened `components/dialogs/ExportDialog.tsx`, with actual exports and profile state retained by `App` and no CLI handoff in normal UI.
+- Files moved under `components/panels/FilesPanel.tsx`; desktop Explorer owns typed workspace entries and native actions, while browser Documents provides only explicit New/Open/download and recent-activity affordances.
 - History moved under `components/panels/HistoryPanel.tsx`; snapshot rename draft state stays inside each card while snapshot persistence and comparison remain `App` callbacks.
 - Diagnostics moved under `components/panels/DiagnosticsPanel.tsx` together with its Reference and Traceability views; filter state stays local while diagnostic derivation and editor mutations remain `App` callbacks.
 - Developer moved under `components/panels/DeveloperPanel.tsx` together with data-grid row review and derived-output presentation; canonical export actions and asset mutations remain `App` callbacks, keeping these advanced surfaces outside default authoring UX.
@@ -191,6 +191,8 @@ Export means producing deliverables. The default export surface should show:
 - DOCX
 
 Save/Save As handles `.sdoc`. Raw `document.json`, chunks, outline JSON, references JSON, and other AI/RAG/debug outputs belong in Developer or AI export mode, not ordinary Export.
+
+The accepted ordinary dialog enables Markdown and HTML. PDF, DOCX, and PPTX remain discoverable but disabled with honest availability text until an in-app delivery path exists; copying CLI commands is not a user-facing substitute.
 
 ## Review And Diagnostics Rules
 

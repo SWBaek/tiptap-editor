@@ -42,9 +42,9 @@ const blockToolbarCases: BlockToolbarCase[] = [
 
 test("loads the Phase 3 playground and exercises preview/export basics", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("region", { name: "Preview and debug output" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Document preview" })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Explorer panel" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "Documents panel" })).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByRole("button", { name: "Review panel" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Settings panel" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Export panel" })).toHaveCount(0);
@@ -53,12 +53,12 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await expect(page.getByRole("button", { name: "New", exact: true })).toHaveCount(0);
   await expect(page.getByLabel("More document actions")).toBeVisible();
   await expect(page.getByRole("button", { name: "Export", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Explorer panel" }).click();
-  const filesPanel = page.getByRole("complementary", { name: "Explorer side panel" });
-  await expect(filesPanel.getByRole("heading", { name: "Explorer" })).toBeVisible();
+  await page.getByRole("button", { name: "Documents panel" }).click();
+  const filesPanel = page.getByRole("complementary", { name: "Documents side panel" });
+  await expect(filesPanel.getByRole("heading", { name: "Documents" })).toBeVisible();
   await expect(filesPanel).not.toContainText("Phase 3 Playground");
-  await page.getByRole("button", { name: "Explorer panel" }).click();
-  await expect(page.getByRole("complementary", { name: "Explorer side panel" })).toBeHidden();
+  await page.getByRole("button", { name: "Documents panel" }).click();
+  await expect(page.getByRole("complementary", { name: "Documents side panel" })).toBeHidden();
   await page.getByRole("button", { name: "Outline panel" }).click();
   const outlinePanel = page.getByRole("complementary", { name: "Outline side panel" });
   await expect(outlinePanel.getByLabel("Document outline")).toContainText("System Overview");
@@ -66,7 +66,8 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
   await expect(settingsPanel).toBeVisible();
   await expect(settingsPanel.getByLabel("Document properties")).toContainText("Document Properties");
-  await expect(settingsPanel.getByLabel("Schema status")).toContainText("Valid");
+  await expect(settingsPanel.getByLabel("Document properties")).toContainText("Healthy");
+  await expect(settingsPanel).not.toContainText("Schema");
   await expect(settingsPanel).not.toContainText("Review");
   await expect(settingsPanel).not.toContainText("References");
   await expect(settingsPanel).not.toContainText("Current file");
@@ -80,6 +81,7 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   await expect(page.getByRole("button", { name: "Download .sdoc" })).toBeVisible();
 
   await selectPreviewTab(page, "Markdown");
+  await expect(page.locator(".tabs").getByRole("button", { name: "JSON" })).toHaveCount(0);
   await expect(page.locator(".preview-output")).toContainText("# System Overview {#overview}");
 
   await page.getByLabel("Title", { exact: true }).fill("Smoke Spec");
@@ -99,7 +101,7 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
 
   const markdownDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export", exact: true }).click();
-  await page.getByRole("complementary", { name: "Export side panel" }).getByRole("button", { name: "Export Markdown" }).click();
+  await page.getByRole("dialog", { name: "Export document" }).getByRole("button", { name: "Export Markdown" }).click();
   expect((await markdownDownload).suggestedFilename()).toBe("Smoke Spec.md");
 
   const screenshot = await page.screenshot({ fullPage: true });
@@ -109,7 +111,7 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
 test("keeps document identity and commands clear at the 1280px acceptance viewport", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/");
-  await page.getByRole("button", { name: "Explorer panel" }).click();
+  await page.getByRole("button", { name: "Documents panel" }).click();
 
   const commandBar = page.getByRole("region", { name: "Document workflow" });
   await expect(commandBar.getByRole("button", { name: "Download .sdoc" })).toBeVisible();
@@ -183,6 +185,7 @@ test("shows authoring structure projections without changing heading text", asyn
 
   await page.getByRole("button", { name: "Settings panel" }).click();
   const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
+  await settingsPanel.getByRole("tab", { name: "Application" }).click();
   await expect(settingsPanel.getByLabel("Authoring settings")).toContainText("Heading numbering");
   await settingsPanel.getByLabel("Heading numbering").uncheck();
   await expect(page.locator("style[data-sdoc-heading-number-runtime]")).toHaveCount(0);
@@ -424,7 +427,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await page.keyboard.press("Home");
   await expect(changesTab).toHaveAttribute("aria-selected", "true");
   await expect(reviewPanel.locator(".status-block").filter({ hasText: "Review" })).toContainText("2 changes");
-  await expect(reviewPanel.locator(".status-block").filter({ hasText: "Base" })).toContainText("Saved baseline");
+  await expect(reviewPanel.locator(".status-block").filter({ hasText: "Base" })).toContainText("Last saved version");
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("Total");
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("Metadata");
   await expect(reviewPanel.getByLabel("Review counts")).toContainText("2");
@@ -496,7 +499,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(reviewPanel).not.toContainText("Copy semantic diff command");
 
   await reviewPanel.getByRole("button", { name: "Show diff" }).click();
-  await expect(page.locator(".diff-review-base")).toContainText("Saved baseline");
+  await expect(page.locator(".diff-review-base")).toContainText("Last saved version");
   await expect(page.locator(".diff-review-section").filter({ hasText: "Metadata changes" })).toContainText(
     'Metadata title changed: "Playground Document" -> "Review Panel Spec"'
   );
@@ -605,15 +608,16 @@ test("navigates runtime-only cursor history with keyboard mouse and controls", a
   expect(JSON.stringify(await readPreviewDocument(page))).not.toContain("cursorHistory");
 });
 
-test("keeps browser Files focused on the honest filesystem boundary", async ({ page }) => {
+test("keeps browser Documents focused on explicit files and downloads", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Explorer panel" }).click();
-  const filesPanel = page.getByRole("complementary", { name: "Explorer side panel" });
+  await page.getByRole("button", { name: "Documents panel" }).click();
+  const filesPanel = page.getByRole("complementary", { name: "Documents side panel" });
   await expect(filesPanel).toBeVisible();
-  await expect(filesPanel.getByLabel("Workspace files")).toContainText("Desktop-only browsing");
-  await expect(filesPanel).not.toContainText("Recent documents");
+  await expect(filesPanel.getByLabel("Browser documents")).toContainText("Playground Document.sdoc");
+  await expect(filesPanel.getByRole("button", { name: "New document" })).toBeVisible();
+  await expect(filesPanel.getByRole("button", { name: "Open .sdoc" })).toBeVisible();
+  await expect(filesPanel).toContainText("Folder access, file watchers, rename, and Trash are available only in the desktop app");
   await expect(filesPanel).not.toContainText("Developer workspace");
-  await expect(filesPanel).not.toContainText("Playground Document.sdoc");
 
   await page.getByRole("button", { name: "Settings panel" }).click();
   await page.getByLabel("Title", { exact: true }).fill("Files Panel Spec");
@@ -623,10 +627,10 @@ test("keeps browser Files focused on the honest filesystem boundary", async ({ p
   expect((await sdocDownload).suggestedFilename()).toBe("Files Panel Spec.sdoc");
 
   await page.reload();
-  await page.getByRole("button", { name: "Explorer panel" }).click();
-  const reloadedFilesPanel = page.getByRole("complementary", { name: "Explorer side panel" });
-  await expect(reloadedFilesPanel.getByLabel("Workspace files")).toContainText("Desktop-only browsing");
-  await expect(reloadedFilesPanel).not.toContainText("Files Panel Spec.sdoc");
+  await page.getByRole("button", { name: "Documents panel" }).click();
+  const reloadedFilesPanel = page.getByRole("complementary", { name: "Documents side panel" });
+  await expect(reloadedFilesPanel.getByLabel("Browser documents")).toContainText("Playground Document.sdoc");
+  await expect(reloadedFilesPanel.getByLabel("Recent browser activity")).toContainText("Files Panel Spec.sdoc");
 });
 
 test("shows a desktop start screen before opening a Tauri workspace document", async ({ page }) => {
@@ -938,24 +942,24 @@ test("exports deliverables and keeps developer outputs separate", async ({ page 
   await page.goto("/");
   await page.getByLabel("Title", { exact: true }).fill("Export Panel Spec");
   await page.getByRole("button", { name: "Export", exact: true }).click();
-  const exportPanel = page.getByRole("complementary", { name: "Export side panel" });
-  await expect(exportPanel).toBeVisible();
-  await expect(exportPanel.getByLabel("Readable exports")).toContainText("Export Panel Spec.md");
-  await expect(exportPanel.getByLabel("Readable exports")).toContainText("Export Panel Spec.html");
-  await expect(exportPanel.getByLabel("PDF publishing boundary")).toContainText("CLI/Tauri PDF");
-  await expect(exportPanel.getByLabel("PDF publishing boundary")).toContainText("Export Panel Spec.pdf");
-  await expect(exportPanel.getByLabel("DOCX publishing boundary")).toContainText("CLI/Tauri DOCX");
-  await expect(exportPanel).not.toContainText("document.json");
-  await expect(exportPanel).not.toContainText("plain.md");
-  await exportPanel.getByLabel("Publishing profile").selectOption("korean");
+  let exportDialog = page.getByRole("dialog", { name: "Export document" });
+  await expect(exportDialog).toBeVisible();
+  await expect(exportDialog.getByRole("radio", { name: /Markdown/ })).toBeChecked();
+  await expect(exportDialog.getByLabel("Export destination")).toContainText("Export Panel Spec.md");
+  await expect(exportDialog).not.toContainText("document.json");
+  await expect(exportDialog).not.toContainText("plain.md");
+  await expect(exportDialog).not.toContainText("CLI");
+  await expect(exportDialog).not.toContainText("Tauri");
 
-  const markdownDownload = page.waitForEvent("download");
-  await exportPanel.getByRole("button", { name: "Export Markdown" }).click();
-  expect((await markdownDownload).suggestedFilename()).toBe("Export Panel Spec.md");
-  await expect(page.locator(".status-note")).toContainText("Exported Markdown");
+  await exportDialog.getByRole("radio", { name: /PDF/ }).check();
+  await expect(exportDialog.getByText("PDF export is not available in this app build")).toBeVisible();
+  await expect(exportDialog.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+  await exportDialog.getByRole("radio", { name: /HTML/ }).check();
+  await exportDialog.getByLabel("Publishing profile").selectOption("korean");
+  await expect(exportDialog.getByLabel("Export destination")).toContainText("Export Panel Spec.html");
 
   const htmlDownload = page.waitForEvent("download");
-  await exportPanel.getByRole("button", { name: "Export HTML" }).click();
+  await exportDialog.getByRole("button", { name: "Export HTML" }).click();
   const downloadedHtml = await htmlDownload;
   expect(downloadedHtml.suggestedFilename()).toBe("Export Panel Spec.html");
   const htmlPath = test.info().outputPath("Export Panel Spec.html");
@@ -963,14 +967,16 @@ test("exports deliverables and keeps developer outputs separate", async ({ page 
   expect(await readFile(htmlPath, "utf8")).toContain('class="sdoc-profile-korean"');
   await expect(page.locator(".status-note")).toContainText("Exported HTML with korean profile");
 
-  await exportPanel.getByRole("button", { name: "Copy PDF command" }).click();
-  await expect(page.locator(".status-note")).toContainText('npm run sdoc -- export "Export Panel Spec.sdoc" --format pdf --profile korean -o "Export Panel Spec.pdf"');
-
-  await exportPanel.getByRole("button", { name: "Copy DOCX command" }).click();
-  await expect(page.locator(".status-note")).toContainText('npm run sdoc -- export "Export Panel Spec.sdoc" --format docx --template controlled -o "Export Panel Spec.docx"');
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  exportDialog = page.getByRole("dialog", { name: "Export document" });
+  const markdownDownload = page.waitForEvent("download");
+  await exportDialog.getByRole("button", { name: "Export Markdown" }).click();
+  expect((await markdownDownload).suggestedFilename()).toBe("Export Panel Spec.md");
+  await expect(page.locator(".status-note")).toContainText("Exported Markdown");
 
   await expect(page.getByRole("button", { name: "Developer panel" })).toHaveCount(0);
   await page.getByRole("button", { name: "Settings panel" }).click();
+  await page.getByRole("complementary", { name: "Settings side panel" }).getByRole("tab", { name: "Developer" }).click();
   await page.getByLabel("Enable developer tools").check();
   await expect(page.getByRole("button", { name: "Developer panel" })).toBeVisible();
   await page.getByRole("button", { name: "Developer panel" }).click();
@@ -1029,9 +1035,9 @@ test("stores local history snapshots and compares them with the current document
   await reviewWorkspace.getByRole("tab", { name: /Changes/ }).click();
   const historyReviewPanel = reviewWorkspace;
   await expect(historyReviewPanel.locator(".status-block").filter({ hasText: "Base" })).toContainText("History: Review Baseline");
-  await historyReviewPanel.getByRole("button", { name: "Use saved baseline" }).click();
-  await expect(page.locator(".status-note")).toContainText("Comparing with saved baseline");
-  await expect(historyReviewPanel.locator(".status-block").filter({ hasText: "Base" })).toContainText("Saved baseline");
+  await historyReviewPanel.getByRole("button", { name: "Use last saved version" }).click();
+  await expect(page.locator(".status-note")).toContainText("Comparing with last saved version");
+  await expect(historyReviewPanel.locator(".status-block").filter({ hasText: "Base" })).toContainText("Last saved version");
 
   await reviewWorkspace.getByRole("tab", { name: /History/ }).click();
   await page.getByRole("button", { name: "Delete history snapshot Review Baseline" }).click();
@@ -1039,7 +1045,7 @@ test("stores local history snapshots and compares them with the current document
   await expect(page.locator(".history-empty")).toContainText("No snapshots");
 
   await selectPreviewTab(page, "Diff");
-  await expect(page.locator(".diff-review-base")).toContainText("Saved baseline");
+  await expect(page.locator(".diff-review-base")).toContainText("Last saved version");
   await expect(page.locator(".diff-review-summary")).toContainText("Total");
   await expect(page.locator(".diff-review-summary")).toContainText("1");
 
@@ -1103,7 +1109,9 @@ test("inserts cross references from the target picker", async ({ page }) => {
   expect(findTextNode(reference, "Platform Overview").text).toBe("Platform Overview");
   expectUniqueIds(collectBlockIds(document));
   await page.getByRole("button", { name: "Settings panel" }).click();
-  await expect(page.getByRole("complementary", { name: "Settings side panel" }).getByLabel("Schema status")).toContainText("Valid");
+  const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
+  await settingsPanel.getByRole("tab", { name: "Document" }).click();
+  await expect(settingsPanel.getByLabel("Document properties")).toContainText("Healthy");
 });
 
 test("sets requirement traceability IDs from Review document health", async ({ page }) => {
@@ -1213,7 +1221,9 @@ test("detects broken cross references in the playground", async ({ page }, testI
   expect(findFirstNodeByTypeOrNull(removedDocument, "crossReference")).toBeNull();
 
   await page.getByRole("button", { name: "Settings panel" }).click();
-  await expect(page.getByRole("complementary", { name: "Settings side panel" }).getByLabel("Schema status")).toContainText("Valid");
+  const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
+  await settingsPanel.getByRole("tab", { name: "Document" }).click();
+  await expect(settingsPanel.getByLabel("Document properties")).toContainText("Healthy");
 });
 
 test("round-trips a downloaded .sdoc through the browser open flow", async ({ page }, testInfo) => {
@@ -1425,6 +1435,7 @@ test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testIn
   await expect(page.getByText("Document healthy")).toBeVisible();
 
   await page.getByRole("button", { name: "Settings panel" }).click();
+  await page.getByRole("complementary", { name: "Settings side panel" }).getByRole("tab", { name: "Developer" }).click();
   await page.getByLabel("Enable developer tools").check();
   await page.getByRole("button", { name: "Developer panel" }).click();
   const developerPanel = page.getByRole("complementary", { name: "Developer side panel" });
@@ -1789,10 +1800,15 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
   });
   await page.addInitScript(() => {
     const editedSource = new TextEncoder().encode("<mxfile><diagram id=\"d1\">external-edit</diagram></mxfile>");
+    (window as typeof window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
     (window as typeof window & { __drawioLaunches?: Array<{ sessionId: string; executablePath?: string }> }).__drawioLaunches = [];
     (window as typeof window & { __SDOC_NATIVE_SAVE_BRIDGE__?: unknown }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
-      async saveSdoc() {
+      async saveSdoc(path: string) {
+        (window as typeof window & { __LAST_SAVED_PATH__?: string }).__LAST_SAVED_PATH__ = path;
         return undefined;
+      },
+      async chooseSdocSavePath() {
+        return "C:\\Docs\\Drawio Conflict Revision.sdoc";
       },
       async checkoutDrawioSource(sourceAssetId: string) {
         return {
@@ -1826,10 +1842,12 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
   });
 
   await page.goto("/");
+  await page.getByRole("button", { name: "New .sdoc" }).click();
   await selectPreviewTab(page, "JSON");
   await page.getByRole("button", { name: "Settings panel" }).click();
-  await page.getByLabel("Draw.io executable").fill("C:\\Program Files\\draw.io\\draw.io.exe");
-  await createNewDocumentFromMenu(page);
+  const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
+  await settingsPanel.getByRole("tab", { name: "Application" }).click();
+  await settingsPanel.getByLabel("Draw.io application").fill("C:\\Program Files\\draw.io\\draw.io.exe");
   await page.locator(".editor-surface").click();
 
   const sourcePath = testInfo.outputPath("architecture.drawio");
@@ -1867,10 +1885,8 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
   expectUniqueIds(collectBlockIds(revisedDocument));
   await expect(page.getByLabel("Draw.io external edit conflict")).toHaveCount(0);
 
-  const sdocDownloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download .sdoc" }).click();
-  const sdocDownload = await sdocDownloadPromise;
-  await sdocDownload.saveAs(testInfo.outputPath("Drawio Conflict Revision.sdoc"));
+  await page.getByRole("button", { name: "Save .sdoc As" }).click();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __LAST_SAVED_PATH__?: string }).__LAST_SAVED_PATH__)).toBe("C:\\Docs\\Drawio Conflict Revision.sdoc");
 });
 
 test("reports unsupported files without replacing the current document", async ({ page }, testInfo) => {
@@ -2000,6 +2016,25 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
 });
 
 async function selectPreviewTab(page: Page, tab: "JSON" | "Markdown" | "Diff"): Promise<void> {
+  if (tab === "JSON" && (await page.locator(".tabs").getByRole("button", { name: "JSON" }).count()) === 0) {
+    const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
+    const settingsWasOpen = await settingsPanel.isVisible().catch(() => false);
+    const previousPanelButton = page.getByRole("navigation", { name: "Primary" }).locator('button[aria-pressed="true"]');
+    const previousPanelName = !settingsWasOpen && await previousPanelButton.count() > 0
+      ? await previousPanelButton.getAttribute("aria-label")
+      : null;
+    if (!settingsWasOpen) {
+      await page.getByRole("button", { name: "Settings panel" }).click();
+    }
+    await settingsPanel.getByRole("tab", { name: "Developer" }).click();
+    const developerToggle = settingsPanel.getByLabel("Enable developer tools");
+    if (!(await developerToggle.isChecked())) {
+      await developerToggle.check();
+    }
+    if (!settingsWasOpen) {
+      await page.getByRole("button", { name: previousPanelName ?? "Settings panel" }).click();
+    }
+  }
   if ((await page.locator(".tabs").count()) === 0) {
     await page.getByLabel("More document actions").click();
     await page.getByRole("menuitem", { name: "Show preview" }).click();

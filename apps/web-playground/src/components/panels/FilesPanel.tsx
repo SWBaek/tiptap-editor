@@ -15,6 +15,7 @@ import {
   Trash2
 } from "lucide-react";
 import type { WindowSdocWorkspaceEntry } from "../../documentNativeBridge";
+import type { RecentFileEntry } from "../editor-shell/types";
 import {
   normalizeWorkspaceEntryName,
   validateWorkspaceEntryName,
@@ -32,11 +33,15 @@ import {
 
 export interface FilesPanelProps {
   currentFilePath: string | null;
+  currentFileLabel: string;
   isCurrentFileUnsaved: boolean;
   isDesktopRuntime: boolean;
   workspaceDirectory: string | null;
   workspaceEntries: WindowSdocWorkspaceEntry[];
   isWorkspaceLoading: boolean;
+  recentFiles: RecentFileEntry[];
+  onNewDocument: () => void;
+  onOpenDocument: () => void;
   onChooseWorkspaceDirectory: () => void;
   onRefreshWorkspace: () => void;
   onOpenWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
@@ -51,11 +56,15 @@ type InlineEditState =
 
 export function FilesPanel({
   currentFilePath,
+  currentFileLabel,
   isCurrentFileUnsaved,
   isDesktopRuntime,
   workspaceDirectory,
   workspaceEntries,
   isWorkspaceLoading,
+  recentFiles,
+  onNewDocument,
+  onOpenDocument,
   onChooseWorkspaceDirectory,
   onRefreshWorkspace,
   onOpenWorkspaceEntry,
@@ -259,7 +268,7 @@ export function FilesPanel({
     <div className="side-panel-section files-panel explorer-panel">
       <section className="workspace-files" aria-label="Workspace files">
         <header className="explorer-header">
-          <h2>Explorer</h2>
+          <h2>{isDesktopRuntime ? "Explorer" : "Documents"}</h2>
           {isDesktopRuntime && (
             <div className="explorer-header-actions" aria-label="Explorer actions">
               <button
@@ -385,9 +394,24 @@ export function FilesPanel({
               ) : null}
             </>
           ) : (
-            <div className="workspace-boundary browser-boundary">
-              <strong>Desktop-only browsing</strong>
-              <span>Folder exploration is available through the Tauri app. Browser mode only opens files selected by the user.</span>
+            <div className="browser-documents" aria-label="Browser documents">
+              <div className="browser-document-actions">
+                <button type="button" onClick={onNewDocument}><FilePlus size={15} /> New document</button>
+                <button type="button" onClick={onOpenDocument}><FolderOpen size={15} /> Open .sdoc</button>
+              </div>
+              <div className="browser-current-document">
+                <FileText size={16} />
+                <span><strong>{currentFileLabel}</strong><small>{isCurrentFileUnsaved ? "Unsaved changes" : "Current document"}</small></span>
+              </div>
+              {recentFiles.length > 0 && (
+                <section className="browser-recent-activity" aria-label="Recent browser activity">
+                  <h3>Recent activity</h3>
+                  {recentFiles.slice(0, 4).map((entry) => (
+                    <div key={entry.id}><FileText size={14} /><span>{entry.name}</span><small>{entry.action}</small></div>
+                  ))}
+                </section>
+              )}
+              <p>Browser documents are opened explicitly and saved as downloads. Folder access, file watchers, rename, and Trash are available only in the desktop app.</p>
             </div>
           )}
         </div>

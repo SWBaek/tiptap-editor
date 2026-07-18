@@ -46,7 +46,7 @@ export function ReviewPanel({
   onSetVisualDiffFilter: (filter: VisualDiffFilterKind) => void;
   onToggleDiffOverlay: () => void;
 }) {
-  const isHistoryBase = baseLabel !== "Saved baseline";
+  const isHistoryBase = baseLabel !== "Last saved version";
   const batchableCount = visualDiffItems.filter((item) => item.kind !== "reference-broken").length;
   const filterOptions: Array<{ value: VisualDiffFilterKind; label: string; count: number }> = [
     { value: "all", label: "All", count: visualDiffCounts.total },
@@ -179,7 +179,7 @@ export function ReviewPanel({
       </section>
       {isHistoryBase && (
         <button type="button" onClick={onCompareSavedBaseline}>
-          Use saved baseline
+          Use last saved version
         </button>
       )}
     </div>
@@ -202,9 +202,9 @@ export function DiffReview({
     <div className="diff-review">
       <div className="diff-review-base">
         <span>{baseLabel}</span>
-        {baseLabel !== "Saved baseline" && (
+        {baseLabel !== "Last saved version" && (
           <button type="button" onClick={onCompareSavedBaseline}>
-            Saved baseline
+            Last saved version
           </button>
         )}
       </div>
@@ -233,7 +233,7 @@ export function DiffReview({
               <h3>Side-by-side document diff</h3>
               <div className="diff-side-by-side-header" aria-hidden="true">
                 <span>Change</span>
-                <span>Baseline</span>
+                <span>Last saved</span>
                 <span>Current</span>
               </div>
               <div className="diff-side-by-side-rows">

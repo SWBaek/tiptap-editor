@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.2 Explorer-First Authoring Workbench Goal"
 status: in_progress
-progress_percent: 75
-current_slice: settings-export-browser-language
+progress_percent: 88
+current_slice: responsive-accessibility-review-gate
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -22,8 +22,8 @@ completed_slices:
   - document-header-and-command-hierarchy
   - one-row-authoring-toolbar
   - status-and-recovery-relocation
-remaining_slices:
   - settings-export-browser-language
+remaining_slices:
   - responsive-accessibility-review-gate
 progress_log:
   - date: 2026-07-18
@@ -50,6 +50,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 75
     note: "Status and recovery relocation completed: the fixed Status Bar owns save/validity state, transient feedback, word/block counts, runtime-only zoom, and cursor history; routine messages expire after 4.5 seconds. Save failure, external current-document change, and blocking validation are persistent document-level banners with recovery actions, while Explorer is alert-free and Draw.io keeps its dedicated conflict dialog. Evidence passed: focused Playwright flows, 1280x900 visual inspection, npm test (307), npm run build, and npm run test:e2e (42)."
+  - date: 2026-07-18
+    progress_percent: 88
+    note: "Settings/export/browser language completed: keyboard-operable Document/Application/Developer tabs separate author metadata, runtime preferences, desktop integration, and opt-in technical details; Export is a deliverable dialog with Markdown/HTML available and unsupported formats stated honestly; browser Documents exposes explicit New/Open/download/recent activity without native filesystem claims; raw JSON remains hidden until Developer is enabled. Visual inspection covered Documents and Export. Evidence passed: npm test (307), npm run build, and npm run test:e2e (42)."
 done_rule: "Set status to done and progress_percent to 100 only after all eight slices are implemented, validated, committed, pushed, and the packaged-app plus 3-5-person review kit is ready. Stop at user review required; do not claim that human review passed without session records."
 ---
 

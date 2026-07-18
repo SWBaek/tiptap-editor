@@ -146,9 +146,8 @@ import type { ActivityPanel, PreviewTab, RecentFileAction, RecentFileEntry, Revi
 import { EditorToolbar } from "./components/editor-toolbar/EditorToolbar";
 import { EditorContextMenu, type EditorContextMenuKind, type EditorContextMenuState } from "./components/editor-toolbar/EditorContextMenu";
 import { SelectionBubbleToolbar, type BubbleToolbarPosition, type BubbleSelectionCommand } from "./components/editor-toolbar/SelectionBubbleToolbar";
-import { SettingsPanel, type HeadingNumberingSettings } from "./components/panels/SettingsPanel";
+import { SettingsPanel, type HeadingNumberingSettings, type SettingsWorkspaceTab } from "./components/panels/SettingsPanel";
 import { OutlinePanel, type AuthorFigureItem, type AuthorOutlineItem, type AuthorTableItem } from "./components/panels/OutlinePanel";
-import { ExportPanel } from "./components/panels/ExportPanel";
 import { FilesPanel } from "./components/panels/FilesPanel";
 import { HistoryPanel } from "./components/panels/HistoryPanel";
 import { DiagnosticsPanel } from "./components/panels/DiagnosticsPanel";
@@ -172,6 +171,7 @@ import {
   type WorkspaceEntryAction
 } from "./components/dialogs/WorkspaceEntryActionDialog";
 import { DrawioConflictDialog } from "./components/dialogs/DrawioConflictDialog";
+import { ExportDialog } from "./components/dialogs/ExportDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -284,8 +284,10 @@ export function App() {
   const [activeTab, setActiveTab] = useState<PreviewTab>("markdown");
   const [activePanel, setActivePanel] = useState<ActivityPanel>("files");
   const [activeReviewTab, setActiveReviewTab] = useState<ReviewWorkspaceTab>("changes");
+  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsWorkspaceTab>("document");
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [savedAt, setSavedAt] = useState<string>("Not saved");
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [documentId, setDocumentId] = useState<string>(initialDocument.attrs.id);
@@ -405,6 +407,12 @@ export function App() {
     const timeout = window.setTimeout(() => setStatusMessage(""), 4_500);
     return () => window.clearTimeout(timeout);
   }, [statusMessage]);
+
+  useEffect(() => {
+    if (!developerToolsEnabled && activeTab === "json") {
+      setActiveTab("markdown");
+    }
+  }, [activeTab, developerToolsEnabled]);
 
   useEffect(() => {
     const selection = editor.state.selection;
@@ -570,7 +578,7 @@ export function App() {
     ? `History: ${selectedHistoryEntry.title}`
     : externalDocumentComparison
       ? "External disk version"
-      : "Saved baseline";
+      : "Last saved version";
   const documentDiffEvents = diffDocuments(reviewBaseDocument, document);
   const documentDiffLines = renderReadableDiffEvents(documentDiffEvents);
   const metadataDiffLines = renderMetadataDiff(metadata, reviewBaseMetadata);
@@ -1252,7 +1260,7 @@ export function App() {
     setExternalDocumentComparison(null);
     setSelectedHistoryId(null);
     showPreview("diff");
-    setStatusMessage("Comparing with saved baseline");
+    setStatusMessage("Comparing with last saved version");
   }
 
   function deleteHistorySnapshot(entryId: string) {
@@ -1300,6 +1308,11 @@ export function App() {
   function openActivityPanel(panel: ActivityPanel) {
     setActivePanel(panel);
     setIsSidePanelOpen(true);
+  }
+
+  function openDocumentProperties() {
+    setActiveSettingsTab("document");
+    openActivityPanel("settings");
   }
 
   function openReviewTab(tab: ReviewWorkspaceTab) {
@@ -1920,7 +1933,7 @@ export function App() {
 
   function applyReviewAction(item: ReviewActionPlanItem, action: ReviewActionKind) {
     if (selectedHistoryEntry) {
-      setStatusMessage("Use saved baseline before applying review actions");
+      setStatusMessage("Use the last saved version before applying review actions");
       return;
     }
 
@@ -1968,7 +1981,7 @@ export function App() {
 
   function applyVisibleReviewBatch(action: ReviewActionKind) {
     if (selectedHistoryEntry) {
-      setStatusMessage("Use saved baseline before applying review actions");
+      setStatusMessage("Use the last saved version before applying review actions");
       return;
     }
 
@@ -2001,7 +2014,7 @@ export function App() {
 
   function rejectDataGridRowEvent(item: DataGridRowReviewItem, event: DataGridRowDiffEvent, assetPolicy: DataGridAssetRevisionPolicy = "update") {
     if (selectedHistoryEntry) {
-      setStatusMessage("Use saved baseline before applying data grid row review actions");
+      setStatusMessage("Use the last saved version before applying data grid row review actions");
       return;
     }
 
@@ -2078,7 +2091,7 @@ export function App() {
 
   function acceptDataGridRowEvent(item: DataGridRowReviewItem, event: DataGridRowDiffEvent) {
     if (selectedHistoryEntry) {
-      setStatusMessage("Use saved baseline before applying data grid row review actions");
+      setStatusMessage("Use the last saved version before applying data grid row review actions");
       return;
     }
 
@@ -2545,7 +2558,9 @@ export function App() {
     return null;
   }
 
-  const activePanelLabel = getActivityPanelLabel(activePanel);
+  const activePanelLabel = activePanel === "files" && documentFileRuntime.kind !== "desktop"
+    ? "Documents"
+    : getActivityPanelLabel(activePanel);
   const showDesktopStartScreen = documentFileRuntime.kind === "desktop" && isDesktopStartScreenOpen && !currentFilename && !workspaceDirectory;
 
   return (
@@ -2553,6 +2568,7 @@ export function App() {
       <ActivityBar
         activePanel={activePanel}
         isOpen={isSidePanelOpen}
+        filesLabel={documentFileRuntime.kind === "desktop" ? "Explorer" : "Documents"}
         showDeveloperTools={developerToolsEnabled}
         onSelect={selectActivityPanel}
       />
@@ -2569,14 +2585,17 @@ export function App() {
           )}
           {activePanel === "settings" && (
             <SettingsPanel
+              activeTab={activeSettingsTab}
               metadata={metadata}
               validation={validation}
               document={document}
               assetCount={Object.keys(assets).length}
+              isDesktopRuntime={documentFileRuntime.kind === "desktop"}
               drawioExecutablePath={drawioExecutablePath}
               developerToolsEnabled={developerToolsEnabled}
               headingNumbering={headingNumbering}
               outlineDepth={outlineDepth}
+              onTabChange={setActiveSettingsTab}
               onMetadataChange={setMetadata}
               onHeadingNumberingChange={setHeadingNumbering}
               onOutlineDepthChange={setOutlineDepth}
@@ -2594,11 +2613,15 @@ export function App() {
           {activePanel === "files" && (
             <FilesPanel
               currentFilePath={currentNativePath}
+              currentFileLabel={fileLabel}
               isCurrentFileUnsaved={hasUnsavedChanges}
               isDesktopRuntime={documentFileRuntime.kind === "desktop"}
               workspaceDirectory={workspaceDirectory}
               workspaceEntries={workspaceEntries}
               isWorkspaceLoading={isWorkspaceLoading}
+              recentFiles={recentFiles}
+              onNewDocument={createNewDocument}
+              onOpenDocument={() => void openDocumentAction()}
               onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
               onRefreshWorkspace={() => void refreshWorkspaceEntries()}
               onOpenWorkspaceEntry={openWorkspaceEntry}
@@ -2685,17 +2708,6 @@ export function App() {
             </div>
           )}
 
-          {activePanel === "export" && (
-            <ExportPanel
-              filenames={exportFilenames}
-              styleProfile={publishingStyleProfile}
-              onStyleProfileChange={setPublishingStyleProfile}
-              onExportMarkdown={downloadMarkdown}
-              onExportHtml={downloadHtml}
-              onCopyDeveloperCommand={showDeveloperCommand}
-            />
-          )}
-
           {activePanel === "developer" && developerToolsEnabled && (
             <DeveloperPanel
               filenames={exportFilenames}
@@ -2734,8 +2746,8 @@ export function App() {
           onOpenDocument={() => void openDocumentAction()}
           onSaveDocument={() => void downloadSdoc()}
           onSaveAsDocument={() => void downloadSdoc(true)}
-          onOpenExport={() => openActivityPanel("export")}
-          onOpenProperties={() => openActivityPanel("settings")}
+          onOpenExport={() => setIsExportDialogOpen(true)}
+          onOpenProperties={openDocumentProperties}
           onTogglePreview={() => setIsPreviewOpen((open) => !open)}
         />
 
@@ -2846,7 +2858,7 @@ export function App() {
                   author={metadata.author ?? ""}
                   version={metadata.version ?? ""}
                   onTitleChange={(title) => setMetadata({ ...metadata, title })}
-                  onOpenProperties={() => openActivityPanel("settings")}
+                  onOpenProperties={openDocumentProperties}
                 />
                 <EditorContent editor={editor} />
               </div>
@@ -2866,9 +2878,9 @@ export function App() {
           </section>
 
           {isPreviewOpen && (
-          <section className="preview-pane" aria-label="Preview and debug output">
+          <section className="preview-pane" aria-label="Document preview">
             <div className="tabs" role="tablist">
-              <TabButton label="JSON" value="json" activeTab={activeTab} onSelect={setActiveTab} />
+              {developerToolsEnabled && <TabButton label="JSON" value="json" activeTab={activeTab} onSelect={setActiveTab} />}
               <TabButton label="Markdown" value="markdown" activeTab={activeTab} onSelect={setActiveTab} />
               <TabButton label="Diff" value="diff" activeTab={activeTab} onSelect={setActiveTab} />
             </div>
@@ -2904,6 +2916,17 @@ export function App() {
           </>
         )}
       </section>
+      {isExportDialogOpen && (
+        <ExportDialog
+          filenames={exportFilenames}
+          styleProfile={publishingStyleProfile}
+          isDesktopRuntime={documentFileRuntime.kind === "desktop"}
+          onStyleProfileChange={setPublishingStyleProfile}
+          onExportMarkdown={downloadMarkdown}
+          onExportHtml={downloadHtml}
+          onClose={() => setIsExportDialogOpen(false)}
+        />
+      )}
       {workspaceEntryActionDialog && (
         <WorkspaceEntryActionDialog
           action={workspaceEntryActionDialog.action}
@@ -3021,7 +3044,6 @@ function getActivityPanelLabel(panel: ActivityPanel): string {
   const labels: Record<ActivityPanel, string> = {
     files: "Explorer",
     outline: "Outline",
-    export: "Export",
     settings: "Settings",
     review: "Review",
     developer: "Developer"

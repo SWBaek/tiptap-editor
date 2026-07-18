@@ -2,7 +2,7 @@
 
 Created: 2026-07-18
 Target: Phase 5.2 Explorer-First Authoring Workbench
-Status: implementation in progress; Slices 1-6 accepted, Slice 7 next
+Status: implementation in progress; Slices 1-7 accepted, Slice 8 next
 
 ## 1. Purpose
 
@@ -438,6 +438,8 @@ Accepted 2026-07-18. A fixed workbench Status Bar now owns filename/save state, 
 - remove phase/debug/CLI/schema wording from normal UI.
 - replace browser fake Explorer with a browser-honest Documents/open surface.
 - make panel visual themes consistent.
+
+Accepted 2026-07-18. Settings now separates Document, Application, and Developer concerns with keyboard-operable tabs: author/version and health are document properties, heading/outline and desktop Draw.io preferences are application settings, and format/debug details require an explicit runtime-only Developer toggle. Export is a command-opened dialog for deliverables: Markdown and HTML are available, PDF/DOCX/PPTX are visibly unavailable instead of represented by CLI handoff text, and `.sdoc` remains the Save workflow. Browser mode is named Documents and offers explicit New/Open/download/recent-activity flows without claiming native folders, watcher, Trash, or persistent paths. Raw JSON preview and Developer rail content remain hidden in normal author mode. Visual inspection covered the Documents surface and Export dialog; evidence passed with `npm test` (307), `npm run build`, and `npm run test:e2e` (42).
 
 ### Slice 8: Responsive/accessibility hardening and review gate
 

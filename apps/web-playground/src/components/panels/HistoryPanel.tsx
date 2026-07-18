@@ -29,7 +29,7 @@ export function HistoryPanel({
           <span>Save snapshot</span>
         </button>
         <button className="history-secondary" type="button" onClick={onCompareSavedBaseline}>
-          Saved baseline
+          Last saved version
         </button>
       </div>
 

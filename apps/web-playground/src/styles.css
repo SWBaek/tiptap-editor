@@ -2097,6 +2097,33 @@ button {
   font-size: 12px;
 }
 
+.mermaid-dialog {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.mermaid-dialog-preview {
+  display: grid;
+  min-height: 180px;
+  max-height: 360px;
+  place-items: center;
+  overflow: auto;
+  padding: 12px;
+  color: #273642;
+  background: #f6f8fa;
+  border: 1px solid #dbe2e8;
+  border-radius: 6px;
+}
+
+.mermaid-dialog-preview > div,
+.mermaid-dialog-preview svg {
+  max-width: 100%;
+}
+
+.mermaid-dialog-preview > span {
+  color: #7a8793;
+  font-size: 12px;
+}
+
 .dialog-validation {
   min-height: 18px;
   font-size: 12px;

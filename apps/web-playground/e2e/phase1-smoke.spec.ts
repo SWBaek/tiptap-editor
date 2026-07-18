@@ -1161,26 +1161,48 @@ test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page },
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
 
-  page.once("dialog", async (dialog) => {
-    expect(dialog.message()).toBe("Mermaid diagram");
-    await dialog.accept("flowchart TD\nA[Start] --> B[Done]");
-  });
   await openToolbarMenu(page, "More insert");
   await page.getByRole("button", { name: "Insert Mermaid diagram" }).click();
+  const insertDialog = page.getByRole("dialog", { name: "Insert Mermaid diagram" });
+  await expect(insertDialog).toBeVisible();
+  await insertDialog.getByLabel("Mermaid source").fill("flowchart TD\nA[broken");
+  await expect(insertDialog.getByRole("button", { name: "Insert diagram" })).toBeDisabled();
+  await expect(insertDialog.locator(".dialog-validation")).not.toContainText("Valid Mermaid source");
+  await insertDialog.getByLabel("Mermaid source").fill("flowchart TD\nA[Start] --> B[Done]");
+  await expect(insertDialog.getByLabel("Mermaid preview").locator("svg")).toBeVisible();
+  await expect(insertDialog.getByText("Valid Mermaid source")).toBeVisible();
+  await insertDialog.getByRole("button", { name: "Insert diagram" }).click();
   await expect(page.locator(".status-note")).toContainText("Inserted Mermaid diagram");
   await expect(page.locator(".editor-surface .sdoc-diagram svg")).toBeVisible();
 
   const insertedDocument = await readPreviewDocument(page);
   const insertedDiagram = findFirstNodeByType(insertedDocument, "diagram");
+  const insertedDiagramId = insertedDiagram.attrs?.id;
   expect(insertedDiagram.attrs?.kind).toBe("mermaid");
   expect(insertedDiagram.attrs?.source).toBe("flowchart TD\nA[Start] --> B[Done]");
   expect(JSON.stringify(insertedDocument)).not.toContain("<svg");
   expectUniqueIds(collectBlockIds(insertedDocument));
-  await expect(page.getByText("Valid")).toBeVisible();
+
+  await page.locator(".editor-surface .sdoc-diagram").click({ button: "right" });
+  const mermaidContextMenu = page.getByRole("menu", { name: "Mermaid context menu" });
+  await expect(mermaidContextMenu).toBeVisible();
+  await mermaidContextMenu.getByRole("menuitem", { name: "Edit Mermaid diagram" }).click();
+  const editDialog = page.getByRole("dialog", { name: "Edit Mermaid diagram" });
+  await expect(editDialog.getByLabel("Mermaid source")).toHaveValue("flowchart TD\nA[Start] --> B[Done]");
+  await editDialog.getByLabel("Mermaid source").fill("flowchart TD\nA[Start] --> B[Reviewed]");
+  await expect(editDialog.getByLabel("Mermaid preview").locator("svg")).toBeVisible();
+  await editDialog.getByRole("button", { name: "Update diagram" }).click();
+  await expect(page.locator(".status-note")).toContainText("Updated Mermaid diagram");
+
+  const editedDocument = await readPreviewDocument(page);
+  const editedDiagram = findFirstNodeByType(editedDocument, "diagram");
+  expect(editedDiagram.attrs?.id).toBe(insertedDiagramId);
+  expect(editedDiagram.attrs?.source).toBe("flowchart TD\nA[Start] --> B[Reviewed]");
+  expect(JSON.stringify(editedDocument)).not.toContain("<svg");
 
   await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("```mermaid");
-  await expect(page.locator(".preview-output")).toContainText("A[Start] --> B[Done]");
+  await expect(page.locator(".preview-output")).toContainText("A[Start] --> B[Reviewed]");
 
   const sdocDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download .sdoc" }).click();
@@ -1196,7 +1218,8 @@ test("inserts a Mermaid diagram and round-trips through .sdoc", async ({ page },
   await selectPreviewTab(page, "JSON");
   const reopenedDocument = await readPreviewDocument(page);
   const reopenedDiagram = findFirstNodeByType(reopenedDocument, "diagram");
-  expect(reopenedDiagram.attrs?.source).toBe("flowchart TD\nA[Start] --> B[Done]");
+  expect(reopenedDiagram.attrs?.id).toBe(insertedDiagramId);
+  expect(reopenedDiagram.attrs?.source).toBe("flowchart TD\nA[Start] --> B[Reviewed]");
   expect(JSON.stringify(reopenedDocument)).not.toContain("<svg");
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });

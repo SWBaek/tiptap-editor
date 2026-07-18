@@ -62,6 +62,7 @@ export interface EditorToolbarGroupsProps {
   onInsertEquationBlock: () => void;
   onEditEquation: () => void;
   onInsertMermaid: () => void;
+  onEditMermaid: () => void;
   onInsertDrawio: () => void;
   onOpenDrawioEditor: () => void;
   onReadDrawioEdit: () => void;
@@ -89,6 +90,7 @@ export function EditorToolbarGroups({
   onInsertEquationBlock,
   onEditEquation,
   onInsertMermaid,
+  onEditMermaid,
   onInsertDrawio,
   onOpenDrawioEditor,
   onReadDrawioEdit,
@@ -189,7 +191,10 @@ export function EditorToolbarGroups({
         <ToolbarButton title="Edit selected equation" active={editor.isActive("equation") || editor.isActive("equationBlock")} onClick={onEditEquation}>
           <Sigma size={18} />
         </ToolbarButton>
-        <ToolbarButton title="Insert Mermaid diagram" active={editor.isActive("diagram")} onClick={onInsertMermaid}>
+        <ToolbarButton title="Insert Mermaid diagram" active={editor.isActive("diagram", { kind: "mermaid" })} onClick={onInsertMermaid}>
+          <Workflow size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Edit selected Mermaid diagram" active={editor.isActive("diagram", { kind: "mermaid" })} onClick={onEditMermaid}>
           <Workflow size={18} />
         </ToolbarButton>
         <ToolbarButton title="Insert Draw.io diagram" active={editor.isActive("diagram", { kind: "drawio" })} onClick={onInsertDrawio}>

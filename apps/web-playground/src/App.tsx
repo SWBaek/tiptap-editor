@@ -137,6 +137,7 @@ import { DiffReview, ReviewPanel } from "./components/panels/ReviewPanel";
 import { LinkDialog } from "./components/dialogs/LinkDialog";
 import { ImagePasteDialog, type PastedImageDetails } from "./components/dialogs/ImagePasteDialog";
 import { EquationDialog, type EquationDialogMode } from "./components/dialogs/EquationDialog";
+import { MermaidDialog, type MermaidDialogMode } from "./components/dialogs/MermaidDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -168,6 +169,11 @@ interface EquationDialogState {
   mode: EquationDialogMode;
   latex: string;
   displayMode: boolean;
+  position?: number;
+}
+interface MermaidDialogState {
+  mode: MermaidDialogMode;
+  source: string;
   position?: number;
 }
 
@@ -232,6 +238,7 @@ export function App() {
   const [linkDialog, setLinkDialog] = useState<LinkDialogState | null>(null);
   const [pastedImageDialog, setPastedImageDialog] = useState<PastedImageDialogState | null>(null);
   const [equationDialog, setEquationDialog] = useState<EquationDialogState | null>(null);
+  const [mermaidDialog, setMermaidDialog] = useState<MermaidDialogState | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -1663,15 +1670,24 @@ export function App() {
   }
 
   function handleEditorPaneDoubleClick(event: React.MouseEvent<HTMLElement>) {
-    const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-type='equation'], [data-type='equationBlock']") : null;
-    if (!target) {
+    const eventTarget = event.target instanceof Element ? event.target : null;
+    const equationElement = eventTarget?.closest<HTMLElement>("[data-type='equation'], [data-type='equationBlock']");
+    if (equationElement) {
+      const position = findEquationPositionFromElement(editor, equationElement);
+      if (position !== null) {
+        event.preventDefault();
+        editEquationAtPosition(position);
+      }
       return;
     }
 
-    const position = findEquationPositionFromElement(editor, target);
-    if (position !== null) {
-      event.preventDefault();
-      editEquationAtPosition(position);
+    const mermaidElement = eventTarget?.closest<HTMLElement>("[data-type='diagram'][data-kind='mermaid']");
+    if (mermaidElement) {
+      const position = findMermaidPositionFromElement(editor, mermaidElement);
+      if (position !== null) {
+        event.preventDefault();
+        editMermaidAtPosition(position);
+      }
     }
   }
 
@@ -1682,9 +1698,15 @@ export function App() {
     }
 
     const equationElement = target.closest<HTMLElement>("[data-type='equation'], [data-type='equationBlock']");
-    const kind: EditorContextMenuKind = equationElement ? "equation" : target.closest("table") ? "table" : "editor";
+    const mermaidElement = target.closest<HTMLElement>("[data-type='diagram'][data-kind='mermaid']");
+    const kind: EditorContextMenuKind = equationElement ? "equation" : mermaidElement ? "mermaid" : target.closest("table") ? "table" : "editor";
     if (equationElement) {
       const position = findEquationPositionFromElement(editor, equationElement);
+      if (position !== null) {
+        editor.commands.setNodeSelection(position);
+      }
+    } else if (mermaidElement) {
+      const position = findMermaidPositionFromElement(editor, mermaidElement);
       if (position !== null) {
         editor.commands.setNodeSelection(position);
       }
@@ -1705,15 +1727,65 @@ export function App() {
     });
   }
 
-  function insertMermaidDiagramFromPrompt() {
-    const source = window.prompt("Mermaid diagram", "flowchart TD\nA[Start] --> B[Done]")?.trim();
-    if (!source) {
-      setStatusMessage("Canceled Mermaid diagram");
+  function openMermaidInsertDialog() {
+    setMermaidDialog({ mode: "insert", source: "flowchart TD\nA[Start] --> B[Done]" });
+    setStatusMessage("Editing Mermaid diagram");
+  }
+
+  function openSelectedMermaidDialog() {
+    const position = getSelectedMermaidPosition(editor);
+    if (position === null) {
+      setStatusMessage("Select a Mermaid diagram to edit");
+      return;
+    }
+
+    editMermaidAtPosition(position);
+  }
+
+  function editMermaidAtPosition(position: number) {
+    const node = editor.state.doc.nodeAt(position);
+    if (!node || node.type.name !== "diagram" || node.attrs.kind !== "mermaid") {
+      setStatusMessage("Select a Mermaid diagram to edit");
+      return;
+    }
+
+    const source = typeof node.attrs.source === "string" ? node.attrs.source : "";
+    setMermaidDialog({ mode: "edit", source, position });
+    setStatusMessage("Editing selected Mermaid diagram");
+  }
+
+  function applyMermaid(source: string) {
+    if (!mermaidDialog) {
+      return;
+    }
+
+    if (mermaidDialog.mode === "edit") {
+      const position = mermaidDialog.position;
+      if (typeof position !== "number") {
+        setStatusMessage("Cannot update Mermaid diagram: selection changed");
+        return;
+      }
+      const node = editor.state.doc.nodeAt(position);
+      if (!node || node.type.name !== "diagram" || node.attrs.kind !== "mermaid") {
+        setStatusMessage("Cannot update Mermaid diagram: selection changed");
+        return;
+      }
+      if (node.attrs.source !== source) {
+        const transaction = editor.state.tr.setNodeMarkup(position, undefined, { ...node.attrs, source });
+        editor.view.dispatch(transaction.scrollIntoView());
+      }
+      editor.view.focus();
+      setMermaidDialog(null);
+      setActiveTab("json");
+      setStatusMessage(node.attrs.source === source ? "Mermaid diagram unchanged" : "Updated Mermaid diagram");
       return;
     }
 
     const inserted = insertMermaidDiagram(editor, source);
-    setActiveTab("json");
+    if (inserted) {
+      setMermaidDialog(null);
+      setActiveTab("json");
+    }
     setStatusMessage(inserted ? "Inserted Mermaid diagram" : "Cannot insert Mermaid diagram");
   }
 
@@ -2013,7 +2085,8 @@ export function App() {
             onInsertInlineEquation: openInlineEquationDialog,
             onInsertEquationBlock: openEquationBlockDialog,
             onEditEquation: openSelectedEquationDialog,
-            onInsertMermaid: insertMermaidDiagramFromPrompt,
+            onInsertMermaid: openMermaidInsertDialog,
+            onEditMermaid: openSelectedMermaidDialog,
             onInsertDrawio: startDrawioInsertFlow,
             onOpenDrawioEditor: () => void openSelectedDrawioExternalEditor(),
             onReadDrawioEdit: () => void readDrawioExternalEdit(),
@@ -2058,8 +2131,9 @@ export function App() {
                 onInsertTable={insertTable}
                 onInsertInlineEquation={openInlineEquationDialog}
                 onInsertEquationBlock={openEquationBlockDialog}
-                onInsertMermaid={insertMermaidDiagramFromPrompt}
+                onInsertMermaid={openMermaidInsertDialog}
                 onEditEquation={openSelectedEquationDialog}
+                onEditMermaid={openSelectedMermaidDialog}
                 onEditTableCaption={editSelectedTableCaptionFromPrompt}
                 onAddTableRow={() => runTableCommand("addRowAfter", "Added table row")}
                 onAddTableColumn={() => runTableCommand("addColumnAfter", "Added table column")}
@@ -2141,6 +2215,18 @@ export function App() {
             setEquationDialog(null);
             editor.view.focus();
             setStatusMessage("Canceled equation edit");
+          }}
+        />
+      )}
+      {mermaidDialog && (
+        <MermaidDialog
+          mode={mermaidDialog.mode}
+          initialSource={mermaidDialog.source}
+          onApply={applyMermaid}
+          onCancel={() => {
+            setMermaidDialog(null);
+            editor.view.focus();
+            setStatusMessage("Canceled Mermaid diagram edit");
           }}
         />
       )}
@@ -2359,6 +2445,40 @@ function findEquationPositionFromElement(editor: Editor, element: HTMLElement): 
 
     const node = editor.state.doc.nodeAt(position);
     if (node?.type.name === "equation" || node?.type.name === "equationBlock") {
+      return position;
+    }
+  }
+
+  return null;
+}
+
+function getSelectedMermaidPosition(editor: Editor): number | null {
+  const { selection } = editor.state;
+  const candidates = [selection.from, selection.from - 1, selection.to, selection.to - 1];
+  for (const position of candidates) {
+    if (position < 0) {
+      continue;
+    }
+
+    const node = editor.state.doc.nodeAt(position);
+    if (node?.type.name === "diagram" && node.attrs.kind === "mermaid") {
+      return position;
+    }
+  }
+
+  return null;
+}
+
+function findMermaidPositionFromElement(editor: Editor, element: HTMLElement): number | null {
+  const basePosition = editor.view.posAtDOM(element, 0);
+  const candidates = [basePosition, basePosition - 1, basePosition + 1];
+  for (const position of candidates) {
+    if (position < 0) {
+      continue;
+    }
+
+    const node = editor.state.doc.nodeAt(position);
+    if (node?.type.name === "diagram" && node.attrs.kind === "mermaid") {
       return position;
     }
   }

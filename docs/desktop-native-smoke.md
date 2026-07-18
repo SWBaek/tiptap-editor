@@ -63,6 +63,7 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
 4. Save existing `.sdoc`
    - Edit visible document content.
    - Save without choosing a new path.
+   - Simulate an unwritable or missing save target and confirm the document remains dirty while Files shows the error with Retry and Save As; confirm a successful recovery clears the error and updates the native path only after the write succeeds.
    - Reopen the saved file and confirm the edit persists.
    - Inspect exported JSON and confirm cursor, selection, panel state, and native path are absent from `document.json`.
 

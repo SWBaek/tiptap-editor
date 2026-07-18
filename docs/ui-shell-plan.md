@@ -158,6 +158,7 @@ Desktop-explorer behavior for Phase 5.1:
 - Trash recovery remains an operating-system action for this review gate. The editor does not claim an in-app undo unless a cross-platform restore token is available and tested.
 - A desktop workspace watcher is scoped to the canonicalized selected workspace, replaced when the workspace changes, and stopped when the shell unmounts. Typed create/modify/remove/rename events are drained through the Tauri adapter and coalesced into silent explorer refreshes; watcher IDs, queues, polling timers, and conflict notices remain runtime-only.
 - A watcher event that overlaps the current `.sdoc` never reloads or overwrites editor content automatically. The Files panel surfaces an external-change notice; author-initiated native writes/mutations are briefly correlated and suppressed so they are not reported as external conflicts.
+- Save failures use a durable Files recovery surface rather than a transient status string. The failed attempt leaves document/metadata/assets and their dirty baseline untouched, shows the concrete error, and offers Retry plus desktop Save As; only a confirmed native write/download clears the failure and advances the saved baseline.
 
 ## Outline And Authoring Structure
 

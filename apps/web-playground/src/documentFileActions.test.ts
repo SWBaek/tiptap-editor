@@ -79,4 +79,16 @@ describe("document file actions", () => {
     });
     expect(saved).toEqual(["C:/docs/Spec.sdoc"]);
   });
+
+  it("propagates native write failures without reporting a successful save", async () => {
+    const route = resolveSdocSaveRoute(createDocumentFileRuntime("desktop"), "C:/docs/Spec.sdoc");
+
+    await expect(runSdocSaveAction(route, payload, {
+      native: {
+        async save() {
+          throw new Error("Target is unwritable");
+        }
+      }
+    })).rejects.toThrow("Target is unwritable");
+  });
 });

@@ -207,6 +207,24 @@ Acceptance evidence:
 - Browser mode creates/imports source-preserving assets but does not claim native editing when the desktop bridge is absent.
 - Playwright covers import round trip, create-new asset-backed insertion, and external edit conflict resolution.
 
+## Priority Slice 7: Recovery Feedback And Desktop Security
+
+Status: in progress for Phase 5.1.
+
+Acceptance criteria:
+
+- A failed native save keeps the document dirty and offers Retry and Save As without advancing the baseline or native path.
+- External `.sdoc` changes offer explicit reload/keep/compare choices and never overwrite unsaved editor state automatically.
+- Draw.io conflicts use a dedicated source/revision dialog rather than browser confirm prompts.
+- Tauri CSP and capabilities are explicit and limited to the APIs required by the editor shell.
+
+Acceptance evidence:
+
+- Save failures now render a durable Files alert with the concrete error, Retry, and desktop Save As. Successful writes alone clear the alert and update baseline/path state.
+- Unit tests prove native adapter failures propagate instead of reporting success; desktop-runtime E2E proves Unsaved changes survive failure and Retry completes recovery.
+- `npm test` (299), `npm run build`, `npm run test:e2e` (40), `npm run typecheck:desktop`, and `npm run build:desktop` pass.
+- External reload/compare, the dedicated Draw.io conflict dialog, and CSP/capability evidence remain required.
+
 ## Reprioritized Existing Work
 
 Already implemented foundations remain valuable but are no longer Phase 5's next visible product goal:

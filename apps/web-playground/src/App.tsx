@@ -298,6 +298,7 @@ export function App() {
   const [workspaceCreateDialog, setWorkspaceCreateDialog] = useState<WorkspaceCreateDialogState | null>(null);
   const [workspaceEntryActionDialog, setWorkspaceEntryActionDialog] = useState<WorkspaceEntryActionDialogState | null>(null);
   const [workspaceExternalChange, setWorkspaceExternalChange] = useState<WindowSdocWorkspaceWatchEvent | null>(null);
+  const [saveFailureMessage, setSaveFailureMessage] = useState<string | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -672,14 +673,15 @@ export function App() {
     }
   }, [selectedVisualDiffId, visibleVisualDiffItems]);
 
-  async function downloadSdoc() {
+  async function downloadSdoc(forceSaveAs = false) {
     if (!requireValidDocument("save .sdoc")) {
       return;
     }
 
     try {
       const payload = await createSdocPayload(document, metadata, new Date(), assets);
-      const saveResult = await runSdocSaveAction(sdocSaveRoute, payload, {
+      const saveRoute = forceSaveAs ? resolveSdocSaveRoute(documentFileRuntime, null) : sdocSaveRoute;
+      const saveResult = await runSdocSaveAction(saveRoute, payload, {
         browser: {
           download(nextPayload) {
             const blobPart = nextPayload.bytes.buffer.slice(
@@ -693,6 +695,9 @@ export function App() {
       });
       if (saveResult.status !== "downloaded" && saveResult.status !== "saved-native") {
         setStatusMessage(saveResult.message);
+        if (saveResult.status === "unavailable") {
+          setSaveFailureMessage(saveResult.message);
+        }
         return;
       }
 
@@ -706,9 +711,12 @@ export function App() {
         ignoreWorkspaceEventPath(saveResult.path);
       }
       addRecentFile(payload.filename, metadata.title || payload.filename, "saved", saveResult.path);
+      setSaveFailureMessage(null);
       markSaved(saveResult.message);
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : String(error));
+      const message = error instanceof Error ? error.message : String(error);
+      setSaveFailureMessage(message);
+      setStatusMessage(message);
     }
   }
 
@@ -785,6 +793,7 @@ export function App() {
     setDrawioBridgeTargetId(null);
     setDrawioExternalEditConflict(null);
     setWorkspaceExternalChange(null);
+    setSaveFailureMessage(null);
     setCurrentFilename(name);
     setCurrentNativePath(nativePath);
     addRecentFile(name, nextMetadata.title || name, "opened", nativePath);
@@ -1237,6 +1246,7 @@ export function App() {
     setDrawioBridgeTargetId(null);
     setDrawioExternalEditConflict(null);
     setWorkspaceExternalChange(null);
+    setSaveFailureMessage(null);
     setCurrentFilename(null);
     setCurrentNativePath(null);
     setActiveTab("markdown");
@@ -2517,12 +2527,15 @@ export function App() {
               workspaceDirectory={workspaceDirectory}
               workspaceEntries={workspaceEntries}
               isWorkspaceLoading={isWorkspaceLoading}
+              saveFailureMessage={saveFailureMessage}
               externalChangeMessage={workspaceExternalChange
                 ? `${filenameFromNativePath(workspaceExternalChange.path)} changed outside the editor. No content was reloaded automatically.`
                 : null}
               onNewDocument={createNewDocument}
               onOpenDocument={openDocumentAction}
-              onSaveSdoc={downloadSdoc}
+              onSaveSdoc={() => void downloadSdoc(false)}
+              onRetrySave={() => void downloadSdoc(false)}
+              onSaveAs={() => void downloadSdoc(true)}
               sdocSaveLabel={sdocSaveRoute.label}
               onSelectRecentFile={(entry) => void openRecentFile(entry)}
               onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
@@ -2618,7 +2631,7 @@ export function App() {
               derivedOutputs={derivedOutputs}
               dataGridDiagnostics={dataGridDiagnostics}
               dataGridRowReview={dataGridRowReview}
-              onExportSdoc={downloadSdoc}
+              onExportSdoc={() => void downloadSdoc(false)}
               onExportJson={downloadJson}
               onExportDerived={downloadDerivedOutput}
               onAcceptDataGridRowEvent={acceptDataGridRowEvent}

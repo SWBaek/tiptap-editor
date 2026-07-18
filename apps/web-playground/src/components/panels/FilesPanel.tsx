@@ -15,10 +15,13 @@ export interface FilesPanelProps {
   workspaceDirectory: string | null;
   workspaceEntries: WindowSdocWorkspaceEntry[];
   isWorkspaceLoading: boolean;
+  saveFailureMessage: string | null;
   externalChangeMessage: string | null;
   onNewDocument: () => void;
   onOpenDocument: () => void;
   onSaveSdoc: () => void;
+  onRetrySave: () => void;
+  onSaveAs: () => void;
   sdocSaveLabel: string;
   onSelectRecentFile: (entry: RecentFileEntry) => void;
   onChooseWorkspaceDirectory: () => void;
@@ -39,10 +42,13 @@ export function FilesPanel({
   workspaceDirectory,
   workspaceEntries,
   isWorkspaceLoading,
+  saveFailureMessage,
   externalChangeMessage,
   onNewDocument,
   onOpenDocument,
   onSaveSdoc,
+  onRetrySave,
+  onSaveAs,
   sdocSaveLabel,
   onSelectRecentFile,
   onChooseWorkspaceDirectory,
@@ -89,6 +95,17 @@ export function FilesPanel({
           <span>{savedLabel}</span>
         </div>
       </section>
+
+      {saveFailureMessage && (
+        <section className="save-recovery-alert" role="alert" aria-label="Save failed">
+          <strong>Save failed</strong>
+          <span>{saveFailureMessage}</span>
+          <div>
+            <button type="button" onClick={onRetrySave}>Retry</button>
+            {isDesktopRuntime && <button type="button" onClick={onSaveAs}>Save As</button>}
+          </div>
+        </section>
+      )}
 
       <div className="explorer-actions" aria-label="File actions">
         <button type="button" onClick={onNewDocument}>

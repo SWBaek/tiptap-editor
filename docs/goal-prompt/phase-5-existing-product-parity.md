@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 97
+progress_percent: 98
 current_slice: recovery-and-security
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -129,6 +129,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 97
     note: "Desktop explorer completed with a canonical-root recursive notify watcher, bounded typed start/read/stop event bridge, silent coalesced refresh, lifecycle cleanup, and runtime external-change alerts. Current-document content is never auto-reloaded; internal create/rename/trash/save events are briefly correlated to avoid false warnings. npm test (298), npm run build, npm run test:e2e (40), npm run typecheck:desktop, Windows cargo test (1), and Linux npm run build:desktop passed. Reload/compare recovery, save-failure actions, Draw.io conflict dialog, and CSP/capability hardening remain."
+  - date: 2026-07-18
+    progress_percent: 98
+    note: "Recovery work now gives native save failures a durable Files alert with the concrete error, Retry, and desktop Save As. Failed writes preserve the dirty document and baseline/path; only successful recovery clears the alert and marks the document saved. npm test (299), npm run build, npm run test:e2e (40), npm run typecheck:desktop, and npm run build:desktop passed. External reload/compare, Draw.io conflict dialog, CSP/capability hardening, and the final review gate remain."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

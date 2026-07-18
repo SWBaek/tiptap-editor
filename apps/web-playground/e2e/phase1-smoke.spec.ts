@@ -634,9 +634,18 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
       entry.children?.forEach((child) => replaceEntryPathPrefix(child, oldPrefix, nextPrefix));
     };
     (window as typeof window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
-    (window as typeof window & { __SDOC_NATIVE_SAVE_BRIDGE__?: unknown; __LAST_SAVED_PATH__?: string }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
+    (window as typeof window & {
+      __SDOC_NATIVE_SAVE_BRIDGE__?: unknown;
+      __LAST_SAVED_PATH__?: string;
+      __FAIL_NEXT_SAVE__?: boolean;
+    }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
       async saveSdoc(path: string) {
-        (window as typeof window & { __LAST_SAVED_PATH__?: string }).__LAST_SAVED_PATH__ = path;
+        const testWindow = window as typeof window & { __LAST_SAVED_PATH__?: string; __FAIL_NEXT_SAVE__?: boolean };
+        if (testWindow.__FAIL_NEXT_SAVE__) {
+          testWindow.__FAIL_NEXT_SAVE__ = false;
+          throw new Error("The workspace target is temporarily unwritable.");
+        }
+        testWindow.__LAST_SAVED_PATH__ = path;
         queueWorkspaceWatchEvent({ kind: "modified", path, isSdoc: true });
         return undefined;
       },
@@ -766,7 +775,17 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await filesPanel.getByRole("menu", { name: "Workspace actions for Review.sdoc" }).getByRole("menuitem", { name: "Move to Trash" }).click();
   await expect(page.getByRole("dialog", { name: "Move workspace entry to Trash" })).toHaveCount(0);
   await expect(page.locator(".status-note")).toContainText("Save or discard the current document");
+  await page.evaluate(() => {
+    (window as typeof window & { __FAIL_NEXT_SAVE__?: boolean }).__FAIL_NEXT_SAVE__ = true;
+  });
   await filesPanel.getByRole("button", { name: "Save" }).click();
+  const saveFailureAlert = filesPanel.getByRole("alert", { name: "Save failed" });
+  await expect(saveFailureAlert).toContainText("temporarily unwritable");
+  await expect(saveFailureAlert.getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(saveFailureAlert.getByRole("button", { name: "Save As" })).toBeVisible();
+  await expect(filesPanel.getByLabel("Current file")).toContainText("Unsaved changes");
+  await saveFailureAlert.getByRole("button", { name: "Retry" }).click();
+  await expect(saveFailureAlert).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __LAST_SAVED_PATH__?: string }).__LAST_SAVED_PATH__)).toBe(
     "C:\\Docs\\Guides\\Reference\\Review.sdoc"
   );

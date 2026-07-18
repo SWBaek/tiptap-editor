@@ -12,6 +12,8 @@ export const BLOCK_TYPES_WITH_IDS = [
   "bulletList",
   "orderedList",
   "listItem",
+  "taskList",
+  "taskItem",
   "callout",
   "figure",
   "equationBlock",

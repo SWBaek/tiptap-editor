@@ -138,6 +138,8 @@ Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tab
 
 Paragraph and heading blocks may store authored horizontal alignment in `attrs.textAlign` using `left`, `center`, or `right`. The absent/default value means left alignment and should not be serialized as a runtime default. Alignment never replaces or regenerates the block's stable `attrs.id`.
 
+Task lists use Tiptap-compatible `taskList` and `taskItem` block nodes. Both nodes, plus each paragraph inside a task item, carry stable immutable `attrs.id`. `taskItem.attrs.checked` is the only task-specific canonical state and must be boolean; checkbox hover/focus and selection remain runtime-only. Nested task lists are allowed inside task items and preserve their own stable IDs.
+
 ```json
 {
   "type": "table",

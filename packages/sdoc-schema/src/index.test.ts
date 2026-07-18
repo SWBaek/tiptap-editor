@@ -68,6 +68,42 @@ describe("validateDocument", () => {
     expect(result.issues.some((issue) => issue.message.includes("paragraph textAlign must be left, center, or right"))).toBe(true);
   });
 
+  it("accepts stable-id task lists and requires boolean checked state", () => {
+    const taskDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_tasks" },
+      content: [
+        {
+          type: "taskList",
+          attrs: { id: "blk_tasks" },
+          content: [
+            {
+              type: "taskItem",
+              attrs: { id: "blk_task", checked: false },
+              content: [{ type: "paragraph", attrs: { id: "blk_task_text" }, content: [{ type: "text", text: "Verify limits" }] }]
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(validateDocument(taskDocument).ok).toBe(true);
+    const invalid = structuredClone(taskDocument);
+    invalid.content[0].content[0].attrs.checked = "false" as unknown as boolean;
+    const result = validateDocument(invalid);
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("taskItem checked must be boolean"))).toBe(true);
+
+    const invalidStructure = structuredClone(taskDocument);
+    invalidStructure.content[0].content[0].content = [
+      { type: "taskList", attrs: { id: "blk_nested" }, content: [] }
+    ] as typeof invalidStructure.content[0].content[0].content;
+    const structureResult = validateDocument(invalidStructure);
+    expect(structureResult.ok).toBe(false);
+    expect(structureResult.issues.some((issue) => issue.message.includes("taskItem first child must be paragraph"))).toBe(true);
+  });
+
   it("accepts a figure with an asset reference and caption", () => {
     const document = {
       schemaVersion: 1,

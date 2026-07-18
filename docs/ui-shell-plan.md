@@ -131,6 +131,7 @@ Bubble-menu progress on 2026-07-18:
 - Normal link is now distinct from stable-ID cross-reference: the selected-text Bubble Menu and common toolbar open a validated add/edit/remove dialog.
 - Sub/superscript are implemented as canonical attribute-free marks in the advanced Text options menu and selected-text Bubble Menu, with semantic export coverage.
 - Paragraph and heading left/center/right alignment is implemented in Text options; table-cell alignment remains contextual under Table tools.
+- Task list is a visible basic writing control alongside bullet and ordered lists; checkbox state is canonical while focus/hover remains runtime-only.
 
 ## Outline And Authoring Structure
 

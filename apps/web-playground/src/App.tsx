@@ -6,6 +6,7 @@ import Underline from "@tiptap/extension-underline";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import TextAlign from "@tiptap/extension-text-align";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
   FileJson,
@@ -244,6 +245,8 @@ export function App() {
       ExclusiveSubscript,
       ExclusiveSuperscript,
       TextAlign.configure({ types: ["heading", "paragraph"], alignments: ["left", "center", "right"], defaultAlignment: "left" }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
       Placeholder.configure({ placeholder: "Write the technical document..." }),
       ...sdocExtensions
     ],

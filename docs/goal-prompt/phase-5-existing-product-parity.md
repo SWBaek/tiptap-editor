@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 61
+progress_percent: 65
 current_slice: writing-essentials
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -90,6 +90,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 61
     note: "Paragraph and heading left/center/right alignment is available through Text options and remains distinct from table-cell alignment. Canonical conversion omits the left runtime default, schema validation rejects unsupported justify, HTML preserves authored center/right, and Markdown intentionally remains plain. npm test (276), npm run build, and npm run test:e2e (35) passed."
+  - date: 2026-07-18
+    progress_percent: 65
+    note: "Task lists are available beside bullet/ordered lists with accessible checkbox toggling and nested list support. Canonical taskList/taskItem/paragraph blocks retain stable IDs; checked is validated as boolean and exported to Markdown/HTML/DOCX/PPTX projections. npm test (279), npm run build, and npm run test:e2e (36) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

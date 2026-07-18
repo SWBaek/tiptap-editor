@@ -38,6 +38,8 @@ Inline subscript and superscript use portable HTML fragments (`<sub>` and `<sup>
 
 Authored paragraph and heading `textAlign` is preserved in HTML with a constrained `text-align` style. Plain Markdown has no portable block-alignment syntax, so Markdown retains the text and structure but intentionally omits alignment.
 
+Task lists export as GitHub-flavored Markdown checkboxes (`- [ ]` and `- [x]`) and as semantic HTML lists with disabled checkbox inputs. Checkbox state comes only from canonical `taskItem.attrs.checked`.
+
 Markdown은 canonical이 아니다. Markdown export는 리뷰, 외부 협업, LLM 입력을 위한 projection이다.
 
 규칙:

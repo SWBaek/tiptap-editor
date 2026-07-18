@@ -45,6 +45,8 @@ export const BLOCK_NODE_TYPES = new Set([
   "bulletList",
   "orderedList",
   "listItem",
+  "taskList",
+  "taskItem",
   "callout",
   "figure",
   "equationBlock",
@@ -321,6 +323,21 @@ function validateNode(
     }
 
     validateRequiredChildTypes(typedNode, path, issues, "table", ["tableRow"]);
+  }
+
+  if (typedNode.type === "taskList") {
+    validateRequiredChildTypes(typedNode, path, issues, "taskList", ["taskItem"]);
+  }
+
+  if (typedNode.type === "taskItem") {
+    const checked = typedNode.attrs?.checked;
+    if (typeof checked !== "boolean") {
+      issues.push({ path: `${path}.attrs.checked`, message: "taskItem checked must be boolean" });
+    }
+    validateRequiredChildTypes(typedNode, path, issues, "taskItem", ["paragraph", "taskList"]);
+    if (Array.isArray(typedNode.content) && typedNode.content.length > 0 && typedNode.content[0]?.type !== "paragraph") {
+      issues.push({ path: `${path}.content[0].type`, message: "taskItem first child must be paragraph" });
+    }
   }
 
   if (typedNode.type === "tableRow") {

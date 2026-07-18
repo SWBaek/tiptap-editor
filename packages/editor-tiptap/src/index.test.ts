@@ -136,6 +136,31 @@ describe("SDoc conversion", () => {
     expect(validateDocument(document).ok).toBe(true);
   });
 
+  it("round-trips task list checked state and stable block ids", () => {
+    const editorJson = {
+      type: "doc",
+      content: [
+        {
+          type: "taskList",
+          attrs: { id: "blk_tasks" },
+          content: [
+            {
+              type: "taskItem",
+              attrs: { id: "blk_task", checked: true },
+              content: [{ type: "paragraph", attrs: { id: "blk_task_text" }, content: [{ type: "text", text: "Verify limits" }] }]
+            }
+          ]
+        }
+      ]
+    };
+    const document = toSdocDocument(editorJson, "doc_tasks");
+
+    expect(validateDocument(document).ok).toBe(true);
+    expect(document.content[0].attrs).toEqual({ id: "blk_tasks" });
+    expect(document.content[0].content?.[0].attrs).toEqual({ checked: true, id: "blk_task" });
+    expect(fromSdocDocument(document)).toEqual(editorJson);
+  });
+
   it("normalizes link marks without editor-runtime defaults or null attrs", () => {
     const document = toSdocDocument(
       {

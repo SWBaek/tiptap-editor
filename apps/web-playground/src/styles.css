@@ -2258,6 +2258,31 @@ button {
   padding-left: 24px;
 }
 
+.editor-surface ul[data-type="taskList"] {
+  padding-left: 0;
+  list-style: none;
+}
+
+.editor-surface li[data-type="taskItem"] {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.editor-surface li[data-type="taskItem"] > label {
+  padding-top: 3px;
+}
+
+.editor-surface li[data-type="taskItem"] > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-surface li[data-type="taskItem"][data-checked="true"] > div > p {
+  color: #70808f;
+  text-decoration: line-through;
+}
+
 .editor-surface code {
   padding: 2px 5px;
   background: #eef3f6;

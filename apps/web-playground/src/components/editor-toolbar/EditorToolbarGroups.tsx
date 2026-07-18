@@ -23,6 +23,7 @@ import {
   Italic,
   Link2,
   List,
+  ListChecks,
   ListOrdered,
   Menu,
   Quote,
@@ -126,6 +127,9 @@ export function EditorToolbarGroups({
         </ToolbarButton>
         <ToolbarButton title="Ordered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
           <ListOrdered size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Task list" active={editor.isActive("taskList")} onClick={() => editor.chain().focus().toggleTaskList().run()}>
+          <ListChecks size={18} />
         </ToolbarButton>
       </div>
 

@@ -15,6 +15,7 @@ interface JsonNode {
     previewAssetId?: unknown;
     targetId?: unknown;
     textAlign?: unknown;
+    checked?: unknown;
   };
   content?: JsonNode[];
   marks?: Array<{ type?: unknown }>;
@@ -228,6 +229,27 @@ test("aligns paragraphs as a canonical text block attribute", async ({ page }) =
   expectUniqueIds(collectBlockIds(document));
   expect(JSON.stringify(document)).not.toContain("selection");
   await expect(paragraph).toHaveCSS("text-align", "center");
+});
+
+test("authors and checks a stable-id task list", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.getByRole("button", { name: "Task list" }).click();
+  await page.keyboard.type("Verify converter limits");
+
+  const checkbox = page.getByRole("checkbox", { name: /Task item checkbox/ });
+  await expect(checkbox).not.toBeChecked();
+  await checkbox.click();
+  await expect(checkbox).toBeChecked();
+
+  const document = await readPreviewDocument(page);
+  const taskList = document.content?.find((node) => node.type === "taskList");
+  const taskItem = taskList?.content?.find((node) => node.type === "taskItem");
+  expect(taskItem?.attrs?.checked).toBe(true);
+  expectUniqueIds(collectBlockIds(document));
+
+  await selectPreviewTab(page, "Markdown");
+  await expect(page.locator(".preview-output")).toContainText("- [x] Verify converter limits");
 });
 
 test("uses viewport-safe runtime editor and table context menus", async ({ page }) => {

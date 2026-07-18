@@ -634,6 +634,11 @@ function renderDocxBlock(node: SDocNode, context: DocxRenderContext): string[] {
         const prefix = node.type === "orderedList" ? `${index + 1}. ` : "- ";
         return renderDocxParagraph(`${prefix}${getPlainText(child)}`, getMappedDocxStyle(context, node.type));
       });
+    case "taskList":
+      return (node.content ?? []).map((child) => {
+        const prefix = child.attrs?.checked === true ? "[x] " : "[ ] ";
+        return renderDocxParagraph(`${prefix}${getPlainText(child)}`, getMappedDocxStyle(context, "taskList"));
+      });
     case "table":
       return [...renderDocxTableCaption(node, context), renderDocxTable(extractTableRows(node), false)];
     case "figure":
@@ -1086,9 +1091,10 @@ function renderPptxBlock(slide: PptxSlide, node: SDocNode, options: PptxExportOp
     }
 
     case "bulletList":
-    case "orderedList": {
+    case "orderedList":
+    case "taskList": {
       const items = (node.content ?? []).map((child, index) => {
-        const marker = node.type === "orderedList" ? `${index + 1}.` : "-";
+        const marker = node.type === "orderedList" ? `${index + 1}.` : node.type === "taskList" ? (child.attrs?.checked === true ? "[x]" : "[ ]") : "-";
         return `${marker} ${getPlainText(child).trim()}`;
       });
       const text = items.filter(Boolean).join("\n");
@@ -1413,8 +1419,14 @@ function renderBlock(node: SDocNode, references: Map<string, ReferenceTarget>, d
     case "orderedList":
       return (node.content ?? []).map((child, index) => renderListItem(child, references, `${index + 1}.`, depth)).join("\n");
 
+    case "taskList":
+      return (node.content ?? []).map((child) => renderTaskItem(child, references, depth)).join("\n");
+
     case "listItem":
       return renderInlineChildren(node, references);
+
+    case "taskItem":
+      return renderTaskItem(node, references, depth);
 
     default:
       return renderInlineChildren(node, references);
@@ -1425,6 +1437,20 @@ function renderListItem(node: SDocNode, references: Map<string, ReferenceTarget>
   const indent = "  ".repeat(depth);
   const text = renderInlineChildren(node, references).replace(/\n/g, `\n${indent}  `);
   return `${indent}${marker} ${text}`;
+}
+
+function renderTaskItem(node: SDocNode, references: Map<string, ReferenceTarget>, depth: number): string {
+  const indent = "  ".repeat(depth);
+  const checked = node.attrs?.checked === true ? "x" : " ";
+  const text = (node.content ?? [])
+    .filter((child) => child.type === "paragraph")
+    .map((child) => renderInlineChildren(child, references))
+    .join(" ");
+  const nested = (node.content ?? [])
+    .filter((child) => child.type === "taskList")
+    .map((child) => renderBlock(child, references, depth + 1))
+    .join("\n");
+  return `${indent}- [${checked}] ${text}${nested ? `\n${nested}` : ""}`;
 }
 
 function renderInlineChildren(node: SDocNode, references: Map<string, ReferenceTarget>): string {
@@ -1572,8 +1598,19 @@ ${indentHtml(renderHtmlChildrenAsBlocks(node, references, options, depth), 2)}
     case "orderedList":
       return `<ol>${renderHtmlListItems(node, references, options, depth)}</ol>`;
 
+    case "taskList":
+      return `<ul class="sdoc-task-list">${renderHtmlListItems(node, references, options, depth)}</ul>`;
+
     case "listItem":
       return `<li>${renderHtmlChildrenAsBlocks(node, references, options, depth + 1)}</li>`;
+
+    case "taskItem": {
+      const checked = node.attrs?.checked === true;
+      const checkedAttribute = checked ? " checked" : "";
+      const id = getNodeId(node);
+      const idAttribute = id ? ` id="${escapeHtmlAttribute(id)}"` : "";
+      return `<li${idAttribute} data-checked="${checked}"><input type="checkbox" disabled${checkedAttribute}><div>${renderHtmlChildrenAsBlocks(node, references, options, depth + 1)}</div></li>`;
+    }
 
     default:
       return renderHtmlInlineChildren(node, references, options);

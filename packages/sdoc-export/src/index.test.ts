@@ -64,6 +64,36 @@ describe("exportMarkdown", () => {
     expect(exportHtml(technicalText)).toContain("H<sub>2</sub>O x<sup>2</sup>");
   });
 
+  it("exports canonical task items as Markdown and semantic HTML checkboxes", () => {
+    const tasks: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_tasks" },
+      content: [
+        {
+          type: "taskList",
+          attrs: { id: "blk_tasks" },
+          content: [
+            {
+              type: "taskItem",
+              attrs: { id: "blk_open", checked: false },
+              content: [{ type: "paragraph", attrs: { id: "blk_open_text" }, content: [{ type: "text", text: "Open task" }] }]
+            },
+            {
+              type: "taskItem",
+              attrs: { id: "blk_done", checked: true },
+              content: [{ type: "paragraph", attrs: { id: "blk_done_text" }, content: [{ type: "text", text: "Done task" }] }]
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(exportMarkdown(tasks)).toContain("- [ ] Open task\n- [x] Done task");
+    expect(exportHtml(tasks)).toContain('<li id="blk_open" data-checked="false"><input type="checkbox" disabled>');
+    expect(exportHtml(tasks)).toContain('<li id="blk_done" data-checked="true"><input type="checkbox" disabled checked>');
+  });
+
   it("includes human-facing ids in AI/RAG derived outputs", () => {
     const withHumanId: SDocDocument = {
       schemaVersion: 1,

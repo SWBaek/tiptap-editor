@@ -139,6 +139,7 @@ Technical-content editor progress on 2026-07-18:
 - Pasting image clipboard data opens a validated naming/caption dialog before insertion. It reuses the same asset-backed figure path as file-picker images; ordinary text/HTML paste remains ProseMirror-owned.
 - Inline/block equation insertion and selected-equation editing use one typed dialog with KaTeX validation and preview; applying an edit preserves the equation block ID and cancel never mutates canonical content.
 - Mermaid insertion and selected-node editing use a dialog with debounced asynchronous strict-mode SVG preview and parse-error feedback. Only the Mermaid source and existing stable block ID are canonical; rendered SVG, validation state, and dialog state remain runtime-only.
+- Table creation uses a validated rows/columns/header/caption dialog. The selected-table inspector edits the optional caption, header-row intent, and selected-cell alignment through existing table commands while preserving the table ID; dialog drafts remain runtime-only.
 
 ## Outline And Authoring Structure
 

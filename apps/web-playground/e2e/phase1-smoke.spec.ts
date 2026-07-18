@@ -310,6 +310,9 @@ test("uses viewport-safe runtime editor and table context menus", async ({ page 
 
   await page.locator(".editor-surface p").first().click({ button: "right" });
   await page.getByRole("menuitem", { name: "Insert table" }).click();
+  const tableInsertDialog = page.getByRole("dialog", { name: "Insert table" });
+  await expect(tableInsertDialog).toBeVisible();
+  await tableInsertDialog.getByRole("button", { name: "Insert table" }).click();
   await expect(page.locator(".status-note")).toContainText("Inserted table");
   await expect(insertMenu).toBeHidden();
 
@@ -996,6 +999,14 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
   await page.getByRole("button", { name: "Insert table" }).click();
+  const insertDialog = page.getByRole("dialog", { name: "Insert table" });
+  await insertDialog.getByLabel("Rows").fill("1");
+  await expect(insertDialog.getByRole("button", { name: "Insert table" })).toBeDisabled();
+  await expect(insertDialog.getByText("Rows must be a whole number from 2 to 20")).toBeVisible();
+  await insertDialog.getByLabel("Rows").fill("3");
+  await insertDialog.getByLabel("Columns").fill("2");
+  await insertDialog.getByLabel("Caption").fill("Initial readiness matrix");
+  await insertDialog.getByRole("button", { name: "Insert table" }).click();
   await expect(page.locator(".status-note")).toContainText("Inserted table");
   await expect(page.locator(".editor-surface table")).toBeVisible();
 
@@ -1003,13 +1014,22 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   await fillTableCell(page, "th", 1, "Status");
   await fillTableCell(page, "td", 0, "API");
   await fillTableCell(page, "td", 1, "Ready");
-  page.once("dialog", async (dialog) => {
-    expect(dialog.message()).toBe("Table caption");
-    await dialog.accept("API readiness matrix");
-  });
   await openToolbarMenu(page, "Table tools");
-  await page.getByRole("button", { name: "Edit table caption" }).click();
-  await expect(page.locator(".status-note")).toContainText("Updated table caption");
+  await page.getByRole("button", { name: "Edit table" }).click();
+  const editDialog = page.getByRole("dialog", { name: "Edit table" });
+  await expect(editDialog.getByLabel("Caption")).toHaveValue("Initial readiness matrix");
+  await editDialog.getByLabel("Caption").fill("API readiness matrix");
+  await editDialog.getByLabel("Use first row as header").uncheck();
+  await editDialog.getByLabel("Selected cell alignment").selectOption("center");
+  await editDialog.getByRole("button", { name: "Update table" }).click();
+  await expect(page.locator(".status-note")).toContainText("Updated table");
+  await expect(page.locator(".editor-surface table th")).toHaveCount(0);
+  await openToolbarMenu(page, "Table tools");
+  await page.getByRole("button", { name: "Edit table" }).click();
+  const restoreHeaderDialog = page.getByRole("dialog", { name: "Edit table" });
+  await restoreHeaderDialog.getByLabel("Use first row as header").check();
+  await restoreHeaderDialog.getByRole("button", { name: "Update table" }).click();
+  await expect(page.locator(".editor-surface table th")).toHaveCount(2);
   await expect(page.locator(".editor-surface table")).toHaveAttribute("data-caption", "API readiness matrix");
 
   await page.getByRole("button", { name: "Outline panel" }).click();
@@ -1020,6 +1040,7 @@ test("inserts a simple table and round-trips through .sdoc", async ({ page }, te
   await expect.poll(async () => findFirstNodeByType(await readPreviewDocument(page), "table").attrs?.id).toEqual(expect.any(String));
   const insertedDocument = await readPreviewDocument(page);
   expect(findFirstNodeByType(insertedDocument, "table").attrs?.caption).toBe("API readiness matrix");
+  expect(JSON.stringify(findFirstNodeByType(insertedDocument, "table"))).toContain('"align":"center"');
   expectUniqueIds(collectBlockIds(insertedDocument));
   await expect(page.getByText("Valid")).toBeVisible();
 
@@ -1055,6 +1076,7 @@ test("uses advanced table controls without storing transient table UI state", as
   await page.getByRole("button", { name: "New document" }).click();
   await page.locator(".editor-surface").click();
   await page.getByRole("button", { name: "Insert table" }).click();
+  await page.getByRole("dialog", { name: "Insert table" }).getByRole("button", { name: "Insert table" }).click();
   await fillTableCell(page, "th", 0, "Name");
   await fillTableCell(page, "th", 1, "Status");
   await fillTableCell(page, "td", 0, "API");

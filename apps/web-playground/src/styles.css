@@ -2064,6 +2064,15 @@ button {
   height: 38px;
 }
 
+.author-dialog select {
+  height: 38px;
+  padding: 0 10px;
+  color: #273642;
+  background: #fff;
+  border: 1px solid #cbd4dc;
+  border-radius: 5px;
+}
+
 .author-dialog textarea {
   resize: vertical;
   font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
@@ -2122,6 +2131,24 @@ button {
 .mermaid-dialog-preview > span {
   color: #7a8793;
   font-size: 12px;
+}
+
+.table-dialog-dimensions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.table-dialog-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-dialog-checkbox input {
+  width: 16px;
+  height: 16px;
 }
 
 .dialog-validation {

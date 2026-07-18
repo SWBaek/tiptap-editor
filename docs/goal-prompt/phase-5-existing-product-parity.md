@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 78
+progress_percent: 81
 current_slice: technical-content-editors
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -105,6 +105,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 78
     note: "Mermaid insertion and selected-node editing now use one asynchronous strict-mode SVG validation/preview dialog instead of window.prompt, reachable by menu, context menu, and double-click. E2E blocks invalid syntax, verifies preview, edits source without changing the stable ID, excludes SVG from canonical JSON, exports Markdown, and reopens .sdoc. npm test (283), npm run build, and npm run test:e2e (38) passed."
+  - date: 2026-07-18
+    progress_percent: 81
+    note: "Table creation now uses a bounded rows/columns/header/caption dialog, and the selected-table inspector replaces the caption prompt with caption, header-row, and selected-cell alignment controls. E2E rejects invalid dimensions, exercises context-menu insertion and inspector edits, preserves the table ID, exports the caption, and reopens .sdoc. npm test (285), npm run build, and npm run test:e2e (38) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

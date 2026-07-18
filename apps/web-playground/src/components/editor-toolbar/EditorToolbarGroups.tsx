@@ -56,7 +56,7 @@ export interface EditorToolbarGroupsProps {
   onInsertDataGrid: () => void;
   onMoveBlock: (direction: BlockMoveDirection) => void;
   onRunTableCommand: (command: AdvancedTableCommand, successMessage: string) => void;
-  onEditTableCaption: () => void;
+  onEditTable: () => void;
   onAlignTableCells: (alignment: TableCellAlignment) => void;
   onInsertInlineEquation: () => void;
   onInsertEquationBlock: () => void;
@@ -84,7 +84,7 @@ export function EditorToolbarGroups({
   onInsertDataGrid,
   onMoveBlock,
   onRunTableCommand,
-  onEditTableCaption,
+  onEditTable,
   onAlignTableCells,
   onInsertInlineEquation,
   onInsertEquationBlock,
@@ -240,7 +240,7 @@ export function EditorToolbarGroups({
           <ToolbarButton title="Toggle header column" active onClick={() => onRunTableCommand("toggleHeaderColumn", "Toggled header column")}>
             <Table size={18} />
           </ToolbarButton>
-          <ToolbarButton title="Edit table caption" active onClick={onEditTableCaption}>
+          <ToolbarButton title="Edit table" active onClick={onEditTable}>
             <FileText size={18} />
           </ToolbarButton>
           <ToolbarButton title="Align table cell left" active={editor.isActive("tableCell", { align: "left" }) || editor.isActive("tableHeader", { align: "left" })} onClick={() => onAlignTableCells("left")}>

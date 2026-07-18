@@ -138,6 +138,7 @@ import { LinkDialog } from "./components/dialogs/LinkDialog";
 import { ImagePasteDialog, type PastedImageDetails } from "./components/dialogs/ImagePasteDialog";
 import { EquationDialog, type EquationDialogMode } from "./components/dialogs/EquationDialog";
 import { MermaidDialog, type MermaidDialogMode } from "./components/dialogs/MermaidDialog";
+import { TableDialog, type TableDialogAlignment, type TableDialogMode, type TableDialogValues } from "./components/dialogs/TableDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -175,6 +176,11 @@ interface MermaidDialogState {
   mode: MermaidDialogMode;
   source: string;
   position?: number;
+}
+interface TableDialogState extends TableDialogValues {
+  mode: TableDialogMode;
+  position?: number;
+  initialAlignment: TableDialogAlignment;
 }
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
@@ -239,6 +245,7 @@ export function App() {
   const [pastedImageDialog, setPastedImageDialog] = useState<PastedImageDialogState | null>(null);
   const [equationDialog, setEquationDialog] = useState<EquationDialogState | null>(null);
   const [mermaidDialog, setMermaidDialog] = useState<MermaidDialogState | null>(null);
+  const [tableDialog, setTableDialog] = useState<TableDialogState | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -901,44 +908,109 @@ export function App() {
     setStatusMessage(applied ? `Applied ${kind} callout` : `Cannot apply ${kind} callout`);
   }
 
-  function insertTable() {
-    const inserted = insertSimpleTable(editor);
-    setActiveTab("json");
-    setStatusMessage(inserted ? "Inserted table" : "Cannot insert table");
+  function openTableInsertDialog() {
+    setTableDialog({
+      mode: "insert",
+      caption: "",
+      rows: 3,
+      columns: 2,
+      withHeaderRow: true,
+      alignment: "unchanged",
+      initialAlignment: "unchanged"
+    });
+    setStatusMessage("Configuring table");
   }
 
-  function editSelectedTableCaptionFromPrompt() {
+  function openSelectedTableDialog() {
     const target = getSelectedTableTarget(editor);
     if (!target) {
-      setStatusMessage("Select a table to edit caption");
+      setStatusMessage("Select a table to edit");
       return;
     }
 
     const currentCaption = typeof target.attrs.caption === "string" ? target.attrs.caption : "";
-    const rawCaption = window.prompt("Table caption", currentCaption);
-    if (rawCaption === null) {
-      setStatusMessage("Canceled table caption");
+    setTableDialog({
+      mode: "edit",
+      position: target.position,
+      caption: currentCaption,
+      rows: target.rows,
+      columns: target.columns,
+      withHeaderRow: target.withHeaderRow,
+      alignment: target.alignment,
+      initialAlignment: target.alignment
+    });
+    setStatusMessage("Editing selected table");
+  }
+
+  function applyTable(values: TableDialogValues) {
+    if (!tableDialog) {
       return;
     }
 
-    const nextCaption = rawCaption.trim();
-    if (nextCaption === currentCaption) {
-      setStatusMessage("Canceled table caption");
+    if (tableDialog.mode === "insert") {
+      const inserted = insertSimpleTable(editor, values.rows, values.columns, values.withHeaderRow);
+      if (!inserted) {
+        setStatusMessage("Cannot insert table");
+        return;
+      }
+      if (values.caption) {
+        const target = getSelectedTableTarget(editor);
+        if (target) {
+          const transaction = editor.state.tr.setNodeMarkup(target.position, undefined, { ...target.attrs, caption: values.caption });
+          editor.view.dispatch(transaction.scrollIntoView());
+        }
+      }
+      setTableDialog(null);
+      setActiveTab("json");
+      setStatusMessage("Inserted table");
       return;
     }
 
-    const nextAttrs: Record<string, unknown> = { ...target.attrs };
-    if (nextCaption) {
-      nextAttrs.caption = nextCaption;
-    } else {
-      delete nextAttrs.caption;
+    const position = tableDialog.position;
+    if (typeof position !== "number") {
+      setStatusMessage("Cannot update table: selection changed");
+      return;
+    }
+    const node = editor.state.doc.nodeAt(position);
+    if (!node || node.type.name !== "table") {
+      setStatusMessage("Cannot update table: selection changed");
+      return;
     }
 
-    const transaction = editor.state.tr.setNodeMarkup(target.position, undefined, nextAttrs);
-    editor.view.dispatch(transaction.scrollIntoView());
+    const currentCaption = typeof node.attrs.caption === "string" ? node.attrs.caption : "";
+    let changed = false;
+    if (values.caption !== currentCaption) {
+      const nextAttrs: Record<string, unknown> = { ...node.attrs };
+      if (values.caption) {
+        nextAttrs.caption = values.caption;
+      } else {
+        delete nextAttrs.caption;
+      }
+      const transaction = editor.state.tr.setNodeMarkup(position, undefined, nextAttrs);
+      editor.view.dispatch(transaction.scrollIntoView());
+      changed = true;
+    }
+
+    if (values.withHeaderRow !== tableHasHeaderRow(node)) {
+      if (!runAdvancedTableCommand(editor, "toggleHeaderRow")) {
+        setStatusMessage("Cannot update table header row");
+        return;
+      }
+      changed = true;
+    }
+
+    if (values.alignment !== tableDialog.initialAlignment && values.alignment !== "unchanged") {
+      if (!setSelectedTableCellsAlignment(editor, values.alignment)) {
+        setStatusMessage(`Cannot align table cell ${values.alignment}`);
+        return;
+      }
+      changed = true;
+    }
+
+    setTableDialog(null);
     editor.view.focus();
     setActiveTab("json");
-    setStatusMessage(nextCaption ? "Updated table caption" : "Removed table caption");
+    setStatusMessage(changed ? "Updated table" : "Table unchanged");
   }
 
   async function insertDataGridFile(file: File) {
@@ -2072,7 +2144,7 @@ export function App() {
             onInsertImage: () => imageInputRef.current?.click(),
             onEditLink: openLinkDialog,
             onInsertReference: openReferencePicker,
-            onInsertTable: insertTable,
+            onInsertTable: openTableInsertDialog,
             onApplyCallout: applyCallout,
             onFoldSection: foldSelectedSection,
             onUnfoldSection: unfoldSelectedSection,
@@ -2080,7 +2152,7 @@ export function App() {
             onInsertDataGrid: () => dataGridInputRef.current?.click(),
             onMoveBlock: moveBlock,
             onRunTableCommand: runTableCommand,
-            onEditTableCaption: editSelectedTableCaptionFromPrompt,
+            onEditTable: openSelectedTableDialog,
             onAlignTableCells: alignTableCells,
             onInsertInlineEquation: openInlineEquationDialog,
             onInsertEquationBlock: openEquationBlockDialog,
@@ -2128,13 +2200,13 @@ export function App() {
                 onClose={() => setEditorContextMenu(null)}
                 onInsertImage={() => imageInputRef.current?.click()}
                 onInsertReference={openReferencePicker}
-                onInsertTable={insertTable}
+                onInsertTable={openTableInsertDialog}
                 onInsertInlineEquation={openInlineEquationDialog}
                 onInsertEquationBlock={openEquationBlockDialog}
                 onInsertMermaid={openMermaidInsertDialog}
                 onEditEquation={openSelectedEquationDialog}
                 onEditMermaid={openSelectedMermaidDialog}
-                onEditTableCaption={editSelectedTableCaptionFromPrompt}
+                onEditTable={openSelectedTableDialog}
                 onAddTableRow={() => runTableCommand("addRowAfter", "Added table row")}
                 onAddTableColumn={() => runTableCommand("addColumnAfter", "Added table column")}
                 onDeleteTableRow={() => runTableCommand("deleteRow", "Deleted table row")}
@@ -2227,6 +2299,24 @@ export function App() {
             setMermaidDialog(null);
             editor.view.focus();
             setStatusMessage("Canceled Mermaid diagram edit");
+          }}
+        />
+      )}
+      {tableDialog && (
+        <TableDialog
+          mode={tableDialog.mode}
+          initialValues={{
+            caption: tableDialog.caption,
+            rows: tableDialog.rows,
+            columns: tableDialog.columns,
+            withHeaderRow: tableDialog.withHeaderRow,
+            alignment: tableDialog.alignment
+          }}
+          onApply={applyTable}
+          onCancel={() => {
+            setTableDialog(null);
+            editor.view.focus();
+            setStatusMessage("Canceled table edit");
           }}
         />
       )}
@@ -2406,16 +2496,57 @@ function getSdocNodeText(node: SDocNode): string {
   return "";
 }
 
-function getSelectedTableTarget(editor: Editor): { position: number; attrs: Record<string, unknown> } | null {
+type EditorNode = NonNullable<ReturnType<Editor["state"]["doc"]["nodeAt"]>>;
+
+function getSelectedTableTarget(editor: Editor): {
+  position: number;
+  attrs: Record<string, unknown>;
+  rows: number;
+  columns: number;
+  withHeaderRow: boolean;
+  alignment: TableDialogAlignment;
+} | null {
   const { $from } = editor.state.selection;
   for (let depth = $from.depth; depth > 0; depth -= 1) {
     const node = $from.node(depth);
     if (node.type.name === "table") {
-      return { position: $from.before(depth), attrs: node.attrs };
+      return {
+        position: $from.before(depth),
+        attrs: node.attrs,
+        rows: node.childCount,
+        columns: node.firstChild?.childCount ?? 0,
+        withHeaderRow: tableHasHeaderRow(node),
+        alignment: getSelectedTableCellAlignment($from)
+      };
     }
   }
 
   return null;
+}
+
+function tableHasHeaderRow(table: EditorNode): boolean {
+  const firstRow = table.firstChild;
+  if (!firstRow || firstRow.childCount === 0) {
+    return false;
+  }
+
+  for (let index = 0; index < firstRow.childCount; index += 1) {
+    if (firstRow.child(index).type.name !== "tableHeader") {
+      return false;
+    }
+  }
+  return true;
+}
+
+function getSelectedTableCellAlignment($from: Editor["state"]["selection"]["$from"]): TableDialogAlignment {
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (node.type.name === "tableCell" || node.type.name === "tableHeader") {
+      const alignment = node.attrs.align;
+      return alignment === "left" || alignment === "center" || alignment === "right" ? alignment : "unchanged";
+    }
+  }
+  return "unchanged";
 }
 
 function getSelectedEquationPosition(editor: Editor): number | null {

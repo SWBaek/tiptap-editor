@@ -20,7 +20,7 @@ export interface EditorContextMenuProps {
   onInsertMermaid: () => void;
   onEditEquation: () => void;
   onEditMermaid: () => void;
-  onEditTableCaption: () => void;
+  onEditTable: () => void;
   onAddTableRow: () => void;
   onAddTableColumn: () => void;
   onDeleteTableRow: () => void;
@@ -38,7 +38,7 @@ export function EditorContextMenu({
   onInsertMermaid,
   onEditEquation,
   onEditMermaid,
-  onEditTableCaption,
+  onEditTable,
   onAddTableRow,
   onAddTableColumn,
   onDeleteTableRow,
@@ -88,7 +88,7 @@ export function EditorContextMenu({
       )}
       {state.kind === "table" && (
         <>
-          <ContextMenuButton label="Edit table caption" icon={<FileText size={16} />} onClick={() => run(onEditTableCaption)} />
+          <ContextMenuButton label="Edit table" icon={<FileText size={16} />} onClick={() => run(onEditTable)} />
           <ContextMenuButton label="Add row after" icon={<Plus size={16} />} onClick={() => run(onAddTableRow)} />
           <ContextMenuButton label="Add column after" icon={<Plus size={16} />} onClick={() => run(onAddTableColumn)} />
           <ContextMenuButton label="Delete row" icon={<Trash2 size={16} />} onClick={() => run(onDeleteTableRow)} danger />

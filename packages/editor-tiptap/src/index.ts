@@ -519,9 +519,9 @@ interface TableChain {
   };
 }
 
-export function insertSimpleTable(editor: TableInsertTarget, rows = 3, cols = 2): boolean {
+export function insertSimpleTable(editor: TableInsertTarget, rows = 3, cols = 2, withHeaderRow = true): boolean {
   const chain = editor.chain() as TableChain;
-  return chain.focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+  return chain.focus().insertTable({ rows, cols, withHeaderRow }).run();
 }
 
 export type AdvancedTableCommand =

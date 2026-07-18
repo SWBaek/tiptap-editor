@@ -224,8 +224,10 @@ Acceptance evidence:
 - Unit tests prove native adapter failures propagate instead of reporting success; desktop-runtime E2E proves Unsaved changes survive failure and Retry completes recovery.
 - External-change alerts now offer Reload from disk, Keep current, and Compare. Compare validates the disk `.sdoc` into a runtime-only semantic review baseline without mutating the editor; Reload is explicit; Keep preserves dirty authoring state.
 - Desktop-runtime E2E proves all three external-change choices, including a dirty Keep path and a compare path labeled `External disk version`.
+- Draw.io external-edit conflicts now use a dedicated modal that explains Keep current, Replace source, and Save as revision against named block/source/revision identifiers; the conflict path no longer invokes a browser confirm prompt.
+- Draw.io E2E proves the revision choice preserves the diagram block ID, packs revised bytes as an asset, changes only the canonical `sourceAssetId`, and leaves runtime/executable/source content out of `document.json`.
 - `npm test` (299), `npm run build`, `npm run test:e2e` (40), `npm run typecheck:desktop`, and `npm run build:desktop` pass.
-- The dedicated Draw.io conflict dialog and CSP/capability evidence remain required.
+- CSP/capability evidence remains required.
 
 ## Reprioritized Existing Work
 

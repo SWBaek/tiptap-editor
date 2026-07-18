@@ -175,6 +175,7 @@ import {
   WorkspaceEntryActionDialog,
   type WorkspaceEntryAction
 } from "./components/dialogs/WorkspaceEntryActionDialog";
+import { DrawioConflictDialog } from "./components/dialogs/DrawioConflictDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -1679,11 +1680,6 @@ export function App() {
       return;
     }
 
-    if (!window.confirm(`Replace current Draw.io source asset ${drawioExternalEditConflict.sourceAssetId} with the external edit?`)) {
-      setStatusMessage(`Canceled Draw.io replace for ${drawioExternalEditConflict.sourceAssetId}.`);
-      return;
-    }
-
     setAssets((current) => ({ ...current, [drawioExternalEditConflict.sourceAssetId]: drawioExternalEditConflict.sourceBytes }));
     setDrawioExternalEditConflict(null);
     setStatusMessage(`Replaced Draw.io source asset ${drawioExternalEditConflict.sourceAssetId}.`);
@@ -1696,11 +1692,6 @@ export function App() {
     }
 
     const revisionAssetId = createDrawioRevisionAssetId(drawioExternalEditConflict.sourceAssetId, assets);
-    if (!window.confirm(`Save external Draw.io edit as ${revisionAssetId}?`)) {
-      setStatusMessage(`Canceled Draw.io revision save for ${drawioExternalEditConflict.sourceAssetId}.`);
-      return;
-    }
-
     const nextAssets = { ...assets, [revisionAssetId]: drawioExternalEditConflict.sourceBytes };
     const nextDocument = updateDrawioSourceAssetId(document, drawioExternalEditConflict.blockId, revisionAssetId);
     editor.commands.setContent(fromSdocDocument(nextDocument, createAssetSourceMap(nextAssets)), { emitUpdate: true });
@@ -2544,27 +2535,6 @@ export function App() {
           </div>
 
           <div className="side-status-note">{statusMessage}</div>
-          {drawioExternalEditConflict && (
-            <section className="workspace-boundary" aria-label="Draw.io external edit conflict">
-              <strong>Draw.io external edit conflict</strong>
-              <span>
-                External edit is available for <code>{drawioExternalEditConflict.sourceAssetId}</code>. Choose how to resolve it; this runtime
-                choice is not stored in document.json.
-              </span>
-              <div className="workspace-actions">
-                <button type="button" onClick={keepCurrentDrawioSource}>
-                  Keep current
-                </button>
-                <button type="button" onClick={replaceCurrentDrawioSource}>
-                  Replace source
-                </button>
-                <button type="button" onClick={saveDrawioExternalEditAsRevision}>
-                  Save as revision
-                </button>
-              </div>
-            </section>
-          )}
-
           {activePanel === "settings" && (
             <SettingsPanel
               metadata={metadata}
@@ -2899,6 +2869,17 @@ export function App() {
             setWorkspaceEntryActionDialog(null);
             setStatusMessage("Canceled workspace entry action");
           }}
+        />
+      )}
+      {drawioExternalEditConflict && (
+        <DrawioConflictDialog
+          blockId={drawioExternalEditConflict.blockId}
+          sourceAssetId={drawioExternalEditConflict.sourceAssetId}
+          revisionAssetId={createDrawioRevisionAssetId(drawioExternalEditConflict.sourceAssetId, assets)}
+          message={drawioExternalEditConflict.message}
+          onKeepCurrent={keepCurrentDrawioSource}
+          onReplaceSource={replaceCurrentDrawioSource}
+          onSaveRevision={saveDrawioExternalEditAsRevision}
         />
       )}
       {linkDialog && (

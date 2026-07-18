@@ -1661,6 +1661,11 @@ test("creates a new Draw.io diagram as an asset-backed source", async ({ page })
 });
 
 test("resolves a Draw.io external edit conflict as a revision asset", async ({ page }, testInfo) => {
+  let browserDialogCount = 0;
+  page.on("dialog", async (dialog) => {
+    browserDialogCount += 1;
+    await dialog.dismiss();
+  });
   await page.addInitScript(() => {
     const editedSource = new TextEncoder().encode("<mxfile><diagram id=\"d1\">external-edit</diagram></mxfile>");
     (window as typeof window & { __drawioLaunches?: Array<{ sessionId: string; executablePath?: string }> }).__drawioLaunches = [];
@@ -1723,9 +1728,11 @@ test("resolves a Draw.io external edit conflict as a revision asset", async ({ p
   await openToolbarMenu(page, "Draw.io tools");
   await page.getByRole("button", { name: "Read Draw.io external edit" }).click();
   await expect(page.getByLabel("Draw.io external edit conflict")).toContainText("Draw.io external edit conflict");
+  await expect(page.getByLabel("Draw.io external edit conflict")).toContainText("Current source");
+  await expect(page.getByLabel("Draw.io external edit conflict")).toContainText(".rev1.drawio");
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Save as revision" }).click();
+  expect(browserDialogCount).toBe(0);
   await expect(page.locator(".status-note")).toContainText("Saved Draw.io external edit as");
 
   await selectPreviewTab(page, "JSON");

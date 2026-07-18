@@ -135,6 +135,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 99
     note: "External current-document changes now offer explicit Reload from disk, Keep current, and Compare recovery. Compare validates the disk SDoc into a runtime-only semantic review baseline without mutating the active draft; Reload is explicit and Keep preserves dirty state. npm test (299), npm run build, npm run test:e2e (40), npm run typecheck:desktop, and npm run build:desktop passed. The Draw.io conflict dialog, CSP/capability hardening, and final review-gate documentation remain."
+  - date: 2026-07-18
+    progress_percent: 99
+    note: "Draw.io external-edit conflicts now open a dedicated modal that names the block, current source, and prospective revision and explains Keep current, Replace source, and Save as revision. No browser confirm prompt is used; E2E proves revision preserves the stable diagram ID, stores revised bytes under assets, and keeps conflict/session/source content out of document.json. npm test (299), npm run build, npm run test:e2e (40), npm run typecheck:desktop, and npm run build:desktop passed. CSP/capability hardening and the final review gate remain."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

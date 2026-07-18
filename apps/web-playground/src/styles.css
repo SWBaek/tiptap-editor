@@ -2367,6 +2367,65 @@ button {
   line-height: 1.5;
 }
 
+.drawio-conflict-dialog {
+  width: min(620px, calc(100vw - 32px));
+}
+
+.drawio-conflict-body {
+  padding: 16px 18px 18px;
+}
+
+.drawio-conflict-body > p {
+  color: #4e5d69;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.drawio-conflict-details {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  background: #f6f8fa;
+  border: 1px solid #dbe2e8;
+  border-radius: 6px;
+}
+
+.drawio-conflict-details > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.drawio-conflict-details dt {
+  color: #657484;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.drawio-conflict-details dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.drawio-conflict-options {
+  display: grid;
+  gap: 7px;
+}
+
+.drawio-conflict-options p {
+  margin: 0;
+  color: #344653;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.drawio-conflict-runtime-note {
+  padding-top: 10px;
+  border-top: 1px solid #e0e6eb;
+}
+
 .author-dialog footer {
   display: flex;
   gap: 8px;

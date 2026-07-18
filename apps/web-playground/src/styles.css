@@ -2049,10 +2049,10 @@ button {
   font-weight: 700;
 }
 
-.author-dialog input {
+.author-dialog input,
+.author-dialog textarea {
   width: 100%;
-  height: 38px;
-  padding: 0 10px;
+  padding: 9px 10px;
   color: #17212b;
   background: #ffffff;
   border: 1px solid #cfd7df;
@@ -2060,13 +2060,41 @@ button {
   outline: none;
 }
 
-.author-dialog input:focus {
+.author-dialog input {
+  height: 38px;
+}
+
+.author-dialog textarea {
+  resize: vertical;
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+.author-dialog input:focus,
+.author-dialog textarea:focus {
   border-color: #4c95a3;
   box-shadow: 0 0 0 3px rgba(76, 149, 163, 0.14);
 }
 
-.author-dialog input[aria-invalid="true"] {
+.author-dialog input[aria-invalid="true"],
+.author-dialog textarea[aria-invalid="true"] {
   border-color: #c95c5c;
+}
+
+.equation-dialog-preview {
+  display: grid;
+  min-height: 76px;
+  place-items: center;
+  overflow: auto;
+  padding: 12px;
+  color: #273642;
+  background: #f6f8fa;
+  border: 1px solid #dbe2e8;
+  border-radius: 6px;
+}
+
+.equation-dialog-preview > span {
+  color: #7a8793;
+  font-size: 12px;
 }
 
 .dialog-validation {

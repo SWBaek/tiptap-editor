@@ -1099,29 +1099,30 @@ test("inserts inline and block equations and round-trips through .sdoc", async (
   await page.locator(".editor-surface").click();
   await page.keyboard.type("Energy ");
 
-  page.once("dialog", async (dialog) => {
-    expect(dialog.message()).toBe("Inline equation");
-    await dialog.accept("E=mc^2");
-  });
   await openToolbarMenu(page, "More insert");
   await page.getByRole("button", { name: "Insert inline equation" }).click();
+  const inlineDialog = page.getByRole("dialog", { name: "Insert inline equation" });
+  await inlineDialog.getByLabel("LaTeX source").fill("\\notARealCommand{");
+  await expect(inlineDialog.getByRole("button", { name: "Insert equation" })).toBeDisabled();
+  await inlineDialog.getByLabel("LaTeX source").fill("E=mc^2");
+  await expect(inlineDialog.getByLabel("Equation preview").locator(".katex")).toBeVisible();
+  await inlineDialog.getByRole("button", { name: "Insert equation" }).click();
   await expect(page.locator(".status-note")).toContainText("Inserted inline equation");
   await expect(page.locator(".editor-surface .sdoc-inline-equation .katex")).toBeVisible();
 
-  page.once("dialog", async (dialog) => {
-    expect(dialog.message()).toBe("Block equation");
-    await dialog.accept("a^2+b^2=c^2");
-  });
   await openToolbarMenu(page, "More insert");
   await page.getByRole("button", { name: "Insert equation block" }).click();
+  const blockDialog = page.getByRole("dialog", { name: "Insert block equation" });
+  await blockDialog.getByLabel("LaTeX source").fill("a^2+b^2=c^2");
+  await blockDialog.getByRole("button", { name: "Insert equation" }).click();
   await expect(page.locator(".status-note")).toContainText("Inserted equation block");
   await expect(page.locator(".editor-surface .sdoc-equation-block .katex")).toBeVisible();
 
-  page.once("dialog", async (dialog) => {
-    expect(dialog.message()).toBe("Edit equation");
-    await dialog.accept("x^2+y^2=z^2");
-  });
   await page.locator(".editor-surface .sdoc-equation-block").dblclick();
+  const editDialog = page.getByRole("dialog", { name: "Edit equation" });
+  await expect(editDialog.getByLabel("LaTeX source")).toHaveValue("a^2+b^2=c^2");
+  await editDialog.getByLabel("LaTeX source").fill("x^2+y^2=z^2");
+  await editDialog.getByRole("button", { name: "Update equation" }).click();
   await expect(page.locator(".status-note")).toContainText("Updated equation");
 
   const insertedDocument = await readPreviewDocument(page);

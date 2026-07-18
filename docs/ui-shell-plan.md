@@ -134,6 +134,7 @@ Bubble-menu progress on 2026-07-18:
 - Task list is a visible basic writing control alongside bullet and ordered lists; checkbox state is canonical while focus/hover remains runtime-only.
 - Heading Tab/Shift-Tab changes heading depth in place, preserves the stable block ID, and does not intercept Tab in ordinary paragraphs or list-specific contexts.
 - Pasting image clipboard data opens a validated naming/caption dialog before insertion. It reuses the same asset-backed figure path as file-picker images; ordinary text/HTML paste remains ProseMirror-owned.
+- Inline/block equation insertion and selected-equation editing use one typed dialog with KaTeX validation and preview; cancel never mutates canonical content.
 
 ## Outline And Authoring Structure
 

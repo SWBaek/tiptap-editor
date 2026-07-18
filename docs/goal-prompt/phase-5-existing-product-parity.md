@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 72
+progress_percent: 75
 current_slice: technical-content-editors
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -99,6 +99,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 72
     note: "Writing essentials completed. Supported clipboard images now open a validated name/caption dialog, reuse the asset-backed figure path, avoid data URIs in canonical JSON, and survive .sdoc save/reopen; ordinary HTML/text paste remains unchanged. npm test (281), npm run build, and npm run test:e2e (38) passed."
+  - date: 2026-07-18
+    progress_percent: 75
+    note: "Inline/block equation insertion and selected equation editing now use one typed KaTeX validation/preview dialog instead of window.prompt. E2E blocks invalid LaTeX, verifies preview, edits in place, exports, and reopens .sdoc with stable IDs. npm test (282), npm run build, and npm run test:e2e (38) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

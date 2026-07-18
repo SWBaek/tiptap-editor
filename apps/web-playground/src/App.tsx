@@ -136,6 +136,7 @@ import { DeveloperPanel, type DerivedOutputName } from "./components/panels/Deve
 import { DiffReview, ReviewPanel } from "./components/panels/ReviewPanel";
 import { LinkDialog } from "./components/dialogs/LinkDialog";
 import { ImagePasteDialog, type PastedImageDetails } from "./components/dialogs/ImagePasteDialog";
+import { EquationDialog, type EquationDialogMode } from "./components/dialogs/EquationDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -162,6 +163,12 @@ interface LinkDialogState {
 }
 interface PastedImageDialogState extends PastedImageDetails {
   file: File;
+}
+interface EquationDialogState {
+  mode: EquationDialogMode;
+  latex: string;
+  displayMode: boolean;
+  position?: number;
 }
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
@@ -224,6 +231,7 @@ export function App() {
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
   const [linkDialog, setLinkDialog] = useState<LinkDialogState | null>(null);
   const [pastedImageDialog, setPastedImageDialog] = useState<PastedImageDialogState | null>(null);
+  const [equationDialog, setEquationDialog] = useState<EquationDialogState | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -1587,31 +1595,17 @@ export function App() {
     setStatusMessage(`Accepted row change in ${item.title}`);
   }
 
-  function insertInlineEquationFromPrompt() {
-    const latex = window.prompt("Inline equation", "E=mc^2")?.trim();
-    if (!latex) {
-      setStatusMessage("Canceled inline equation");
-      return;
-    }
-
-    const inserted = insertInlineEquation(editor, latex);
-    setActiveTab("json");
-    setStatusMessage(inserted ? "Inserted inline equation" : "Cannot insert inline equation");
+  function openInlineEquationDialog() {
+    setEquationDialog({ mode: "inline", latex: "E=mc^2", displayMode: false });
+    setStatusMessage("Editing inline equation");
   }
 
-  function insertEquationBlockFromPrompt() {
-    const latex = window.prompt("Block equation", "a^2+b^2=c^2")?.trim();
-    if (!latex) {
-      setStatusMessage("Canceled equation block");
-      return;
-    }
-
-    const inserted = insertEquationBlock(editor, latex);
-    setActiveTab("json");
-    setStatusMessage(inserted ? "Inserted equation block" : "Cannot insert equation block");
+  function openEquationBlockDialog() {
+    setEquationDialog({ mode: "block", latex: "a^2+b^2=c^2", displayMode: true });
+    setStatusMessage("Editing equation block");
   }
 
-  function editSelectedEquationFromPrompt() {
+  function openSelectedEquationDialog() {
     const position = getSelectedEquationPosition(editor);
     if (position === null) {
       setStatusMessage("Select an equation to edit");
@@ -1629,17 +1623,43 @@ export function App() {
     }
 
     const currentLatex = typeof node.attrs.latex === "string" ? node.attrs.latex : "";
-    const nextLatex = window.prompt("Edit equation", currentLatex)?.trim();
-    if (!nextLatex || nextLatex === currentLatex) {
-      setStatusMessage("Canceled equation edit");
+    setEquationDialog({ mode: "edit", latex: currentLatex, displayMode: node.type.name === "equationBlock", position });
+    setStatusMessage("Editing selected equation");
+  }
+
+  function applyEquation(latex: string) {
+    if (!equationDialog) {
       return;
     }
 
-    const transaction = editor.state.tr.setNodeMarkup(position, undefined, { ...node.attrs, latex: nextLatex });
-    editor.view.dispatch(transaction.scrollIntoView());
-    editor.view.focus();
-    setActiveTab("json");
-    setStatusMessage("Updated equation");
+    if (equationDialog.mode === "edit") {
+      const position = equationDialog.position;
+      if (typeof position !== "number") {
+        setStatusMessage("Cannot update equation: selection changed");
+        return;
+      }
+      const node = editor.state.doc.nodeAt(position);
+      if (!node || (node.type.name !== "equation" && node.type.name !== "equationBlock")) {
+        setStatusMessage("Cannot update equation: selection changed");
+        return;
+      }
+      if (node.attrs.latex !== latex) {
+        const transaction = editor.state.tr.setNodeMarkup(position, undefined, { ...node.attrs, latex });
+        editor.view.dispatch(transaction.scrollIntoView());
+      }
+      editor.view.focus();
+      setEquationDialog(null);
+      setActiveTab("json");
+      setStatusMessage(node.attrs.latex === latex ? "Equation unchanged" : "Updated equation");
+      return;
+    }
+
+    const inserted = equationDialog.mode === "inline" ? insertInlineEquation(editor, latex) : insertEquationBlock(editor, latex);
+    if (inserted) {
+      setEquationDialog(null);
+      setActiveTab("json");
+    }
+    setStatusMessage(inserted ? (equationDialog.mode === "inline" ? "Inserted inline equation" : "Inserted equation block") : "Cannot insert equation");
   }
 
   function handleEditorPaneDoubleClick(event: React.MouseEvent<HTMLElement>) {
@@ -1990,9 +2010,9 @@ export function App() {
             onRunTableCommand: runTableCommand,
             onEditTableCaption: editSelectedTableCaptionFromPrompt,
             onAlignTableCells: alignTableCells,
-            onInsertInlineEquation: insertInlineEquationFromPrompt,
-            onInsertEquationBlock: insertEquationBlockFromPrompt,
-            onEditEquation: editSelectedEquationFromPrompt,
+            onInsertInlineEquation: openInlineEquationDialog,
+            onInsertEquationBlock: openEquationBlockDialog,
+            onEditEquation: openSelectedEquationDialog,
             onInsertMermaid: insertMermaidDiagramFromPrompt,
             onInsertDrawio: startDrawioInsertFlow,
             onOpenDrawioEditor: () => void openSelectedDrawioExternalEditor(),
@@ -2036,10 +2056,10 @@ export function App() {
                 onInsertImage={() => imageInputRef.current?.click()}
                 onInsertReference={openReferencePicker}
                 onInsertTable={insertTable}
-                onInsertInlineEquation={insertInlineEquationFromPrompt}
-                onInsertEquationBlock={insertEquationBlockFromPrompt}
+                onInsertInlineEquation={openInlineEquationDialog}
+                onInsertEquationBlock={openEquationBlockDialog}
                 onInsertMermaid={insertMermaidDiagramFromPrompt}
-                onEditEquation={editSelectedEquationFromPrompt}
+                onEditEquation={openSelectedEquationDialog}
                 onEditTableCaption={editSelectedTableCaptionFromPrompt}
                 onAddTableRow={() => runTableCommand("addRowAfter", "Added table row")}
                 onAddTableColumn={() => runTableCommand("addColumnAfter", "Added table column")}
@@ -2108,6 +2128,19 @@ export function App() {
             setPastedImageDialog(null);
             editor.view.focus();
             setStatusMessage("Canceled pasted image");
+          }}
+        />
+      )}
+      {equationDialog && (
+        <EquationDialog
+          mode={equationDialog.mode}
+          initialLatex={equationDialog.latex}
+          displayMode={equationDialog.displayMode}
+          onApply={applyEquation}
+          onCancel={() => {
+            setEquationDialog(null);
+            editor.view.focus();
+            setStatusMessage("Canceled equation edit");
           }}
         />
       )}

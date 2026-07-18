@@ -133,6 +133,7 @@ Bubble-menu progress on 2026-07-18:
 - Paragraph and heading left/center/right alignment is implemented in Text options; table-cell alignment remains contextual under Table tools.
 - Task list is a visible basic writing control alongside bullet and ordered lists; checkbox state is canonical while focus/hover remains runtime-only.
 - Heading Tab/Shift-Tab changes heading depth in place, preserves the stable block ID, and does not intercept Tab in ordinary paragraphs or list-specific contexts.
+- Pasting image clipboard data opens a validated naming/caption dialog before insertion. It reuses the same asset-backed figure path as file-picker images; ordinary text/HTML paste remains ProseMirror-owned.
 
 ## Outline And Authoring Structure
 

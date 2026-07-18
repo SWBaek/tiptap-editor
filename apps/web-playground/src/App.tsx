@@ -135,6 +135,7 @@ import { DiagnosticsPanel } from "./components/panels/DiagnosticsPanel";
 import { DeveloperPanel, type DerivedOutputName } from "./components/panels/DeveloperPanel";
 import { DiffReview, ReviewPanel } from "./components/panels/ReviewPanel";
 import { LinkDialog } from "./components/dialogs/LinkDialog";
+import { ImagePasteDialog, type PastedImageDetails } from "./components/dialogs/ImagePasteDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -158,6 +159,9 @@ interface LinkDialogState {
   from: number;
   to: number;
   href: string;
+}
+interface PastedImageDialogState extends PastedImageDetails {
+  file: File;
 }
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
@@ -219,6 +223,7 @@ export function App() {
   const [bubbleToolbarPosition, setBubbleToolbarPosition] = useState<BubbleToolbarPosition | null>(null);
   const [editorContextMenu, setEditorContextMenu] = useState<EditorContextMenuState | null>(null);
   const [linkDialog, setLinkDialog] = useState<LinkDialogState | null>(null);
+  const [pastedImageDialog, setPastedImageDialog] = useState<PastedImageDialogState | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -256,6 +261,23 @@ export function App() {
     editorProps: {
       attributes: {
         class: "editor-surface"
+      },
+      handlePaste: (_view, event) => {
+        const imageFile = Array.from(event.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));
+        if (!imageFile) {
+          return false;
+        }
+
+        event.preventDefault();
+        if (!isSupportedImageFile(imageFile)) {
+          setStatusMessage(`Unsupported pasted image type: ${imageFile.type || "unknown"}`);
+          return true;
+        }
+
+        const filename = getDefaultPastedImageFilename(imageFile);
+        setPastedImageDialog({ file: imageFile, filename, caption: captionFromFilename(filename) });
+        setStatusMessage("Review pasted image details");
+        return true;
       }
     },
     onUpdate: () => setEditorRevision((revision) => revision + 1),
@@ -1675,16 +1697,17 @@ export function App() {
     setStatusMessage(inserted ? "Inserted Mermaid diagram" : "Cannot insert Mermaid diagram");
   }
 
-  async function insertImageFile(file: File) {
+  async function insertImageFile(file: File, details?: PastedImageDetails): Promise<boolean> {
     try {
-      if (file.type && !file.type.startsWith("image/")) {
+      if (!isSupportedImageFile(file)) {
         setStatusMessage(`Unsupported image type: ${file.type}`);
-        return;
+        return false;
       }
 
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const assetId = createImageAssetId(file.name, file.type);
-      const caption = captionFromFilename(file.name);
+      const filename = details?.filename.trim() || file.name;
+      const assetId = createImageAssetId(filename, file.type);
+      const caption = details?.caption.trim() || captionFromFilename(filename);
       const src = await readFileAsDataUrl(file);
 
       const inserted = editor
@@ -1709,19 +1732,31 @@ export function App() {
         .run();
 
       if (!inserted) {
-        setStatusMessage(`Cannot insert image: ${file.name}`);
-        return;
+        setStatusMessage(`Cannot insert image: ${filename}`);
+        return false;
       }
 
       setAssets((current) => ({ ...current, [assetId]: bytes }));
       setActiveTab("json");
-      setStatusMessage(`Inserted image ${file.name}`);
+      setStatusMessage(`${details ? "Inserted pasted image" : "Inserted image"} ${filename}`);
+      return true;
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
+      return false;
     } finally {
       if (imageInputRef.current) {
         imageInputRef.current.value = "";
       }
+    }
+  }
+
+  async function insertPastedImage(details: PastedImageDetails) {
+    if (!pastedImageDialog) {
+      return;
+    }
+
+    if (await insertImageFile(pastedImageDialog.file, details)) {
+      setPastedImageDialog(null);
     }
   }
 
@@ -2060,6 +2095,19 @@ export function App() {
             setLinkDialog(null);
             editor.view.focus();
             setStatusMessage("Canceled external link edit");
+          }}
+        />
+      )}
+      {pastedImageDialog && (
+        <ImagePasteDialog
+          initialFilename={pastedImageDialog.filename}
+          initialCaption={pastedImageDialog.caption}
+          mimeType={pastedImageDialog.file.type}
+          onApply={(details) => void insertPastedImage(details)}
+          onCancel={() => {
+            setPastedImageDialog(null);
+            editor.view.focus();
+            setStatusMessage("Canceled pasted image");
           }}
         />
       )}
@@ -2638,6 +2686,15 @@ function getImageExtension(filename: string, mimeType: string): string {
     default:
       return ".bin";
   }
+}
+
+function isSupportedImageFile(file: File): boolean {
+  return file.type.startsWith("image/") && getImageExtension(file.name, file.type) !== ".bin";
+}
+
+function getDefaultPastedImageFilename(file: File): string {
+  const filename = file.name.trim();
+  return filename && filename !== "image" ? filename : `clipboard-image${getImageExtension(filename, file.type)}`;
 }
 
 function captionFromFilename(filename: string): string {

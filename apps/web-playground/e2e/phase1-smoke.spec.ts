@@ -893,6 +893,44 @@ test("inserts an image figure and round-trips .sdoc assets", async ({ page }, te
   expectUniqueIds(collectBlockIds(reopenedDocument));
 });
 
+test("names and stores a pasted clipboard image through a dialog", async ({ page }, testInfo) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.locator(".editor-surface").click();
+  const pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+  await page.locator(".editor-surface").evaluate((surface, encoded) => {
+    const binary = atob(encoded);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([bytes], "image.png", { type: "image/png" }));
+    surface.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: transfer }));
+  }, pngBase64);
+
+  const dialog = page.getByRole("dialog", { name: "Insert pasted image" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Image name").fill("converter-scope.png");
+  await dialog.getByLabel("Caption and alt text").fill("Converter scope capture");
+  await dialog.getByRole("button", { name: "Insert image" }).click();
+  await expect(page.locator(".status-note")).toContainText("Inserted pasted image converter-scope.png");
+
+  const insertedDocument = await readPreviewDocument(page);
+  const insertedFigure = findFirstNodeByType(insertedDocument, "figure");
+  expect(insertedFigure.attrs?.assetId).toEqual(expect.stringMatching(/^asset_[a-z0-9]+\.png$/));
+  expect(insertedFigure.attrs?.alt).toBe("Converter scope capture");
+  expect(JSON.stringify(insertedDocument)).not.toContain("data:image/png");
+  expectUniqueIds(collectBlockIds(insertedDocument));
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .sdoc" }).click();
+  const sdocPath = testInfo.outputPath("Pasted Image Round Trip.sdoc");
+  await (await downloadPromise).saveAs(sdocPath);
+  await page.getByRole("button", { name: "New document" }).click();
+  await page.getByLabel("Open document file").setInputFiles(sdocPath);
+  await expect(page.locator(".editor-surface")).toContainText("Converter scope capture");
+  const reopenedFigure = findFirstNodeByType(await readPreviewDocument(page), "figure");
+  expect(reopenedFigure.attrs?.assetId).toBe(insertedFigure.attrs?.assetId);
+});
+
 test("inserts a data grid and round-trips .sdoc assets", async ({ page }, testInfo) => {
   await page.goto("/");
   await selectPreviewTab(page, "JSON");

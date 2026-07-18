@@ -1,8 +1,8 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 68
-current_slice: writing-essentials
+progress_percent: 72
+current_slice: technical-content-editors
 created_at: 2026-07-18
 started_at: 2026-07-18
 completed_at: null
@@ -19,8 +19,8 @@ completed_slices:
   - planning-baseline
   - shell-extraction
   - author-header-and-command-hierarchy
-remaining_slices:
   - writing-essentials
+remaining_slices:
   - technical-content-editors
   - runtime-navigation
   - desktop-explorer
@@ -96,6 +96,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 68
     note: "Heading Tab/Shift-Tab now changes levels 1-6 in place through a focused editor extension, preserving attrs.id and yielding outside headings or at boundaries. The first build exposed workspace-private Tiptap type identity, so the extension follows the existing typed package-extension boundary. npm test (280), npm run build, and npm run test:e2e (37) passed."
+  - date: 2026-07-18
+    progress_percent: 72
+    note: "Writing essentials completed. Supported clipboard images now open a validated name/caption dialog, reuse the asset-backed figure path, avoid data URIs in canonical JSON, and survive .sdoc save/reopen; ordinary HTML/text paste remains unchanged. npm test (281), npm run build, and npm run test:e2e (38) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

@@ -10,7 +10,7 @@ export interface NativeWorkspaceEntry {
 }
 
 export interface NativeWorkspaceMutationResult {
-  status: "created";
+  status: "created" | "renamed" | "trashed";
   path: string;
   relativePath: string;
   kind: "folder" | "sdoc-file";
@@ -59,7 +59,7 @@ export function isWorkspaceMutationResult(value: unknown): value is NativeWorksp
   }
   const result = value as Record<string, unknown>;
   return (
-    result.status === "created" &&
+    (result.status === "created" || result.status === "renamed" || result.status === "trashed") &&
     typeof result.path === "string" &&
     typeof result.relativePath === "string" &&
     (result.kind === "folder" || result.kind === "sdoc-file") &&

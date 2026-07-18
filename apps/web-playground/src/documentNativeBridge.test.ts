@@ -5,6 +5,7 @@ import {
   getWindowSdocNativeSaveAdapter,
   getWindowSdocWorkspaceAdapter,
   getWorkspaceRelativePath,
+  replaceNativePathPrefix,
   SDOC_NATIVE_SAVE_BRIDGE_KEY
 } from "./documentNativeBridge";
 
@@ -18,6 +19,16 @@ describe("document native bridge", () => {
     expect(getWorkspaceRelativePath("C:\\Docs", "c:\\docs\\Guides\\Spec.sdoc")).toBe("Guides/Spec.sdoc");
     expect(getWorkspaceRelativePath("/workspace/docs/", "/workspace/docs/Guides")).toBe("Guides");
     expect(getWorkspaceRelativePath("/workspace/docs", "/workspace/docs-other/Spec.sdoc")).toBeNull();
+  });
+
+  it("replaces a matching native path prefix without changing unrelated paths", () => {
+    expect(replaceNativePathPrefix("C:\\Docs\\Guides\\Spec.sdoc", "c:\\docs\\guides", "C:\\Docs\\Manuals")).toBe(
+      "C:\\Docs\\Manuals\\Spec.sdoc"
+    );
+    expect(replaceNativePathPrefix("/workspace/docs/Guides/Spec.sdoc", "/workspace/docs/Guides", "/workspace/docs/Manuals")).toBe(
+      "/workspace/docs/Manuals/Spec.sdoc"
+    );
+    expect(replaceNativePathPrefix("/workspace/docs-other/Spec.sdoc", "/workspace/docs", "/workspace/next")).toBeNull();
   });
 
   it("does not expose a native save adapter without an injected bridge", () => {
@@ -117,6 +128,26 @@ describe("document native bridge", () => {
             message: `Created document ${relativePath}.`
           };
         },
+        async renameSdocWorkspaceEntry(directoryPath: string, relativePath: string, newName: string) {
+          const parent = relativePath.split("/").slice(0, -1).join("/");
+          const nextRelativePath = [parent, newName].filter(Boolean).join("/");
+          return {
+            status: "renamed" as const,
+            path: `${directoryPath}/${nextRelativePath}`,
+            relativePath: nextRelativePath,
+            kind: "sdoc-file" as const,
+            message: `Renamed to ${nextRelativePath}.`
+          };
+        },
+        async trashSdocWorkspaceEntry(directoryPath: string, relativePath: string) {
+          return {
+            status: "trashed" as const,
+            path: `${directoryPath}/${relativePath}`,
+            relativePath,
+            kind: "sdoc-file" as const,
+            message: `Moved ${relativePath} to Trash.`
+          };
+        },
         async openSdocPath(path: string) {
           return {
             path,
@@ -142,6 +173,14 @@ describe("document native bridge", () => {
     await expect(adapter?.createSdoc("C:/docs", "Guides/Spec.sdoc", new Uint8Array([80, 75, 3, 4]))).resolves.toMatchObject({
       relativePath: "Guides/Spec.sdoc",
       kind: "sdoc-file"
+    });
+    await expect(adapter?.renameEntry("C:/docs", "Guides/Spec.sdoc", "Renamed.sdoc")).resolves.toMatchObject({
+      status: "renamed",
+      relativePath: "Guides/Renamed.sdoc"
+    });
+    await expect(adapter?.trashEntry("C:/docs", "Guides/Renamed.sdoc")).resolves.toMatchObject({
+      status: "trashed",
+      relativePath: "Guides/Renamed.sdoc"
     });
     await expect(adapter?.openFile("C:/docs/Spec.sdoc")).resolves.toEqual({
       path: "C:/docs/Spec.sdoc",

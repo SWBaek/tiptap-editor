@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, FilePlus, FileText, Folder, FolderOpen, FolderPlus, RefreshCw, Save } from "lucide-react";
+import { ChevronDown, ChevronRight, FilePlus, FileText, Folder, FolderOpen, FolderPlus, MoreHorizontal, Pencil, RefreshCw, Save, Trash2 } from "lucide-react";
 import type { WindowSdocWorkspaceEntry } from "../../documentNativeBridge";
 import type { WorkspaceCreateKind } from "../dialogs/WorkspaceCreateDialog";
+import type { WorkspaceEntryAction } from "../dialogs/WorkspaceEntryActionDialog";
 import { formatRecentFileTime } from "../editor-shell/DesktopStartScreen";
 import type { RecentFileEntry } from "../editor-shell/types";
 
@@ -23,6 +24,7 @@ export interface FilesPanelProps {
   onRefreshWorkspace: () => void;
   onOpenWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
   onCreateWorkspaceEntry: (parent: WindowSdocWorkspaceEntry | null, kind: WorkspaceCreateKind) => void;
+  onManageWorkspaceEntry: (entry: WindowSdocWorkspaceEntry, action: WorkspaceEntryAction) => void;
   onCopyDeveloperCommand: (command: string) => void;
 }
 
@@ -44,6 +46,7 @@ export function FilesPanel({
   onRefreshWorkspace,
   onOpenWorkspaceEntry,
   onCreateWorkspaceEntry,
+  onManageWorkspaceEntry,
   onCopyDeveloperCommand
 }: FilesPanelProps) {
   const unpackCommand = `npm run sdoc -- unpack ${quoteCliPath(sdocFilename)} ${quoteCliPath(`${sdocFilename}.d`)}`;
@@ -51,11 +54,13 @@ export function FilesPanel({
   const isCurrentUnsaved = savedLabel.toLowerCase().includes("unsaved") || savedLabel === "Not saved";
   const [expandedWorkspacePaths, setExpandedWorkspacePaths] = useState<Set<string>>(() => new Set());
   const [selectedWorkspaceFolderPath, setSelectedWorkspaceFolderPath] = useState<string | null>(null);
+  const [openWorkspaceActionsPath, setOpenWorkspaceActionsPath] = useState<string | null>(null);
   const selectedWorkspaceFolder = selectedWorkspaceFolderPath ? findWorkspaceFolder(workspaceEntries, selectedWorkspaceFolderPath) : null;
 
   useEffect(() => {
     setExpandedWorkspacePaths(new Set());
     setSelectedWorkspaceFolderPath(null);
+    setOpenWorkspaceActionsPath(null);
   }, [workspaceDirectory]);
 
   function selectAndToggleWorkspaceFolder(path: string) {
@@ -140,6 +145,12 @@ export function FilesPanel({
                 selectedFolderPath={selectedWorkspaceFolderPath}
                 onToggleFolder={selectAndToggleWorkspaceFolder}
                 onOpenEntry={onOpenWorkspaceEntry}
+                openActionsPath={openWorkspaceActionsPath}
+                onToggleActions={(path) => setOpenWorkspaceActionsPath((current) => current === path ? null : path)}
+                onManageEntry={(entry, action) => {
+                  setOpenWorkspaceActionsPath(null);
+                  onManageWorkspaceEntry(entry, action);
+                }}
               />
             )}
           </>
@@ -198,9 +209,22 @@ interface WorkspaceTreeProps {
   selectedFolderPath: string | null;
   onToggleFolder: (path: string) => void;
   onOpenEntry: (entry: WindowSdocWorkspaceEntry) => void;
+  openActionsPath: string | null;
+  onToggleActions: (path: string) => void;
+  onManageEntry: (entry: WindowSdocWorkspaceEntry, action: WorkspaceEntryAction) => void;
 }
 
-function WorkspaceTree({ entries, currentFile, expandedPaths, selectedFolderPath, onToggleFolder, onOpenEntry }: WorkspaceTreeProps) {
+function WorkspaceTree({
+  entries,
+  currentFile,
+  expandedPaths,
+  selectedFolderPath,
+  onToggleFolder,
+  onOpenEntry,
+  openActionsPath,
+  onToggleActions,
+  onManageEntry
+}: WorkspaceTreeProps) {
   return (
     <ul className="explorer-tree">
       {entries.map((entry) => {
@@ -211,28 +235,52 @@ function WorkspaceTree({ entries, currentFile, expandedPaths, selectedFolderPath
             key={entry.path}
             className={isCurrentWorkspaceEntry(entry, currentFile) ? "active" : isFolder && selectedFolderPath === entry.path ? "selected-folder" : undefined}
           >
-            <button
-              type="button"
-              onClick={() => isFolder ? onToggleFolder(entry.path) : onOpenEntry(entry)}
-              disabled={entry.kind === "unpacked-sdoc-folder"}
-              title={entry.path}
-              aria-expanded={isFolder ? isExpanded : undefined}
-              aria-label={isFolder ? `${isExpanded ? "Collapse" : "Expand"} folder ${entry.name}` : undefined}
-            >
-              {isFolder ? (
-                <>
-                  {isExpanded ? <ChevronDown className="explorer-chevron" size={13} /> : <ChevronRight className="explorer-chevron" size={13} />}
-                  {isExpanded ? <FolderOpen size={15} /> : <Folder size={15} />}
-                </>
-              ) : (
-                <>
-                  <span className="explorer-chevron-placeholder" aria-hidden="true" />
-                  <FileText size={15} />
-                </>
+            <div className="explorer-entry-row">
+              <button
+                className="explorer-entry-main"
+                type="button"
+                onClick={() => isFolder ? onToggleFolder(entry.path) : onOpenEntry(entry)}
+                disabled={entry.kind === "unpacked-sdoc-folder"}
+                title={entry.path}
+                aria-expanded={isFolder ? isExpanded : undefined}
+                aria-label={isFolder ? `${isExpanded ? "Collapse" : "Expand"} folder ${entry.name}` : undefined}
+              >
+                {isFolder ? (
+                  <>
+                    {isExpanded ? <ChevronDown className="explorer-chevron" size={13} /> : <ChevronRight className="explorer-chevron" size={13} />}
+                    {isExpanded ? <FolderOpen size={15} /> : <Folder size={15} />}
+                  </>
+                ) : (
+                  <>
+                    <span className="explorer-chevron-placeholder" aria-hidden="true" />
+                    <FileText size={15} />
+                  </>
+                )}
+                <span>{entry.name}</span>
+                <small>{formatWorkspaceEntryMeta(entry)}</small>
+              </button>
+              {entry.kind !== "unpacked-sdoc-folder" && (
+                <button
+                  className="explorer-entry-actions-toggle"
+                  type="button"
+                  aria-label={`Actions for ${entry.name}`}
+                  aria-expanded={openActionsPath === entry.path}
+                  onClick={() => onToggleActions(entry.path)}
+                >
+                  <MoreHorizontal size={14} />
+                </button>
               )}
-              <span>{entry.name}</span>
-              <small>{formatWorkspaceEntryMeta(entry)}</small>
-            </button>
+              {openActionsPath === entry.path && (
+                <div className="explorer-entry-menu" role="menu" aria-label={`Workspace actions for ${entry.name}`}>
+                  <button type="button" role="menuitem" onClick={() => onManageEntry(entry, "rename")}>
+                    <Pencil size={13} /> Rename
+                  </button>
+                  <button className="danger" type="button" role="menuitem" onClick={() => onManageEntry(entry, "trash")}>
+                    <Trash2 size={13} /> Move to Trash
+                  </button>
+                </div>
+              )}
+            </div>
             {isExpanded && entry.children && entry.children.length > 0 && (
               <WorkspaceTree
                 entries={entry.children}
@@ -241,6 +289,9 @@ function WorkspaceTree({ entries, currentFile, expandedPaths, selectedFolderPath
                 selectedFolderPath={selectedFolderPath}
                 onToggleFolder={onToggleFolder}
                 onOpenEntry={onOpenEntry}
+                openActionsPath={openActionsPath}
+                onToggleActions={onToggleActions}
+                onManageEntry={onManageEntry}
               />
             )}
           </li>

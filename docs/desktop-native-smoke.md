@@ -46,6 +46,9 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
    - Confirm nested `.sdoc` files open from the tree while symlinked folders are not traversed outside the selected workspace.
    - Select a nested folder, create a subfolder and a new document, and confirm the document is a valid single-file `.sdoc` that opens from the refreshed tree.
    - Confirm duplicate names, parent traversal, and invalid names are rejected without overwriting an existing entry.
+   - Rename a nested folder and `.sdoc`; confirm the tree refreshes, duplicate/invalid targets are rejected, and an open document continues saving to its renamed native path.
+   - Move a non-current document and folder to the operating-system Trash/Recycle Bin through the explicit confirmation dialog; confirm the explorer refreshes and the entries can be recovered from the OS trash.
+   - Try to trash the current document or its parent folder with unsaved edits; confirm the editor blocks the action and retains the dirty document and native save path.
    - Confirm the current document and saved/unsaved state are visible in the compact Files header.
    - Confirm developer-only unpacked folder commands are not part of the default author path.
 

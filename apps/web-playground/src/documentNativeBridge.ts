@@ -12,6 +12,8 @@ export interface WindowSdocNativeSaveBridge {
   listSdocWorkspaceEntries?(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<WindowSdocWorkspaceEntry[]>;
   createSdocWorkspaceFolder?(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
   createSdocWorkspaceFile?(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<WindowSdocWorkspaceMutationResult>;
+  renameSdocWorkspaceEntry?(directoryPath: string, relativePath: string, newName: string): Promise<WindowSdocWorkspaceMutationResult>;
+  trashSdocWorkspaceEntry?(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
   checkoutDrawioSource?(sourceAssetId: string, sourceBytes: Uint8Array): Promise<WindowDrawioBridgeSession>;
   openDrawioExternalEditor?(sessionId: string, executablePath?: string): Promise<WindowDrawioBridgeStatusEvent>;
   readDrawioExternalEdit?(sessionId: string, latestSourceBytes: Uint8Array): Promise<WindowDrawioSaveBackResult>;
@@ -41,7 +43,7 @@ export interface WindowSdocWorkspaceListOptions {
 }
 
 export interface WindowSdocWorkspaceMutationResult {
-  status: "created";
+  status: "created" | "renamed" | "trashed";
   path: string;
   relativePath: string;
   kind: "folder" | "sdoc-file";
@@ -53,6 +55,8 @@ export interface NativeSdocWorkspaceAdapter {
   list(directoryPath: string, options?: WindowSdocWorkspaceListOptions): Promise<WindowSdocWorkspaceEntry[]>;
   createFolder(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
   createSdoc(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<WindowSdocWorkspaceMutationResult>;
+  renameEntry(directoryPath: string, relativePath: string, newName: string): Promise<WindowSdocWorkspaceMutationResult>;
+  trashEntry(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
   openFile(path: string): Promise<WindowSdocNativeOpenResult>;
 }
 
@@ -125,6 +129,8 @@ export function getWindowSdocWorkspaceAdapter(globalScope: unknown = globalThis)
     !bridge.listSdocWorkspaceEntries ||
     !bridge.createSdocWorkspaceFolder ||
     !bridge.createSdocWorkspaceFile ||
+    !bridge.renameSdocWorkspaceEntry ||
+    !bridge.trashSdocWorkspaceEntry ||
     !bridge.openSdocPath
   ) {
     return undefined;
@@ -151,6 +157,20 @@ export function getWindowSdocWorkspaceAdapter(globalScope: unknown = globalThis)
       }
       return result;
     },
+    async renameEntry(directoryPath, relativePath, newName) {
+      const result = await bridge.renameSdocWorkspaceEntry?.(directoryPath, relativePath, newName);
+      if (!isWindowSdocWorkspaceMutationResult(result)) {
+        throw new Error("Native workspace rename returned an invalid result.");
+      }
+      return result;
+    },
+    async trashEntry(directoryPath, relativePath) {
+      const result = await bridge.trashSdocWorkspaceEntry?.(directoryPath, relativePath);
+      if (!isWindowSdocWorkspaceMutationResult(result)) {
+        throw new Error("Native workspace trash returned an invalid result.");
+      }
+      return result;
+    },
     openFile(path) {
       return bridge.openSdocPath?.(path) ?? Promise.reject(new Error("Native workspace open is not available."));
     }
@@ -171,6 +191,18 @@ export function getWorkspaceRelativePath(directoryPath: string, targetPath: stri
     return null;
   }
   return normalizedTarget.slice(normalizedDirectory.length + 1);
+}
+
+export function replaceNativePathPrefix(path: string, oldPrefix: string, nextPrefix: string): string | null {
+  const relativePath = getWorkspaceRelativePath(oldPrefix, path);
+  if (relativePath === null) {
+    return null;
+  }
+  if (!relativePath) {
+    return nextPrefix;
+  }
+  const separator = nextPrefix.includes("\\") ? "\\" : "/";
+  return `${nextPrefix.replace(/[\\/]+$/, "")}${separator}${relativePath.replaceAll("/", separator)}`;
 }
 
 export function getWindowDrawioExternalEditorAdapter(globalScope: unknown = globalThis): NativeDrawioExternalEditorAdapter | undefined {
@@ -238,6 +270,14 @@ function getWindowSdocNativeSaveBridge(globalScope: unknown): WindowSdocNativeSa
     return undefined;
   }
 
+  if (candidate.renameSdocWorkspaceEntry !== undefined && typeof candidate.renameSdocWorkspaceEntry !== "function") {
+    return undefined;
+  }
+
+  if (candidate.trashSdocWorkspaceEntry !== undefined && typeof candidate.trashSdocWorkspaceEntry !== "function") {
+    return undefined;
+  }
+
   if (candidate.checkoutDrawioSource !== undefined && typeof candidate.checkoutDrawioSource !== "function") {
     return undefined;
   }
@@ -263,7 +303,7 @@ function isWindowSdocWorkspaceMutationResult(value: unknown): value is WindowSdo
   }
   const result = value as Record<string, unknown>;
   return (
-    result.status === "created" &&
+    (result.status === "created" || result.status === "renamed" || result.status === "trashed") &&
     typeof result.path === "string" &&
     typeof result.relativePath === "string" &&
     (result.kind === "folder" || result.kind === "sdoc-file") &&

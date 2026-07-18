@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 93
+progress_percent: 95
 current_slice: desktop-explorer
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -123,6 +123,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 93
     note: "Desktop explorer now creates a validated nested folder or a canonical packed .sdoc beneath the selected folder/root through typed Tauri commands. Workspace-relative validation rejects traversal, symlink parents, invalid/reserved names, duplicates, and non-.sdoc targets; successful document creation refreshes and opens the new package. npm test (296), npm run build, npm run test:e2e (40), npm run typecheck:desktop, cargo test (1), and npm run build:desktop passed. Rename and trash remain in the desktop-explorer slice."
+  - date: 2026-07-18
+    progress_percent: 95
+    note: "Desktop explorer now exposes contextual rename and explicit operating-system Trash actions through typed Tauri commands. Rename refuses overwrite and remaps affected current/recent native paths; trash blocks a dirty current document or parent folder, clears stale save state after clean current-file deletion, and leaves recovery to the OS Trash/Recycle Bin rather than claiming an in-app undo. npm test (297), npm run build, npm run test:e2e (40), npm run typecheck:desktop, Windows cargo test (1), and Linux npm run build:desktop passed. Scoped watcher/external-change handling remains in desktop-explorer/recovery work."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

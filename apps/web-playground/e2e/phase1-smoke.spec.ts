@@ -598,9 +598,31 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
       siblings.push(entry);
       return entry;
     };
+    const findWorkspaceEntry = (relativePath: string) => {
+      const parts = relativePath.split("/").filter(Boolean);
+      const name = parts.pop();
+      let siblings = workspaceEntries;
+      for (const part of parts) {
+        const parent = siblings.find((entry) => entry.kind === "folder" && entry.name === part);
+        if (!parent?.children) {
+          throw new Error(`Missing parent folder ${part}`);
+        }
+        siblings = parent.children;
+      }
+      const index = siblings.findIndex((entry) => entry.name === name);
+      if (index < 0) {
+        throw new Error(`Missing workspace entry ${relativePath}`);
+      }
+      return { siblings, index, entry: siblings[index] };
+    };
+    const replaceEntryPathPrefix = (entry: WorkspaceEntry, oldPrefix: string, nextPrefix: string) => {
+      entry.path = `${nextPrefix}${entry.path.slice(oldPrefix.length)}`;
+      entry.children?.forEach((child) => replaceEntryPathPrefix(child, oldPrefix, nextPrefix));
+    };
     (window as typeof window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
-    (window as typeof window & { __SDOC_NATIVE_SAVE_BRIDGE__?: unknown }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
-      async saveSdoc() {
+    (window as typeof window & { __SDOC_NATIVE_SAVE_BRIDGE__?: unknown; __LAST_SAVED_PATH__?: string }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
+      async saveSdoc(path: string) {
+        (window as typeof window & { __LAST_SAVED_PATH__?: string }).__LAST_SAVED_PATH__ = path;
         return undefined;
       },
       async chooseSdocSavePath() {
@@ -628,6 +650,24 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
         }
         const entry = addWorkspaceEntry(relativePath, "sdoc-file");
         return { status: "created", path: entry.path, relativePath, kind: entry.kind, message: `Created document ${relativePath}.` };
+      },
+      async renameSdocWorkspaceEntry(_directoryPath: string, relativePath: string, newName: string) {
+        const { siblings, entry } = findWorkspaceEntry(relativePath);
+        if (siblings.some((candidate) => candidate !== entry && candidate.name === newName)) {
+          throw new Error("A workspace entry with this name already exists.");
+        }
+        const oldPath = entry.path;
+        const parentRelativePath = relativePath.split("/").slice(0, -1).join("/");
+        const nextRelativePath = [parentRelativePath, newName].filter(Boolean).join("/");
+        const nextPath = `C:\\Docs\\${nextRelativePath.replaceAll("/", "\\")}`;
+        entry.name = newName;
+        replaceEntryPathPrefix(entry, oldPath, nextPath);
+        return { status: "renamed", path: entry.path, relativePath: nextRelativePath, kind: entry.kind, message: `Renamed to ${nextRelativePath}.` };
+      },
+      async trashSdocWorkspaceEntry(_directoryPath: string, relativePath: string) {
+        const { siblings, index, entry } = findWorkspaceEntry(relativePath);
+        siblings.splice(index, 1);
+        return { status: "trashed", path: entry.path, relativePath, kind: entry.kind, message: `Moved ${relativePath} to Trash.` };
       }
     };
   });
@@ -650,7 +690,7 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await expect(filesPanel.getByLabel("Workspace files")).toContainText("opened.sdoc");
   await expect(filesPanel.getByRole("button", { name: /nested\.sdoc/ })).toHaveCount(0);
   await filesPanel.getByRole("button", { name: "Expand folder Guides" }).click();
-  await expect(filesPanel.getByRole("button", { name: /nested\.sdoc/ })).toBeVisible();
+  await expect(filesPanel.getByRole("button", { name: /^nested\.sdoc single \.sdoc/ })).toBeVisible();
   await filesPanel.getByRole("button", { name: "Collapse folder Guides" }).click();
   await expect(filesPanel.getByRole("button", { name: /nested\.sdoc/ })).toHaveCount(0);
   await filesPanel.getByRole("button", { name: "Create folder" }).click();
@@ -668,10 +708,38 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await expect(page.locator(".status-note")).toContainText("Created and opened Guides/API/Draft.sdoc");
   await expect(filesPanel.getByRole("button", { name: /^Draft\.sdoc single \.sdoc/ })).toBeVisible();
   await expect(filesPanel.getByLabel("Current file")).toContainText("Draft.sdoc");
-  await filesPanel.getByRole("button", { name: /opened\.sdoc/ }).click();
-  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("opened");
-  await expect(filesPanel.getByLabel("Current file")).toContainText("opened.sdoc");
-  await expect(page.locator(".status-note")).toContainText("Initialized empty .sdoc");
+  await filesPanel.getByRole("button", { name: "Actions for API" }).click();
+  await filesPanel.getByRole("menu", { name: "Workspace actions for API" }).getByRole("menuitem", { name: "Rename" }).click();
+  const actionDialog = page.getByRole("dialog", { name: "Rename workspace entry" });
+  await actionDialog.getByLabel("New name").fill("Reference");
+  await actionDialog.getByRole("button", { name: "Rename" }).click();
+  await expect(page.locator(".status-note")).toContainText("Renamed to Guides/Reference");
+  await filesPanel.getByRole("button", { name: "Expand folder Reference" }).click();
+  await filesPanel.getByRole("button", { name: "Actions for Draft.sdoc" }).click();
+  await filesPanel.getByRole("menu", { name: "Workspace actions for Draft.sdoc" }).getByRole("menuitem", { name: "Rename" }).click();
+  await actionDialog.getByLabel("New name").fill("Review");
+  await actionDialog.getByRole("button", { name: "Rename" }).click();
+  await expect(filesPanel.getByLabel("Current file")).toContainText("Review.sdoc");
+  await page.getByLabel("Title", { exact: true }).fill("Dirty review");
+  await filesPanel.getByRole("button", { name: "Actions for Review.sdoc" }).click();
+  await filesPanel.getByRole("menu", { name: "Workspace actions for Review.sdoc" }).getByRole("menuitem", { name: "Move to Trash" }).click();
+  await expect(page.getByRole("dialog", { name: "Move workspace entry to Trash" })).toHaveCount(0);
+  await expect(page.locator(".status-note")).toContainText("Save or discard the current document");
+  await filesPanel.getByRole("button", { name: "Save" }).click();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __LAST_SAVED_PATH__?: string }).__LAST_SAVED_PATH__)).toBe(
+    "C:\\Docs\\Guides\\Reference\\Review.sdoc"
+  );
+  await filesPanel.getByRole("button", { name: "Actions for Review.sdoc" }).click();
+  await filesPanel.getByRole("menu", { name: "Workspace actions for Review.sdoc" }).getByRole("menuitem", { name: "Move to Trash" }).click();
+  const trashDialog = page.getByRole("dialog", { name: "Move workspace entry to Trash" });
+  await trashDialog.getByRole("button", { name: "Move to Trash" }).click();
+  await expect(page.locator(".status-note")).toContainText("Moved Guides/Reference/Review.sdoc to Trash");
+  await expect(filesPanel.getByRole("button", { name: "Actions for Review.sdoc" })).toHaveCount(0);
+  await expect(filesPanel.getByLabel("Current file")).toContainText("Untitled");
+  await filesPanel.getByRole("button", { name: "Actions for Reference" }).click();
+  await filesPanel.getByRole("menu", { name: "Workspace actions for Reference" }).getByRole("menuitem", { name: "Move to Trash" }).click();
+  await trashDialog.getByRole("button", { name: "Move to Trash" }).click();
+  await expect(filesPanel.getByRole("button", { name: "Actions for Reference" })).toHaveCount(0);
 });
 
 test("exports deliverables and keeps developer outputs separate", async ({ page }) => {

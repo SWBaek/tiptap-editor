@@ -153,6 +153,26 @@ describe("native sdoc save bridge", () => {
           kind: "sdoc-file",
           message: `Created document ${relativePath}.`
         };
+      },
+      async renameWorkspaceEntry(directoryPath, relativePath, newName) {
+        const parent = relativePath.split("/").slice(0, -1).join("/");
+        const nextRelativePath = [parent, newName].filter(Boolean).join("/");
+        return {
+          status: "renamed",
+          path: `${directoryPath}/${nextRelativePath}`,
+          relativePath: nextRelativePath,
+          kind: "sdoc-file",
+          message: `Renamed to ${nextRelativePath}.`
+        };
+      },
+      async trashWorkspaceEntry(directoryPath, relativePath) {
+        return {
+          status: "trashed",
+          path: `${directoryPath}/${relativePath}`,
+          relativePath,
+          kind: "sdoc-file",
+          message: `Moved ${relativePath} to Trash.`
+        };
       }
     });
 
@@ -168,6 +188,14 @@ describe("native sdoc save bridge", () => {
     await expect(bridge.createSdocWorkspaceFile("C:/docs", "Spec.sdoc", new Uint8Array([80, 75, 3, 4]))).resolves.toMatchObject({
       kind: "sdoc-file",
       relativePath: "Spec.sdoc"
+    });
+    await expect(bridge.renameSdocWorkspaceEntry("C:/docs", "Spec.sdoc", "Renamed.sdoc")).resolves.toMatchObject({
+      status: "renamed",
+      relativePath: "Renamed.sdoc"
+    });
+    await expect(bridge.trashSdocWorkspaceEntry("C:/docs", "Renamed.sdoc")).resolves.toMatchObject({
+      status: "trashed",
+      relativePath: "Renamed.sdoc"
     });
   });
 

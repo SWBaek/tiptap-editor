@@ -889,7 +889,7 @@ button {
   list-style: none;
 }
 
-.explorer-tree button,
+.explorer-tree .explorer-entry-main,
 .recent-files button {
   display: grid;
   grid-template-columns: 13px auto minmax(0, 1fr);
@@ -907,12 +907,12 @@ button {
   border-left: 1px solid #344752;
 }
 
-.explorer-tree li.active > button {
+.explorer-tree li.active > .explorer-entry-row > .explorer-entry-main {
   background: rgba(111, 179, 193, 0.2);
   border-color: rgba(111, 179, 193, 0.56);
 }
 
-.explorer-tree li.selected-folder > button {
+.explorer-tree li.selected-folder > .explorer-entry-row > .explorer-entry-main {
   background: rgba(111, 179, 193, 0.1);
   border-color: rgba(111, 179, 193, 0.34);
 }
@@ -948,6 +948,56 @@ button {
   grid-column: 3;
   color: #8796a2;
   font-size: 10px;
+}
+
+.explorer-entry-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 3px;
+  align-items: start;
+}
+
+.explorer-tree .explorer-entry-actions-toggle {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  min-height: 38px;
+  padding: 0;
+}
+
+.explorer-entry-menu {
+  position: absolute;
+  z-index: 12;
+  top: 34px;
+  right: 0;
+  display: grid;
+  min-width: 148px;
+  padding: 4px;
+  background: #18242d;
+  border: 1px solid #405360;
+  border-radius: 6px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
+}
+
+.explorer-tree .explorer-entry-menu button {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 8px;
+  color: #e5edf2;
+  text-align: left;
+  background: transparent;
+  border: 0;
+}
+
+.explorer-tree .explorer-entry-menu button:hover {
+  background: rgba(111, 179, 193, 0.16);
+}
+
+.explorer-tree .explorer-entry-menu button.danger {
+  color: #ffb4b4;
 }
 
 .recent-files span,
@@ -2233,6 +2283,18 @@ button {
 
 .dialog-validation.ok {
   color: #28725b;
+}
+
+.author-dialog-body {
+  display: grid;
+  gap: 12px;
+}
+
+.workspace-trash-confirmation > p {
+  margin: 0;
+  color: #4e5d69;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .author-dialog footer {

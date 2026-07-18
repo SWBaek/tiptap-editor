@@ -154,6 +154,8 @@ Desktop-explorer behavior for Phase 5.1:
 - Workspace mutations and watcher events are separate typed adapter operations so listing, destructive feedback, and external-change recovery can be tested in bounded slices.
 - New document/folder creation targets the currently selected explorer folder, or the workspace root when no folder is selected. One validated dialog collects the entry kind and name; a new document is packed as a valid canonical `.sdoc` before the native adapter writes it.
 - Native creation commands accept only workspace-relative paths, reject absolute/parent traversal and symlink traversal, refuse overwrite, and return a typed result for explicit author feedback.
+- Explorer entry actions are desktop-only and contextual. Rename stays within the current parent, preserves the `.sdoc` extension contract, updates an affected open-document path, and never overwrites an existing entry. Move to Trash requires an explicit product dialog and delegates to the operating-system Trash/Recycle Bin; a dirty current document or its parent folder cannot be trashed until it is saved or discarded.
+- Trash recovery remains an operating-system action for this review gate. The editor does not claim an in-app undo unless a cross-platform restore token is available and tested.
 
 ## Outline And Authoring Structure
 

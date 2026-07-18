@@ -96,10 +96,12 @@ Acceptance evidence:
 - Desktop workspace entries render as a recursive typed explorer tree under the selected folder, with runtime-only expand/collapse state.
 - Compact explorer actions create a nested folder or a canonical packed `.sdoc` beneath the selected folder, falling back to the workspace root when no folder is selected.
 - The typed Tauri boundary accepts workspace-relative targets only and rejects traversal, symlink parents, invalid/reserved names, duplicate targets, and non-`.sdoc` document names without overwriting existing content.
+- Each ordinary folder/`.sdoc` row exposes contextual Rename and Move to Trash actions. Rename remains in the current parent and remaps affected current/recent native paths; delete uses the operating-system Trash/Recycle Bin behind an explicit dialog.
+- A dirty current document, or a folder containing it, cannot be trashed. Clean current-document trash clears the stale native path by moving the editor to a new unsaved document. Recovery is through the operating-system trash rather than an unverified in-app undo.
 - Native traversal is bounded to 32 folder levels, skips symlinks, and omits unpacked `.sdoc` folders from the ordinary author view.
 - Browser mode continues to show a desktop-only browsing boundary instead of claiming folder access.
 - Developer unpack/pack commands remain available only behind a collapsed Developer workspace disclosure.
-- Unit, Rust filesystem/serialization, and Playwright tests cover recursive bridge validation, native listing, nested explorer behavior, and selected-folder creation of folders and valid `.sdoc` packages; desktop typecheck and packaged Tauri build pass.
+- Unit, Rust filesystem/serialization, and Playwright tests cover recursive bridge validation, native listing, nested explorer behavior, selected-folder creation, rename path remapping, dirty-delete blocking, and confirmed file/folder trash; desktop typecheck, Windows Rust tests, and packaged Linux Tauri build pass.
 
 ## Priority Slice 3: Information Architecture Cleanup
 

@@ -141,6 +141,19 @@ const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
         bytes: toByteArray(bytes)
       });
     },
+    async renameSdocWorkspaceEntry(directoryPath, relativePath, newName) {
+      return await internals.invoke("rename_sdoc_workspace_entry", {
+        directoryPath,
+        relativePath,
+        newName
+      });
+    },
+    async trashSdocWorkspaceEntry(directoryPath, relativePath) {
+      return await internals.invoke("trash_sdoc_workspace_entry", {
+        directoryPath,
+        relativePath
+      });
+    },
     async checkoutDrawioSource(sourceAssetId, sourceBytes) {
       return await internals.invoke("checkout_drawio_source_asset", {
         sourceAssetId,
@@ -208,7 +221,7 @@ struct WorkspaceMutationResult {
     message: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum WorkspaceEntryKind {
     Folder,
@@ -390,6 +403,93 @@ fn create_sdoc_workspace_file(
     })
 }
 
+#[tauri::command]
+fn rename_sdoc_workspace_entry(
+    directory_path: String,
+    relative_path: String,
+    new_name: String,
+) -> Result<WorkspaceMutationResult, String> {
+    let (source, source_relative_path, kind) =
+        resolve_workspace_existing_target(&directory_path, &relative_path)?;
+    validate_workspace_name_component(new_name.trim())?;
+    if matches!(kind, WorkspaceEntryKind::SdocFile)
+        && !new_name.trim().to_ascii_lowercase().ends_with(".sdoc")
+    {
+        return Err("Workspace documents must keep the .sdoc extension.".to_string());
+    }
+
+    let parent_relative_path = Path::new(&source_relative_path)
+        .parent()
+        .unwrap_or_else(|| Path::new(""));
+    let destination_relative_path = parent_relative_path.join(new_name.trim());
+    let destination_relative_string = normalized_relative_path(&destination_relative_path);
+    let (destination, _) =
+        resolve_workspace_creation_target(&directory_path, &destination_relative_string)?;
+    fs::rename(&source, &destination)
+        .map_err(|error| format!("Could not rename workspace entry: {error}"))?;
+
+    Ok(WorkspaceMutationResult {
+        status: "renamed".to_string(),
+        path: destination.to_string_lossy().to_string(),
+        relative_path: destination_relative_string.clone(),
+        kind,
+        message: format!("Renamed to {destination_relative_string}."),
+    })
+}
+
+#[tauri::command]
+fn trash_sdoc_workspace_entry(
+    directory_path: String,
+    relative_path: String,
+) -> Result<WorkspaceMutationResult, String> {
+    let (target, normalized_relative_path, kind) =
+        resolve_workspace_existing_target(&directory_path, &relative_path)?;
+    trash::delete(&target).map_err(|error| {
+        format!("Could not move workspace entry to the operating-system Trash: {error}")
+    })?;
+
+    Ok(WorkspaceMutationResult {
+        status: "trashed".to_string(),
+        path: target.to_string_lossy().to_string(),
+        relative_path: normalized_relative_path.clone(),
+        kind,
+        message: format!("Moved {normalized_relative_path} to Trash."),
+    })
+}
+
+fn resolve_workspace_existing_target(
+    directory_path: &str,
+    relative_path: &str,
+) -> Result<(PathBuf, String, WorkspaceEntryKind), String> {
+    let workspace = fs::canonicalize(PathBuf::from(directory_path))
+        .map_err(|error| format!("Could not resolve workspace folder: {error}"))?;
+    if !workspace.is_dir() {
+        return Err("Workspace path must be an existing directory.".to_string());
+    }
+
+    let relative = validate_workspace_relative_path(relative_path)?;
+    let parent = relative.parent().unwrap_or_else(|| Path::new(""));
+    ensure_workspace_parent_is_safe(&workspace, parent)?;
+    let target = workspace.join(&relative);
+    let metadata = fs::symlink_metadata(&target)
+        .map_err(|_| "Workspace entry does not exist.".to_string())?;
+    if metadata.file_type().is_symlink() {
+        return Err("Workspace entry actions cannot target symlinks.".to_string());
+    }
+    let kind = if metadata.is_dir() {
+        if is_unpacked_sdoc_folder(&target) {
+            return Err("Unpacked .sdoc folders are developer-only and cannot be changed here.".to_string());
+        }
+        WorkspaceEntryKind::Folder
+    } else if metadata.is_file() && has_extension(&target, "sdoc") {
+        WorkspaceEntryKind::SdocFile
+    } else {
+        return Err("Workspace entry must be a folder or .sdoc document.".to_string());
+    };
+
+    Ok((target, normalized_relative_path(&relative), kind))
+}
+
 fn resolve_workspace_creation_target(
     directory_path: &str,
     relative_path: &str,
@@ -408,15 +508,19 @@ fn resolve_workspace_creation_target(
         return Err("A workspace entry with this name already exists.".to_string());
     }
 
-    let normalized = relative
+    let normalized = normalized_relative_path(&relative);
+    Ok((target, normalized))
+}
+
+fn normalized_relative_path(relative: &Path) -> String {
+    relative
         .components()
         .filter_map(|component| match component {
             Component::Normal(value) => Some(value.to_string_lossy().to_string()),
             _ => None,
         })
         .collect::<Vec<_>>()
-        .join("/");
-    Ok((target, normalized))
+        .join("/")
 }
 
 fn validate_workspace_relative_path(value: &str) -> Result<PathBuf, String> {
@@ -799,6 +903,8 @@ fn main() {
             list_sdoc_workspace_entries,
             create_sdoc_workspace_folder,
             create_sdoc_workspace_file,
+            rename_sdoc_workspace_entry,
+            trash_sdoc_workspace_entry,
             checkout_drawio_source_asset,
             open_drawio_external_editor,
             read_drawio_external_edit,
@@ -873,13 +979,55 @@ mod tests {
             fs::read(root.join("Guides/New/Created.sdoc")).unwrap(),
             vec![80, 75, 3, 4]
         );
+        let renamed_file = rename_sdoc_workspace_entry(
+            workspace_path.clone(),
+            "Guides/New/Created.sdoc".to_string(),
+            "Renamed.sdoc".to_string(),
+        )
+        .unwrap();
+        assert_eq!(renamed_file.relative_path, "Guides/New/Renamed.sdoc");
+        assert!(!root.join("Guides/New/Created.sdoc").exists());
+        assert!(root.join("Guides/New/Renamed.sdoc").is_file());
+        assert!(rename_sdoc_workspace_entry(
+            workspace_path.clone(),
+            "Guides/New/Renamed.sdoc".to_string(),
+            "Renamed.txt".to_string(),
+        )
+        .is_err());
+        assert!(rename_sdoc_workspace_entry(
+            workspace_path.clone(),
+            "Guides/New/Renamed.sdoc".to_string(),
+            "CON.sdoc".to_string(),
+        )
+        .is_err());
+        fs::write(root.join("Guides/New/Collision.sdoc"), [80, 75, 3, 4]).unwrap();
+        assert!(rename_sdoc_workspace_entry(
+            workspace_path.clone(),
+            "Guides/New/Renamed.sdoc".to_string(),
+            "Collision.sdoc".to_string(),
+        )
+        .is_err());
+        let renamed_folder = rename_sdoc_workspace_entry(
+            workspace_path.clone(),
+            "Guides/New".to_string(),
+            "Reference".to_string(),
+        )
+        .unwrap();
+        assert_eq!(renamed_folder.relative_path, "Guides/Reference");
+        assert!(root.join("Guides/Reference/Renamed.sdoc").is_file());
+        assert!(resolve_workspace_existing_target(
+            &workspace_path,
+            "Guides/Reference/Renamed.sdoc"
+        )
+        .is_ok());
+        assert!(resolve_workspace_existing_target(&workspace_path, "../escape").is_err());
         assert!(
             create_sdoc_workspace_folder(workspace_path.clone(), "../escape".to_string())
                 .is_err()
         );
         assert!(create_sdoc_workspace_file(
             workspace_path.clone(),
-            "Guides/New/Created.sdoc".to_string(),
+            "Guides/Reference/Renamed.sdoc".to_string(),
             vec![80, 75, 3, 4],
         )
         .is_err());

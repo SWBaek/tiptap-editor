@@ -50,6 +50,20 @@ describe("workspaceModel", () => {
       kind: "folder",
       message: "Created folder Guides."
     })).toBe(true);
+    expect(isWorkspaceMutationResult({
+      status: "renamed",
+      path: "C:/docs/Guides/Renamed.sdoc",
+      relativePath: "Guides/Renamed.sdoc",
+      kind: "sdoc-file",
+      message: "Renamed to Guides/Renamed.sdoc."
+    })).toBe(true);
+    expect(isWorkspaceMutationResult({
+      status: "trashed",
+      path: "C:/docs/Guides",
+      relativePath: "Guides",
+      kind: "folder",
+      message: "Moved Guides to Trash."
+    })).toBe(true);
     expect(isWorkspaceMutationResult({ status: "created", path: "C:/docs/Guides", kind: "folder" })).toBe(false);
   });
 });

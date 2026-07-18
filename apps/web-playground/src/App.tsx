@@ -73,6 +73,7 @@ import {
   getWindowDrawioExternalEditorAdapter,
   getWindowSdocWorkspaceAdapter,
   getWorkspaceRelativePath,
+  replaceNativePathPrefix,
   type WindowDrawioBridgeSession,
   type WindowSdocWorkspaceEntry
 } from "./documentNativeBridge";
@@ -161,6 +162,10 @@ import {
   type WorkspaceCreateKind,
   type WorkspaceCreateValues
 } from "./components/dialogs/WorkspaceCreateDialog";
+import {
+  WorkspaceEntryActionDialog,
+  type WorkspaceEntryAction
+} from "./components/dialogs/WorkspaceEntryActionDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -216,6 +221,11 @@ interface ImageInspectorState {
 interface WorkspaceCreateDialogState {
   parent: WindowSdocWorkspaceEntry | null;
   kind: WorkspaceCreateKind;
+}
+
+interface WorkspaceEntryActionDialogState {
+  entry: WindowSdocWorkspaceEntry;
+  action: WorkspaceEntryAction;
 }
 
 const LOCAL_HISTORY_STORAGE_KEY = "sdoc.localHistory.v1";
@@ -285,6 +295,7 @@ export function App() {
   const [tableDialog, setTableDialog] = useState<TableDialogState | null>(null);
   const [imageInspector, setImageInspector] = useState<ImageInspectorState | null>(null);
   const [workspaceCreateDialog, setWorkspaceCreateDialog] = useState<WorkspaceCreateDialogState | null>(null);
+  const [workspaceEntryActionDialog, setWorkspaceEntryActionDialog] = useState<WorkspaceEntryActionDialogState | null>(null);
   const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(false);
   const [visualDiffFilter, setVisualDiffFilter] = useState<VisualDiffFilterKind>("all");
   const [selectedVisualDiffId, setSelectedVisualDiffId] = useState<string | null>(null);
@@ -876,6 +887,111 @@ export function App() {
       await refreshWorkspaceEntries(directoryPath);
       await openDocumentBytes(values.name, payload.bytes, result.path);
       setStatusMessage(`Created and opened ${result.relativePath}.`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function openWorkspaceEntryActionDialog(entry: WindowSdocWorkspaceEntry, action: WorkspaceEntryAction) {
+    if (documentFileRuntime.kind !== "desktop" || !nativeSdocWorkspaceAdapter || !workspaceDirectory) {
+      setStatusMessage("Choose a desktop workspace folder before changing entries.");
+      return;
+    }
+    if (entry.kind === "unpacked-sdoc-folder") {
+      setStatusMessage("Unpacked .sdoc folders are developer-only and cannot be changed here.");
+      return;
+    }
+    const affectsCurrentDocument = Boolean(currentNativePath && getWorkspaceRelativePath(entry.path, currentNativePath) !== null);
+    if (action === "trash" && affectsCurrentDocument && hasUnsavedChanges) {
+      setStatusMessage("Save or discard the current document before moving it or its parent folder to Trash.");
+      return;
+    }
+    setWorkspaceEntryActionDialog({ entry, action });
+  }
+
+  async function renameWorkspaceEntry(newName: string) {
+    const dialogState = workspaceEntryActionDialog;
+    const directoryPath = workspaceDirectory;
+    if (!dialogState || !directoryPath || !nativeSdocWorkspaceAdapter) {
+      setStatusMessage("Native workspace rename is not available.");
+      return;
+    }
+    const relativePath = getWorkspaceRelativePath(directoryPath, dialogState.entry.path);
+    if (relativePath === null || !relativePath) {
+      setStatusMessage("The selected entry is outside the active workspace.");
+      return;
+    }
+
+    try {
+      const result = await nativeSdocWorkspaceAdapter.renameEntry(directoryPath, relativePath, newName);
+      const nextCurrentPath = currentNativePath
+        ? replaceNativePathPrefix(currentNativePath, dialogState.entry.path, result.path)
+        : null;
+      if (nextCurrentPath) {
+        setCurrentNativePath(nextCurrentPath);
+        if (dialogState.entry.kind === "sdoc-file") {
+          setCurrentFilename(newName);
+        }
+      }
+      const nextRecentFiles = recentFiles.map((entry) => {
+        if (!entry.nativePath) {
+          return entry;
+        }
+        const nextPath = replaceNativePathPrefix(entry.nativePath, dialogState.entry.path, result.path);
+        if (!nextPath) {
+          return entry;
+        }
+        return {
+          ...entry,
+          id: nextPath,
+          name: dialogState.entry.kind === "sdoc-file" ? newName : entry.name,
+          nativePath: nextPath
+        };
+      });
+      setRecentFiles(nextRecentFiles);
+      storeRecentFiles(nextRecentFiles);
+      setWorkspaceEntryActionDialog(null);
+      await refreshWorkspaceEntries(directoryPath);
+      setStatusMessage(result.message);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function trashWorkspaceEntry() {
+    const dialogState = workspaceEntryActionDialog;
+    const directoryPath = workspaceDirectory;
+    if (!dialogState || !directoryPath || !nativeSdocWorkspaceAdapter) {
+      setStatusMessage("Native workspace trash is not available.");
+      return;
+    }
+    const relativePath = getWorkspaceRelativePath(directoryPath, dialogState.entry.path);
+    if (relativePath === null || !relativePath) {
+      setStatusMessage("The selected entry is outside the active workspace.");
+      return;
+    }
+    const affectsCurrentDocument = Boolean(
+      currentNativePath && getWorkspaceRelativePath(dialogState.entry.path, currentNativePath) !== null
+    );
+    if (affectsCurrentDocument && hasUnsavedChanges) {
+      setWorkspaceEntryActionDialog(null);
+      setStatusMessage("Save or discard the current document before moving it or its parent folder to Trash.");
+      return;
+    }
+
+    try {
+      const result = await nativeSdocWorkspaceAdapter.trashEntry(directoryPath, relativePath);
+      const nextRecentFiles = recentFiles.filter(
+        (entry) => !entry.nativePath || getWorkspaceRelativePath(dialogState.entry.path, entry.nativePath) === null
+      );
+      setRecentFiles(nextRecentFiles);
+      storeRecentFiles(nextRecentFiles);
+      setWorkspaceEntryActionDialog(null);
+      if (affectsCurrentDocument) {
+        createNewDocument();
+      }
+      await refreshWorkspaceEntries(directoryPath);
+      setStatusMessage(result.message);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     }
@@ -2289,6 +2405,7 @@ export function App() {
               onRefreshWorkspace={() => void refreshWorkspaceEntries()}
               onOpenWorkspaceEntry={openWorkspaceEntry}
               onCreateWorkspaceEntry={openWorkspaceCreateDialog}
+              onManageWorkspaceEntry={openWorkspaceEntryActionDialog}
               onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
@@ -2562,6 +2679,18 @@ export function App() {
           onCancel={() => {
             setWorkspaceCreateDialog(null);
             setStatusMessage("Canceled workspace entry creation");
+          }}
+        />
+      )}
+      {workspaceEntryActionDialog && (
+        <WorkspaceEntryActionDialog
+          action={workspaceEntryActionDialog.action}
+          entry={workspaceEntryActionDialog.entry}
+          onRename={(name) => void renameWorkspaceEntry(name)}
+          onTrash={() => void trashWorkspaceEntry()}
+          onCancel={() => {
+            setWorkspaceEntryActionDialog(null);
+            setStatusMessage("Canceled workspace entry action");
           }}
         />
       )}

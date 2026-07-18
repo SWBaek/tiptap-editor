@@ -1191,6 +1191,9 @@ function getCanonicalAttrs(node: JSONContent): Record<string, JsonValue> | undef
   const attrs = Object.fromEntries(
     Object.entries(node.attrs as Record<string, JsonValue>).filter(([, value]) => value !== null && value !== undefined)
   ) as Record<string, JsonValue>;
+  if ((node.type === "paragraph" || node.type === "heading") && attrs.textAlign === "left") {
+    delete attrs.textAlign;
+  }
   if (node.type === "figure") {
     delete attrs.src;
   }

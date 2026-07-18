@@ -14,6 +14,7 @@ interface JsonNode {
     sourceAssetId?: unknown;
     previewAssetId?: unknown;
     targetId?: unknown;
+    textAlign?: unknown;
   };
   content?: JsonNode[];
   marks?: Array<{ type?: unknown }>;
@@ -209,6 +210,24 @@ test("authors subscript and superscript as canonical technical marks", async ({ 
 
   await selectPreviewTab(page, "Markdown");
   await expect(page.locator(".preview-output")).toContainText("H<sub>2</sub><sup>3</sup>O x<sup>2</sup>");
+});
+
+test("aligns paragraphs as a canonical text block attribute", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "New document" }).click();
+  const paragraph = page.locator(".editor-surface p").first();
+  await paragraph.click();
+  await page.keyboard.type("Centered requirement");
+
+  await page.getByLabel("Text options menu").click();
+  await page.getByRole("button", { name: "Align text center" }).click();
+
+  const document = await readPreviewDocument(page);
+  const alignedParagraph = document.content?.find((node) => node.type === "paragraph");
+  expect(alignedParagraph?.attrs?.textAlign).toBe("center");
+  expectUniqueIds(collectBlockIds(document));
+  expect(JSON.stringify(document)).not.toContain("selection");
+  await expect(paragraph).toHaveCSS("text-align", "center");
 });
 
 test("uses viewport-safe runtime editor and table context menus", async ({ page }) => {

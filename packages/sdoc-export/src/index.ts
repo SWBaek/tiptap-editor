@@ -1502,11 +1502,11 @@ function renderHtmlBlock(node: SDocNode, references: Map<string, ReferenceTarget
       const level = typeof node.attrs?.level === "number" ? Math.min(Math.max(node.attrs.level, 1), 6) : 1;
       const anchor = getNodeAnchor(node) ?? getNodeId(node);
       const idAttribute = anchor ? ` id="${escapeHtmlAttribute(anchor)}"` : "";
-      return `<h${level}${idAttribute}>${renderHtmlInlineChildren(node, references, options)}</h${level}>`;
+      return `<h${level}${idAttribute}${renderTextAlignAttribute(node)}>${renderHtmlInlineChildren(node, references, options)}</h${level}>`;
     }
 
     case "paragraph":
-      return `<p>${renderHtmlInlineChildren(node, references, options)}</p>`;
+      return `<p${renderTextAlignAttribute(node)}>${renderHtmlInlineChildren(node, references, options)}</p>`;
 
     case "blockquote":
       return `<blockquote>${renderHtmlChildrenAsBlocks(node, references, options, depth)}</blockquote>`;
@@ -1578,6 +1578,11 @@ ${indentHtml(renderHtmlChildrenAsBlocks(node, references, options, depth), 2)}
     default:
       return renderHtmlInlineChildren(node, references, options);
   }
+}
+
+function renderTextAlignAttribute(node: SDocNode): string {
+  const textAlign = node.attrs?.textAlign;
+  return textAlign === "center" || textAlign === "right" ? ` style="text-align: ${textAlign}"` : "";
 }
 
 function renderHtmlChildrenAsBlocks(node: SDocNode, references: Map<string, ReferenceTarget>, options: HtmlExportOptions, depth: number): string {

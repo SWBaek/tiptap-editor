@@ -119,6 +119,23 @@ describe("SDoc conversion", () => {
     });
   });
 
+  it("preserves authored text alignment while omitting the left runtime default", () => {
+    const document = toSdocDocument(
+      {
+        type: "doc",
+        content: [
+          { type: "heading", attrs: { id: "blk_center", level: 2, textAlign: "center" }, content: [{ type: "text", text: "Centered" }] },
+          { type: "paragraph", attrs: { id: "blk_left", textAlign: "left" }, content: [{ type: "text", text: "Default" }] }
+        ]
+      },
+      "doc_alignment"
+    );
+
+    expect(document.content[0].attrs).toEqual({ id: "blk_center", level: 2, textAlign: "center" });
+    expect(document.content[1].attrs).toEqual({ id: "blk_left" });
+    expect(validateDocument(document).ok).toBe(true);
+  });
+
   it("normalizes link marks without editor-runtime defaults or null attrs", () => {
     const document = toSdocDocument(
       {

@@ -136,6 +136,8 @@ Large engineering datasets use `dataGrid` instead of expanding into canonical sp
 
 Simple tables use Tiptap-compatible `table`, `tableRow`, `tableHeader`, and `tableCell` nodes. Each table node still carries a stable `attrs.id`; semantic diff reports caption and cell changes at the table block. A table may store an authored semantic caption in `attrs.caption`; it must be a non-empty string when present. Generated labels such as `Table 1` are runtime/export projections and must not be stored. `tableCell` and `tableHeader` may store semantic text alignment in `attrs.align` with `left`, `center`, or `right`. Column widths, selection, hover, and resize state are editor runtime state and must not be stored.
 
+Paragraph and heading blocks may store authored horizontal alignment in `attrs.textAlign` using `left`, `center`, or `right`. The absent/default value means left alignment and should not be serialized as a runtime default. Alignment never replaces or regenerates the block's stable `attrs.id`.
+
 ```json
 {
   "type": "table",

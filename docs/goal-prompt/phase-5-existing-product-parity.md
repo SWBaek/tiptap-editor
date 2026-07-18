@@ -1,7 +1,7 @@
 ---
 title: "Phase 5.1 Existing Product Experience Parity Goal"
 status: in_progress
-progress_percent: 58
+progress_percent: 61
 current_slice: writing-essentials
 created_at: 2026-07-18
 started_at: 2026-07-18
@@ -87,6 +87,9 @@ progress_log:
   - date: 2026-07-18
     progress_percent: 58
     note: "Subscript and superscript are now mutually exclusive, attribute-free canonical marks exposed through Text options and the selection Bubble Menu. Tiptap dependencies were pinned to one 3.27.1 runtime after the new extensions exposed a duplicate-core type boundary. Schema/export tests and browser authoring coverage pass; npm test (273), npm run build, and npm run test:e2e (34) passed."
+  - date: 2026-07-18
+    progress_percent: 61
+    note: "Paragraph and heading left/center/right alignment is available through Text options and remains distinct from table-cell alignment. Canonical conversion omits the left runtime default, schema validation rejects unsupported justify, HTML preserves authored center/right, and Markdown intentionally remains plain. npm test (276), npm run build, and npm run test:e2e (35) passed."
 done_rule: "Set status to done and progress_percent to 100 only after all slices are implemented, validated, committed, pushed, and the second user-review gate is ready."
 ---
 

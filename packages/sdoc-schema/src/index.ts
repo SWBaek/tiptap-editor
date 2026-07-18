@@ -72,6 +72,7 @@ export const MARK_TYPES = new Set([
 ]);
 
 const TABLE_CELL_ALIGNMENTS = new Set(["left", "center", "right"]);
+const TEXT_BLOCK_ALIGNMENTS = new Set(["left", "center", "right"]);
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -223,6 +224,13 @@ function validateNode(
   const humanId = typedNode.attrs?.humanId;
   if (humanId !== undefined && (typeof humanId !== "string" || humanId.trim().length === 0)) {
     issues.push({ path: `${path}.attrs.humanId`, message: "humanId must be a non-empty string when present" });
+  }
+
+  if (typedNode.type === "paragraph" || typedNode.type === "heading") {
+    const textAlign = typedNode.attrs?.textAlign;
+    if (textAlign !== undefined && (typeof textAlign !== "string" || !TEXT_BLOCK_ALIGNMENTS.has(textAlign))) {
+      issues.push({ path: `${path}.attrs.textAlign`, message: `${typedNode.type} textAlign must be left, center, or right` });
+    }
   }
 
   if (typedNode.type === "crossReference") {

@@ -199,6 +199,23 @@ describe("exportMarkdown", () => {
 });
 
 describe("exportHtml", () => {
+  it("preserves authored paragraph and heading alignment in HTML only", () => {
+    const aligned: SDocDocument = {
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_alignment" },
+      content: [
+        { type: "heading", attrs: { id: "blk_heading", level: 2, textAlign: "center" }, content: [{ type: "text", text: "Centered" }] },
+        { type: "paragraph", attrs: { id: "blk_paragraph", textAlign: "right" }, content: [{ type: "text", text: "Right" }] }
+      ]
+    };
+
+    expect(exportHtml(aligned)).toContain('<h2 id="blk_heading" style="text-align: center">Centered</h2>');
+    expect(exportHtml(aligned)).toContain('<p style="text-align: right">Right</p>');
+    expect(exportMarkdown(aligned)).toContain("## Centered {#blk_heading}");
+    expect(exportMarkdown(aligned)).toContain("Right");
+  });
+
   it("exports a complete themed HTML document with anchors and cross references", () => {
     const html = exportHtml(document, { title: "Published Spec" });
 

@@ -130,6 +130,7 @@ Bubble-menu progress on 2026-07-18:
 - The Bubble Menu continues to mutate the captured ProseMirror range so toolbar focus does not collapse the selection.
 - Normal link is now distinct from stable-ID cross-reference: the selected-text Bubble Menu and common toolbar open a validated add/edit/remove dialog.
 - Sub/superscript are implemented as canonical attribute-free marks in the advanced Text options menu and selected-text Bubble Menu, with semantic export coverage.
+- Paragraph and heading left/center/right alignment is implemented in Text options; table-cell alignment remains contextual under Table tools.
 
 ## Outline And Authoring Structure
 

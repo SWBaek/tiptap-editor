@@ -130,6 +130,15 @@ export function EditorToolbarGroups({
       </div>
 
       <ToolbarMenu label="Text options" icon={<FileText size={17} />}>
+        <ToolbarButton title="Align text left" active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()}>
+          <AlignLeft size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Align text center" active={editor.isActive({ textAlign: "center" })} onClick={() => editor.chain().focus().setTextAlign("center").run()}>
+          <AlignCenter size={18} />
+        </ToolbarButton>
+        <ToolbarButton title="Align text right" active={editor.isActive({ textAlign: "right" })} onClick={() => editor.chain().focus().setTextAlign("right").run()}>
+          <AlignRight size={18} />
+        </ToolbarButton>
         <ToolbarButton title="Subscript" active={editor.isActive("subscript")} onClick={() => editor.chain().focus().toggleSubscript().run()}>
           <Subscript size={18} />
         </ToolbarButton>

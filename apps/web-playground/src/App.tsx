@@ -5,6 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
+import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
   FileJson,
@@ -242,6 +243,7 @@ export function App() {
       Underline,
       ExclusiveSubscript,
       ExclusiveSuperscript,
+      TextAlign.configure({ types: ["heading", "paragraph"], alignments: ["left", "center", "right"], defaultAlignment: "left" }),
       Placeholder.configure({ placeholder: "Write the technical document..." }),
       ...sdocExtensions
     ],

@@ -44,6 +44,30 @@ describe("validateDocument", () => {
     expect(result.issues.some((issue) => issue.message.includes("humanId must be a non-empty string"))).toBe(true);
   });
 
+  it("accepts supported text block alignment and rejects justify", () => {
+    expect(
+      validateDocument({
+        schemaVersion: 1,
+        type: "doc",
+        attrs: { id: "doc_text_align" },
+        content: [
+          { type: "heading", attrs: { id: "blk_heading", level: 2, textAlign: "center" }, content: [{ type: "text", text: "Centered" }] },
+          { type: "paragraph", attrs: { id: "blk_paragraph", textAlign: "right" }, content: [{ type: "text", text: "Right" }] }
+        ]
+      }).ok
+    ).toBe(true);
+
+    const result = validateDocument({
+      schemaVersion: 1,
+      type: "doc",
+      attrs: { id: "doc_bad_text_align" },
+      content: [{ type: "paragraph", attrs: { id: "blk_bad", textAlign: "justify" }, content: [{ type: "text", text: "Bad" }] }]
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("paragraph textAlign must be left, center, or right"))).toBe(true);
+  });
+
   it("accepts a figure with an asset reference and caption", () => {
     const document = {
       schemaVersion: 1,

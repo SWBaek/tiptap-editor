@@ -19,7 +19,7 @@ export interface ActivityBarProps {
 export function ActivityBar({ activePanel, isOpen, filesLabel, showDeveloperTools, onSelect }: ActivityBarProps) {
   return (
     <nav className="activity-bar" aria-label="Primary">
-      <ActivityButton active={activePanel === "files" && isOpen} label={filesLabel} onClick={() => onSelect("files")}>
+      <ActivityButton active={activePanel === "files" && isOpen} label={filesLabel} shortcut="Ctrl+Shift+E" onClick={() => onSelect("files")}>
         <FolderOpen size={20} />
       </ActivityButton>
       <ActivityButton active={activePanel === "outline" && isOpen} label="Outline" onClick={() => onSelect("outline")}>
@@ -44,18 +44,19 @@ export function ActivityBar({ activePanel, isOpen, filesLabel, showDeveloperTool
 interface ActivityButtonProps {
   active: boolean;
   label: string;
+  shortcut?: string;
   onClick: () => void;
   children: ReactNode;
 }
 
-function ActivityButton({ active, label, onClick, children }: ActivityButtonProps) {
+function ActivityButton({ active, label, shortcut, onClick, children }: ActivityButtonProps) {
   return (
     <button
       className={active ? "activity-button active" : "activity-button"}
       type="button"
       aria-label={`${label} panel`}
       aria-pressed={active}
-      title={`${label} panel`}
+      title={`${label} panel${shortcut ? ` (${shortcut})` : ""}`}
       onClick={onClick}
     >
       {children}

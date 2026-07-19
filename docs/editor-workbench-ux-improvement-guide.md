@@ -2,7 +2,7 @@
 
 Created: 2026-07-18
 Target: Phase 5.2 Explorer-First Authoring Workbench
-Status: implementation complete; Slices 1-8 accepted, user review required
+Status: Phase 5.2 baseline accepted; Phase 5.3 evidence correction in progress
 
 ## 1. Purpose
 
@@ -535,3 +535,19 @@ Defer until user evidence:
 - compact single-child folder chains beyond the basic optional setting.
 
 These features are useful reference-editor capabilities, but they must not delay the accepted Explorer and workbench cleanup.
+
+## 15. Phase 5.3 Evidence Correction
+
+The 2026-07-20 implementation audit found that several Phase 5.2 completion statements were broader than the current UI evidence. Phase 5.3 reopens only the contradicted workbench behavior; it does not reopen canonical format, stable-ID, asset, or browser/Tauri boundaries.
+
+Slice 1 is accepted on current evidence:
+
+- sidebar width is now 260px by default, pointer/keyboard resizable from 220-420px, and stored only as a UI preference;
+- `Ctrl+B` toggles the sidebar outside authoring inputs and `Ctrl+Shift+E` opens Explorer;
+- folder rows toggle and files open with one click because no preview-tab model exists;
+- the decorative workspace root is removed, and Collapse/Refresh move under More;
+- row actions no longer reserve a permanent column;
+- entry context menus are portaled, collision-safe, fully keyboard navigable, outside-dismissible, and return focus;
+- `npm test` (310), `npm run build`, `npm run test:e2e` (46), and 1280x800/1440x1000/640x800 visual checks pass.
+
+Quick Open/filter and the remaining panel simplification/responsive corrections stay open. The authoritative live evidence record is `docs/goal-prompt/phase-5.3-explorer-sidebar-ux.md`.

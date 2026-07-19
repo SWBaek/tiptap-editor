@@ -143,3 +143,9 @@ Slice 3 is accepted: the normal Activity Bar is Explorer/Outline/Review with Set
 목표는 Phase 5.1 기능을 유지하면서 Explorer를 파일 트리 중심으로 재구성하고, Activity Bar·Review·Settings·Export·document header·toolbar·status/recovery feedback을 일반 작성자 중심으로 통합하는 것이다. canonical `.sdoc`, stable block ID, asset, browser/Tauri 경계는 변경하지 않는다.
 
 완료 기준은 1280/1440/1920 desktop viewport와 keyboard-only 흐름, 전체 자동 검증, packaged Tauri smoke 및 3-5명 사용자 리뷰 kit를 준비한 뒤 `user review required`로 멈추는 것이다.
+
+## Phase 5.3: Explorer And Sidebar UX Evidence Correction
+
+상태: 진행 중. Phase 5.2의 완료 기록과 현재 렌더링이 충돌하는 Explorer resize/direct-open, 빠른 탐색, 빈 panel, responsive 동작을 실제 evidence로 다시 검증한다.
+
+Slice 1은 완료되었다. 260px 기본/220-420px runtime resize, sidebar/Explorer 단축키, 파일·폴더 단일 클릭, 장식 root 제거, secondary header action 이동, portal context menu와 keyboard/focus/collision 검증이 구현되었으며 unit 310개, build, E2E 46개와 1280/1440/640 시각 검토를 통과했다. 다음 slice는 Quick Open, transient filter, active-file reveal preference와 sort 설정이다.

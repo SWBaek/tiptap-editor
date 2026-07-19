@@ -4,6 +4,7 @@ Created: 2026-07-02
 Realigned: 2026-07-06 after Tauri app user review
 Realigned: 2026-07-18 for Phase 5.1 existing-product experience parity
 Realigned: 2026-07-18 for Phase 5.2 Explorer-first authoring workbench
+Realigned: 2026-07-20 for Phase 5.3 Explorer/sidebar evidence correction
 
 ## Decision
 
@@ -14,6 +15,8 @@ Review, references, traceability, data-grid review, raw JSON, and CLI/debug tool
 Phase 5.2 sharpens this decision: the normal Activity Bar converges on Explorer, Outline, Review, and bottom Settings; Export becomes a document command, History and Document Health become Review tabs, and Developer is opt-in. Files no longer hosts product branding, persistent status, current-file cards, duplicated file commands, Recent Documents, absolute paths, row metadata, or developer pack/unpack controls. The accepted target and slice evidence live in `docs/editor-workbench-ux-improvement-guide.md`.
 
 Slices 1-8 are accepted and feature expansion is stopped for user review. The 48px Activity Bar is icon-only and uses a restrained edge indicator; Review tabs use roving keyboard tab behavior and contain Changes, History, and Document Health; Developer is hidden until its runtime preference is enabled. The canvas owns title editing, Document Properties owns author/version, and a compact document command bar provides the single Save/Export hierarchy without overlap at 1280px. The one-row authoring toolbar keeps core writing, lists, Image, and Table visible; `+ Insert`, `More`, and selection-only inspectors contain secondary commands. A fixed Status Bar owns save/health feedback, counts, zoom, and cursor history; document recovery banners are above the editor rather than inside Explorer. Settings separates Document/Application/Developer, Export opens a deliverable dialog, and browser mode presents Documents/open/download language without native filesystem claims. Automated acceptance covers 1920/1440/1280 geometry and keyboard-only Settings/Export focus behavior; the packaged Windows build and review kit are ready.
+
+Phase 5.3 corrects evidence gaps found after that acceptance. Its first slice replaces the fixed 320px column with a 260px default, 220-420px runtime-resizable sidebar; adds `Ctrl+B` and `Ctrl+Shift+E`; makes folder and file rows directly activate on one click; removes the non-interactive root decoration; moves Collapse/Refresh under More; overlays row actions; and portals entry menus with collision, full keyboard, outside-close, and focus-return behavior. Quick navigation and the remaining panel/responsive corrections are still open.
 
 ## Target Desktop Layout
 

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, MutableRefObject } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown,
   ChevronRight,
@@ -54,6 +55,12 @@ type InlineEditState =
   | { mode: "create"; parentPath: string | null; kind: WorkspaceCreateKind; value: string }
   | { mode: "rename"; entry: WindowSdocWorkspaceEntry; kind: WorkspaceCreateKind; value: string };
 
+interface WorkspaceActionsMenuState {
+  path: string;
+  x: number;
+  y: number;
+}
+
 export function FilesPanel({
   currentFilePath,
   currentFileLabel,
@@ -75,7 +82,7 @@ export function FilesPanel({
   const [expandedWorkspacePaths, setExpandedWorkspacePaths] = useState<Set<string>>(() => new Set());
   const [selectedWorkspacePath, setSelectedWorkspacePath] = useState<string | null>(null);
   const [focusedWorkspacePath, setFocusedWorkspacePath] = useState<string | null>(null);
-  const [openWorkspaceActionsPath, setOpenWorkspaceActionsPath] = useState<string | null>(null);
+  const [openWorkspaceActions, setOpenWorkspaceActions] = useState<WorkspaceActionsMenuState | null>(null);
   const [inlineEdit, setInlineEdit] = useState<InlineEditState | null>(null);
   const treeItemRefs = useRef(new Map<string, HTMLDivElement>());
   const lastRevealedCurrentPath = useRef<string | null>(null);
@@ -101,7 +108,7 @@ export function FilesPanel({
     setExpandedWorkspacePaths(new Set());
     setSelectedWorkspacePath(null);
     setFocusedWorkspacePath(null);
-    setOpenWorkspaceActionsPath(null);
+    setOpenWorkspaceActions(null);
     setInlineEdit(null);
     lastRevealedCurrentPath.current = null;
   }, [workspaceDirectory]);
@@ -159,7 +166,7 @@ export function FilesPanel({
     if (parent) {
       toggleFolder(parent, true);
     }
-    setOpenWorkspaceActionsPath(null);
+    setOpenWorkspaceActions(null);
     setInlineEdit({ mode: "create", parentPath: parent?.path ?? null, kind, value: "" });
   }
 
@@ -167,7 +174,7 @@ export function FilesPanel({
     if (entry.kind === "unpacked-sdoc-folder") {
       return;
     }
-    setOpenWorkspaceActionsPath(null);
+    setOpenWorkspaceActions(null);
     setSelectedWorkspacePath(entry.path);
     setInlineEdit({
       mode: "rename",
@@ -178,10 +185,15 @@ export function FilesPanel({
   }
 
   function closeActions(path?: string) {
-    setOpenWorkspaceActionsPath(null);
+    setOpenWorkspaceActions(null);
     if (path) {
       focusEntry(path, false);
     }
+  }
+
+  function openActions(entry: WindowSdocWorkspaceEntry, x: number, y: number) {
+    setSelectedWorkspacePath(entry.path);
+    setOpenWorkspaceActions({ path: entry.path, x, y });
   }
 
   function handleTreeKeyDown(event: ReactKeyboardEvent<HTMLDivElement>, item: VisibleWorkspaceEntry) {
@@ -253,13 +265,13 @@ export function FilesPanel({
 
     if ((event.key === "F10" && event.shiftKey) || event.key === "ContextMenu") {
       event.preventDefault();
-      setSelectedWorkspacePath(entry.path);
-      setOpenWorkspaceActionsPath(entry.path);
+      const bounds = event.currentTarget.getBoundingClientRect();
+      openActions(entry, bounds.left + 24, bounds.top + 22);
       return;
     }
 
     if (event.key === "Escape") {
-      setOpenWorkspaceActionsPath(null);
+      setOpenWorkspaceActions(null);
       setInlineEdit(null);
     }
   }
@@ -289,29 +301,33 @@ export function FilesPanel({
               >
                 <FolderPlus size={15} />
               </button>
-              <button
-                type="button"
-                onClick={() => setExpandedWorkspacePaths(new Set())}
-                disabled={!workspaceDirectory || expandedWorkspacePaths.size === 0}
-                title="Collapse All"
-                aria-label="Collapse All"
-              >
-                <ChevronUp size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={onRefreshWorkspace}
-                disabled={!workspaceDirectory || isWorkspaceLoading}
-                title="Refresh workspace"
-                aria-label="Refresh workspace"
-              >
-                <RefreshCw size={14} />
-              </button>
               <details className="explorer-more-menu">
                 <summary title="More Explorer actions" aria-label="More Explorer actions">
                   <MoreHorizontal size={15} />
                 </summary>
                 <div role="menu" aria-label="More Explorer actions">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!workspaceDirectory || expandedWorkspacePaths.size === 0}
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      setExpandedWorkspacePaths(new Set());
+                    }}
+                  >
+                    <ChevronUp size={14} /> Collapse All
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!workspaceDirectory || isWorkspaceLoading}
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      onRefreshWorkspace();
+                    }}
+                  >
+                    <RefreshCw size={14} /> Refresh
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
@@ -331,17 +347,12 @@ export function FilesPanel({
         <div className="explorer-tree-scroll">
           {isDesktopRuntime ? (
             <>
-              {workspaceDirectory ? (
-                <div className="explorer-root" title={workspaceDirectory}>
-                  <FolderOpen size={15} />
-                  <strong>{basenameFromPath(workspaceDirectory)}</strong>
-                </div>
-              ) : (
+              {!workspaceDirectory ? (
                 <div className="explorer-empty-state">
                   <span>No workspace folder is open.</span>
                   <button type="button" onClick={onChooseWorkspaceDirectory}>Open folder</button>
                 </div>
-              )}
+              ) : null}
               {workspaceDirectory && workspaceEntries.length === 0 && !inlineEdit ? (
                 <p className="explorer-empty">{isWorkspaceLoading ? "Loading workspace files" : "No folders or .sdoc files in this workspace"}</p>
               ) : workspaceDirectory ? (
@@ -355,17 +366,14 @@ export function FilesPanel({
                     expandedPaths={expandedWorkspacePaths}
                     selectedPath={selectedWorkspacePath}
                     focusedPath={effectiveFocusedPath}
-                    openActionsPath={openWorkspaceActionsPath}
+                    openActions={openWorkspaceActions}
                     inlineEdit={inlineEdit}
                     treeItemRefs={treeItemRefs}
                     onSelect={focusEntry}
                     onToggleFolder={toggleFolder}
                     onOpenEntry={onOpenWorkspaceEntry}
                     onKeyDown={handleTreeKeyDown}
-                    onOpenActions={(entry) => {
-                      setSelectedWorkspacePath(entry.path);
-                      setOpenWorkspaceActionsPath(entry.path);
-                    }}
+                    onOpenActions={openActions}
                     onCloseActions={closeActions}
                     onStartCreate={startCreate}
                     onStartRename={startRename}
@@ -429,14 +437,14 @@ interface WorkspaceTreeGroupProps {
   expandedPaths: Set<string>;
   selectedPath: string | null;
   focusedPath: string | null;
-  openActionsPath: string | null;
+  openActions: WorkspaceActionsMenuState | null;
   inlineEdit: InlineEditState | null;
   treeItemRefs: MutableRefObject<Map<string, HTMLDivElement>>;
   onSelect: (path: string) => void;
   onToggleFolder: (entry: WindowSdocWorkspaceEntry, force?: boolean) => void;
   onOpenEntry: (entry: WindowSdocWorkspaceEntry) => void;
   onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>, item: VisibleWorkspaceEntry) => void;
-  onOpenActions: (entry: WindowSdocWorkspaceEntry) => void;
+  onOpenActions: (entry: WindowSdocWorkspaceEntry, x: number, y: number) => void;
   onCloseActions: (path?: string) => void;
   onStartCreate: (parent: WindowSdocWorkspaceEntry | null, kind: WorkspaceCreateKind) => void;
   onStartRename: (entry: WindowSdocWorkspaceEntry) => void;
@@ -456,7 +464,7 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
     expandedPaths,
     selectedPath,
     focusedPath,
-    openActionsPath,
+    openActions,
     inlineEdit,
     treeItemRefs,
     onSelect,
@@ -493,6 +501,7 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
         const isCurrent = workspacePathsEqual(entry.path, currentFilePath);
         const isSelected = workspacePathsEqual(entry.path, selectedPath);
         const isRenaming = inlineEdit?.mode === "rename" && workspacePathsEqual(inlineEdit.entry.path, entry.path);
+        const isActionsOpen = workspacePathsEqual(openActions?.path ?? null, entry.path);
         const item: VisibleWorkspaceEntry = { entry, level, parentPath };
         const style = { "--explorer-level": level } as CSSProperties;
 
@@ -538,7 +547,7 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
                 onContextMenu={(event) => {
                   event.preventDefault();
                   if (entry.kind !== "unpacked-sdoc-folder") {
-                    onOpenActions(entry);
+                    onOpenActions(entry, event.clientX, event.clientY);
                   }
                 }}
               >
@@ -562,9 +571,11 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
                   type="button"
                   tabIndex={-1}
                   aria-label={entry.name}
-                  onClick={() => onSelect(entry.path)}
-                  onDoubleClick={() => {
-                    if (!isFolder) {
+                  onClick={() => {
+                    onSelect(entry.path);
+                    if (isFolder) {
+                      onToggleFolder(entry);
+                    } else {
                       onOpenEntry(entry);
                     }
                   }}
@@ -583,22 +594,24 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
                     type="button"
                     tabIndex={-1}
                     aria-label={`Actions for ${entry.name}`}
-                    aria-expanded={openActionsPath === entry.path}
+                    aria-expanded={isActionsOpen}
                     onClick={(event) => {
                       event.stopPropagation();
-                      if (openActionsPath === entry.path) {
+                      if (isActionsOpen) {
                         onCloseActions(entry.path);
                       } else {
-                        onOpenActions(entry);
+                        const bounds = event.currentTarget.getBoundingClientRect();
+                        onOpenActions(entry, bounds.right, bounds.bottom + 2);
                       }
                     }}
                   >
                     <MoreHorizontal size={14} />
                   </button>
                 )}
-                {openActionsPath === entry.path && (
+                {isActionsOpen && openActions && (
                   <WorkspaceEntryMenu
                     entry={entry}
+                    position={openActions}
                     onClose={() => onCloseActions(entry.path)}
                     onCreate={(kind) => onStartCreate(entry.kind === "folder" ? entry : null, kind)}
                     onRename={() => onStartRename(entry)}
@@ -706,33 +719,74 @@ function InlineTreeEditor({ level, kind, value, originalName, mode, onChange, on
 
 function WorkspaceEntryMenu({
   entry,
+  position,
   onClose,
   onCreate,
   onRename,
   onTrash
 }: {
   entry: WindowSdocWorkspaceEntry;
+  position: WorkspaceActionsMenuState;
   onClose: () => void;
   onCreate: (kind: WorkspaceCreateKind) => void;
   onRename: () => void;
   onTrash: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ left: position.x, top: position.y });
+
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) {
+      return;
+    }
+    const bounds = menu.getBoundingClientRect();
+    const padding = 8;
+    setMenuPosition({
+      left: Math.max(padding, Math.min(position.x, window.innerWidth - bounds.width - padding)),
+      top: Math.max(padding, Math.min(position.y, window.innerHeight - bounds.height - padding))
+    });
+    menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+  }, [position.x, position.y]);
 
   useEffect(() => {
-    menuRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
-  }, []);
+    function handlePointerDown(event: PointerEvent) {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
+        onClose();
+      }
+    }
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
       className="explorer-entry-menu"
+      style={menuPosition}
       role="menu"
       aria-label={`Workspace actions for ${entry.name}`}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault();
           onClose();
+          return;
+        }
+        const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)'));
+        const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+        let nextIndex: number | null = null;
+        if (event.key === "ArrowDown") {
+          nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+        } else if (event.key === "ArrowUp") {
+          nextIndex = currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length;
+        } else if (event.key === "Home") {
+          nextIndex = 0;
+        } else if (event.key === "End") {
+          nextIndex = items.length - 1;
+        }
+        if (nextIndex !== null && items[nextIndex]) {
+          event.preventDefault();
+          items[nextIndex].focus();
         }
       }}
     >
@@ -752,11 +806,7 @@ function WorkspaceEntryMenu({
       <button className="danger" type="button" role="menuitem" onClick={onTrash}>
         <Trash2 size={13} /> Move to Trash
       </button>
-    </div>
+    </div>,
+    document.body
   );
-}
-
-function basenameFromPath(path: string): string {
-  const normalized = path.replace(/\\/g, "/");
-  return normalized.split("/").filter(Boolean).pop() ?? path;
 }

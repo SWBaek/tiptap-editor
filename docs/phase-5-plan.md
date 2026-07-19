@@ -66,6 +66,12 @@ Slices 3-8 are accepted. The icon-only Activity Bar is reduced to Explorer, Outl
 
 The phase stops at a refreshed packaged-app and 3-5-person review gate. It reports `user review required`; it does not claim human acceptance without recorded sessions.
 
+## Phase 5.3 Explorer And Sidebar Evidence Correction
+
+Status: in progress. The 2026-07-20 audit reopened Phase 5.2 claims that were contradicted by the current rendered workbench. This phase is limited to Explorer interaction/navigation, empty panel information architecture, and responsive polish; canonical `.sdoc`, stable IDs, assets, and native security boundaries remain unchanged.
+
+Slice 1 is accepted with current code/test/render evidence. The sidebar is 260px by default and runtime-resizable from 220-420px, Explorer has explicit keyboard shortcuts, folder/file rows use direct one-click behavior, the redundant root decoration is gone, secondary header actions moved to More, and context menus are portaled with complete keyboard/collision/focus behavior. `npm test` (310), `npm run build`, `npm run test:e2e` (46), and 1280/1440/640 visual checks pass. Quick navigation and panel/responsive simplification remain open in `docs/goal-prompt/phase-5.3-explorer-sidebar-ux.md`.
+
 ## Priority Slice 1: Desktop Workspace Entry
 
 Status: implemented on 2026-07-06; manual Tauri smoke still recommended before the next user review.

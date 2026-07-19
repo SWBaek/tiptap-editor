@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -132,6 +132,8 @@ import { DesktopStartScreen } from "./components/editor-shell/DesktopStartScreen
 import { DocumentCommandBar } from "./components/editor-shell/DocumentCommandBar";
 import { DocumentRecoveryBanners } from "./components/editor-shell/DocumentRecoveryBanners";
 import { StatusBar } from "./components/editor-shell/StatusBar";
+import { SidebarResizeHandle } from "./components/editor-shell/SidebarResizeHandle";
+import { loadStoredSidebarWidth, storeSidebarWidth } from "./components/editor-shell/sidebarPreferences";
 import { EDITOR_ZOOM_STORAGE_KEY, loadStoredEditorZoom } from "./components/editor-shell/ZoomControl";
 import {
   canNavigateCursorHistory,
@@ -184,6 +186,13 @@ function countDocumentWords(document: SDocDocument): number {
     }
   });
   return count;
+}
+
+function isTextEditingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  return target.isContentEditable || Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
 }
 
 function countDocumentBlocks(document: SDocDocument): number {
@@ -286,6 +295,7 @@ export function App() {
   const [activeReviewTab, setActiveReviewTab] = useState<ReviewWorkspaceTab>("changes");
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsWorkspaceTab>("document");
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [sidePanelWidth, setSidePanelWidth] = useState(() => loadStoredSidebarWidth(window.localStorage));
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [savedAt, setSavedAt] = useState<string>("Not saved");
@@ -401,12 +411,37 @@ export function App() {
   }, [editorZoom]);
 
   useEffect(() => {
+    storeSidebarWidth(window.localStorage, sidePanelWidth);
+  }, [sidePanelWidth]);
+
+  useEffect(() => {
     if (!statusMessage) {
       return;
     }
     const timeout = window.setTimeout(() => setStatusMessage(""), 4_500);
     return () => window.clearTimeout(timeout);
   }, [statusMessage]);
+
+  useEffect(() => {
+    function handleWorkbenchShortcut(event: KeyboardEvent) {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) {
+        return;
+      }
+      if (event.shiftKey && event.key.toLowerCase() === "e") {
+        event.preventDefault();
+        setActivePanel("files");
+        setIsSidePanelOpen(true);
+        return;
+      }
+      if (!event.shiftKey && event.key.toLowerCase() === "b" && !isTextEditingTarget(event.target)) {
+        event.preventDefault();
+        setIsSidePanelOpen((open) => !open);
+      }
+    }
+
+    window.addEventListener("keydown", handleWorkbenchShortcut);
+    return () => window.removeEventListener("keydown", handleWorkbenchShortcut);
+  }, []);
 
   useEffect(() => {
     if (!developerToolsEnabled && activeTab === "json") {
@@ -2564,7 +2599,10 @@ export function App() {
   const showDesktopStartScreen = documentFileRuntime.kind === "desktop" && isDesktopStartScreenOpen && !currentFilename && !workspaceDirectory;
 
   return (
-    <main className={isSidePanelOpen ? "app-shell" : "app-shell side-panel-collapsed"}>
+    <main
+      className={isSidePanelOpen ? "app-shell" : "app-shell side-panel-collapsed"}
+      style={{ "--side-panel-width": `${sidePanelWidth}px` } as CSSProperties}
+    >
       <ActivityBar
         activePanel={activePanel}
         isOpen={isSidePanelOpen}
@@ -2723,6 +2761,7 @@ export function App() {
               onCopyDeveloperCommand={showDeveloperCommand}
             />
           )}
+          <SidebarResizeHandle width={sidePanelWidth} onWidthChange={setSidePanelWidth} />
         </aside>
       )}
 

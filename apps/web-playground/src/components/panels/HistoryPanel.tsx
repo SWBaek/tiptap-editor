@@ -36,7 +36,8 @@ export function HistoryPanel({
       {entries.length === 0 ? (
         <div className="history-empty">
           <History size={22} />
-          <span>No snapshots</span>
+          <strong>No snapshots yet</strong>
+          <span>Save one before a major edit to compare or restore it later.</span>
         </div>
       ) : (
         <div className="history-list">

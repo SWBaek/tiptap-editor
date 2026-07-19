@@ -1,15 +1,15 @@
 ---
 title: "Phase 5.3 Explorer And Sidebar UX Goal"
 status: in_progress
-progress_percent: 40
-current_slice: side-panel-simplification
+progress_percent: 60
+current_slice: start-export-status-responsive-polish
 created_at: 2026-07-20
 started_at: 2026-07-20
 completed_slices:
   - explorer-structure-and-interactions
   - quick-navigation
-remaining_slices:
   - side-panel-simplification
+remaining_slices:
   - start-export-status-responsive-polish
   - final-review-gate
 progress_log:
@@ -22,6 +22,9 @@ progress_log:
   - date: 2026-07-20
     progress_percent: 40
     note: "Slice 2 completed. Desktop Ctrl+P Quick Open supports tokenized filename/path search and full keyboard selection; Explorer adds a transient file filter, folders-first name/modified sorting, runtime-only auto-reveal preference, sticky expanded ancestors, and a typed Reveal in File Explorer command that reuses canonical workspace path and symlink validation. Compact folder chains, multi-select, and drag/drop remain deferred pending review evidence. Evidence: npm test (317), npm run build, npm run test:e2e (46), npm run typecheck:desktop, cargo test, npm run build:desktop, focused desktop E2E, and visual inspection of the 1280px Explorer and Quick Open states."
+  - date: 2026-07-20
+    progress_percent: 60
+    note: "Slice 3 completed. Outline now presents headings first, consumes authoring depth settings without duplicating controls, and hides empty Figure/Table groups while retaining accessible collapsible groups when content exists. Browser Documents contains only New/Open and an honest browser boundary instead of current-file/recent-activity duplicates. Review hides zero dashboards, filters, disabled batch controls, stale batch results, and empty event sections; compact tabs retain the Document Health accessibility name. History has an actionable empty state, and Document Properties no longer repeats Status Bar health or attachment counts. Evidence: npm test (317), npm run build, npm run test:e2e (46), focused panel E2E, and 1280px visual inspection of Outline, clean Review, and Browser Documents."
 ---
 
 # Phase 5.3 Explorer And Sidebar UX
@@ -78,6 +81,16 @@ A prior Accepted/Done label is not considered proof when the current DOM, intera
 - Reveal in File Explorer crosses the typed desktop bridge and invokes the platform file manager only after the existing canonical-root, relative-path, file-type, and symlink checks pass. Browser Documents does not expose this command.
 - Automated evidence: `npm test` 317 passed, `npm run build` passed, `npm run test:e2e` 46 passed, `npm run typecheck:desktop` passed, `cargo test` passed, and `npm run build:desktop` produced the Windows release executable.
 - Visual evidence: `%TEMP%/sdoc-phase53-slice2-explorer.png` and `%TEMP%/sdoc-phase53-slice2-quick-open.png` at the 1280px acceptance viewport.
+
+### Slice 3 — Side-panel simplification
+
+- Outline consumes depth/numbering preferences from Application Settings without rendering a second permanent control. Headings remain primary; Figure and Table groups appear as compact collapsible groups only when content exists.
+- Browser Documents now exposes only explicit New/Open actions and a short truthful file/download boundary. Current-file state remains in the document and Status Bar, and non-actionable recent activity is absent from the sidebar.
+- Clean Review shows one actionable status instead of zero count cards, filters, disabled batch actions, stale batch results, and an empty events section. Changes with only metadata direct the author to Show diff.
+- Review tab labels fit the accepted sidebar width; the visible Health label retains `Document Health` as its accessible name. History explains why to create a first snapshot.
+- Document Properties is limited to editable author/version content and no longer duplicates health or attachment facts already owned elsewhere.
+- Automated evidence: `npm test` 317 passed, `npm run build` passed, and `npm run test:e2e` 46 passed after focused panel checks.
+- Visual evidence: `%TEMP%/sdoc-phase53-slice3-outline.png`, `%TEMP%/sdoc-phase53-slice3-review-clean.png`, and `%TEMP%/sdoc-phase53-slice3-browser-documents.png` at 1280px.
 
 ## Known Limits
 

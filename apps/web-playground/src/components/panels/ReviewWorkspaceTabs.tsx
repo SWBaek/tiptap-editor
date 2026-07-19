@@ -5,7 +5,7 @@ import type { ReviewWorkspaceTab } from "../editor-shell/types";
 const tabs: Array<{ id: ReviewWorkspaceTab; label: string }> = [
   { id: "changes", label: "Changes" },
   { id: "history", label: "History" },
-  { id: "health", label: "Document Health" }
+  { id: "health", label: "Health" }
 ];
 
 export function ReviewWorkspaceTabs({
@@ -63,6 +63,7 @@ export function ReviewWorkspaceTabs({
           key={tab.id}
           type="button"
           role="tab"
+          aria-label={tab.id === "health" ? "Document Health" : undefined}
           aria-selected={activeTab === tab.id}
           aria-controls={`review-panel-${tab.id}`}
           tabIndex={activeTab === tab.id ? 0 : -1}
@@ -70,7 +71,7 @@ export function ReviewWorkspaceTabs({
           onKeyDown={(event) => handleKeyDown(event, tab.id)}
         >
           <span>{tab.label}</span>
-          <strong aria-label={`${counts[tab.id]} ${tab.label.toLowerCase()}`}>{counts[tab.id]}</strong>
+          {counts[tab.id] > 0 && <strong aria-label={`${counts[tab.id]} ${tab.label.toLowerCase()}`}>{counts[tab.id]}</strong>}
         </button>
       ))}
     </div>

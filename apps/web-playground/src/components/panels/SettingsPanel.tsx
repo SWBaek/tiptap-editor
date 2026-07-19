@@ -13,7 +13,6 @@ export interface SettingsPanelProps {
   metadata: SDocMetadata;
   validation: ValidationResult;
   document: SDocDocument;
-  assetCount: number;
   isDesktopRuntime: boolean;
   drawioExecutablePath: string;
   developerToolsEnabled: boolean;
@@ -32,7 +31,6 @@ export function SettingsPanel({
   metadata,
   validation,
   document,
-  assetCount,
   isDesktopRuntime,
   drawioExecutablePath,
   developerToolsEnabled,
@@ -78,11 +76,6 @@ export function SettingsPanel({
               <span>Version</span>
               <input value={String(metadata.version ?? "")} onChange={(event) => onMetadataChange({ ...metadata, version: event.target.value })} />
             </label>
-            <div className="status-block">
-              <span>Document status</span>
-              <strong className={validation.ok ? "ok" : "error"}>{validation.ok ? "Healthy" : "Needs attention"}</strong>
-            </div>
-            <div className="status-block"><span>Attachments</span><strong>{assetCount}</strong></div>
             <p className="settings-note">Edit the document title directly above the writing canvas.</p>
           </section>
         )}

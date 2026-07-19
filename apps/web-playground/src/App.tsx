@@ -2667,7 +2667,6 @@ export function App() {
               metadata={metadata}
               validation={validation}
               document={document}
-              assetCount={Object.keys(assets).length}
               isDesktopRuntime={documentFileRuntime.kind === "desktop"}
               drawioExecutablePath={drawioExecutablePath}
               developerToolsEnabled={developerToolsEnabled}
@@ -2691,13 +2690,11 @@ export function App() {
           {activePanel === "files" && (
             <FilesPanel
               currentFilePath={currentNativePath}
-              currentFileLabel={fileLabel}
               isCurrentFileUnsaved={hasUnsavedChanges}
               isDesktopRuntime={documentFileRuntime.kind === "desktop"}
               workspaceDirectory={workspaceDirectory}
               workspaceEntries={workspaceEntries}
               isWorkspaceLoading={isWorkspaceLoading}
-              recentFiles={recentFiles}
               onNewDocument={createNewDocument}
               onOpenDocument={() => void openDocumentAction()}
               onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
@@ -2716,8 +2713,6 @@ export function App() {
               items={visibleOutlineItems}
               figures={figureItems}
               tables={tableItems}
-              outlineDepth={outlineDepth}
-              onOutlineDepthChange={setOutlineDepth}
               highlightedNodeId={highlightedNodeId}
               onRevealNode={revealEditorNode}
             />

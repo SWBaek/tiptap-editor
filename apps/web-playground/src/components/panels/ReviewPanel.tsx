@@ -63,46 +63,44 @@ export function ReviewPanel({
         <span>Review</span>
         <strong className={hasUnsavedChanges ? "warning" : "ok"}>{review.label}</strong>
       </div>
-      <div className="status-block">
-        <span>Base</span>
-        <strong title={baseLabel}>{baseLabel}</strong>
-      </div>
-      <div className="status-block">
-        <span>Saved</span>
-        <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
-      </div>
+      {review.total === 0 ? (
+        <div className="review-clean-state" role="status">
+          <strong>Up to date</strong>
+          <span>No changes since the last saved version.</span>
+        </div>
+      ) : (
+        <>
+          <div className="status-block">
+            <span>Base</span>
+            <strong title={baseLabel}>{baseLabel}</strong>
+          </div>
+          <div className="status-block">
+            <span>Saved</span>
+            <strong className={hasUnsavedChanges ? "warning" : undefined}>{savedLabel}</strong>
+          </div>
 
-      <div className="review-counts" aria-label="Review counts">
-        <div>
-          <span>Total</span>
-          <strong>{review.total}</strong>
-        </div>
-        <div>
-          <span>Document</span>
-          <strong>{review.documentCount}</strong>
-        </div>
-        <div>
-          <span>Metadata</span>
-          <strong>{review.metadataCount}</strong>
-        </div>
-      </div>
+          <div className="review-counts" aria-label="Review counts">
+            <div><span>Total</span><strong>{review.total}</strong></div>
+            <div><span>Document</span><strong>{review.documentCount}</strong></div>
+            <div><span>Metadata</span><strong>{review.metadataCount}</strong></div>
+          </div>
 
-      <button type="button" onClick={onShowDiff}>
-        Show diff
-      </button>
-      <label className="review-toggle">
-        <input type="checkbox" checked={isDiffOverlayEnabled} onChange={onToggleDiffOverlay} />
-        <span>Inline overlay</span>
-      </label>
-      <div className="review-batch-actions" aria-label="Visible review batch actions">
-        <button type="button" disabled={batchableCount === 0} onClick={() => onApplyReviewBatch("accept")}>
-          Accept visible
-        </button>
-        <button type="button" disabled={batchableCount === 0} onClick={() => onApplyReviewBatch("reject")}>
-          Reject visible
-        </button>
-      </div>
-      {batchSummary && (
+          <button type="button" onClick={onShowDiff}>Show diff</button>
+        </>
+      )}
+      {visualDiffItems.length > 0 && (
+        <>
+          <label className="review-toggle">
+            <input type="checkbox" checked={isDiffOverlayEnabled} onChange={onToggleDiffOverlay} />
+            <span>Inline overlay</span>
+          </label>
+          <div className="review-batch-actions" aria-label="Visible review batch actions">
+            <button type="button" disabled={batchableCount === 0} onClick={() => onApplyReviewBatch("accept")}>Accept visible</button>
+            <button type="button" disabled={batchableCount === 0} onClick={() => onApplyReviewBatch("reject")}>Reject visible</button>
+          </div>
+        </>
+      )}
+      {batchSummary && review.total > 0 && (
         <section className={`review-batch-result ${batchSummary.status}`} aria-label="Review batch result">
           <div>
             <strong>{batchSummary.title}</strong>
@@ -133,23 +131,26 @@ export function ReviewPanel({
         </section>
       )}
 
+      {review.total > 0 && (
       <section className="review-events" aria-label="Semantic review events">
-        <div className="review-event-filters" aria-label="Review event filters">
-          {filterOptions.map((option) => (
-            <button
-              className={visualDiffFilter === option.value ? "active" : undefined}
-              type="button"
-              key={option.value}
-              aria-pressed={visualDiffFilter === option.value}
-              onClick={() => onSetVisualDiffFilter(option.value)}
-            >
-              <span>{option.label}</span>
-              <strong>{option.count}</strong>
-            </button>
-          ))}
-        </div>
+        {visualDiffItems.length > 0 && (
+          <div className="review-event-filters" aria-label="Review event filters">
+            {filterOptions.map((option) => (
+              <button
+                className={visualDiffFilter === option.value ? "active" : undefined}
+                type="button"
+                key={option.value}
+                aria-pressed={visualDiffFilter === option.value}
+                onClick={() => onSetVisualDiffFilter(option.value)}
+              >
+                <span>{option.label}</span>
+                <strong>{option.count}</strong>
+              </button>
+            ))}
+          </div>
+        )}
         {visualDiffItems.length === 0 ? (
-          <p className="review-empty">No document events</p>
+          <p className="review-empty">No block changes. Use Show diff to review metadata.</p>
         ) : (
           <ul className="review-event-list">
             {visualDiffItems.map((item) => (
@@ -177,6 +178,7 @@ export function ReviewPanel({
           </ul>
         )}
       </section>
+      )}
       {isHistoryBase && (
         <button type="button" onClick={onCompareSavedBaseline}>
           Use last saved version

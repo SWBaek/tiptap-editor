@@ -23,8 +23,6 @@ export interface OutlinePanelProps {
   items: AuthorOutlineItem[];
   figures: AuthorFigureItem[];
   tables: AuthorTableItem[];
-  outlineDepth: number;
-  onOutlineDepthChange: (depth: number) => void;
   highlightedNodeId: string | null;
   onRevealNode: (nodeId: string, label: string) => void;
 }
@@ -33,25 +31,15 @@ export function OutlinePanel({
   items,
   figures,
   tables,
-  outlineDepth,
-  onOutlineDepthChange,
   highlightedNodeId,
   onRevealNode
 }: OutlinePanelProps) {
   return (
     <div className="side-panel-section outline-panel">
       <section className="outline-section" aria-label="Document outline">
-        <h3>Outline</h3>
-        <label className="outline-depth-control">
-          <span>Depth</span>
-          <select value={outlineDepth} onChange={(event) => onOutlineDepthChange(Number(event.target.value))}>
-            {[1, 2, 3, 4, 5, 6].map((level) => (
-              <option value={level} key={level}>H1-H{level}</option>
-            ))}
-          </select>
-        </label>
+        <header className="outline-group-heading"><h3>Headings</h3><span>{items.length}</span></header>
         {items.length === 0 ? (
-          <p className="outline-empty">No headings yet</p>
+          <p className="outline-empty">Add a heading in the document to build its outline.</p>
         ) : (
           <ul className="outline-list">
             {items.map((item) => (
@@ -66,11 +54,9 @@ export function OutlinePanel({
         )}
       </section>
 
-      <section className="outline-section" aria-label="Figure list">
-        <h3>Figures</h3>
-        {figures.length === 0 ? (
-          <p className="outline-empty">No figures yet</p>
-        ) : (
+      {figures.length > 0 && (
+        <details className="outline-section outline-collapsible" aria-label="Figure list" open>
+          <summary className="outline-group-heading"><h3>Figures</h3><span>{figures.length}</span></summary>
           <ul className="outline-list structured-list">
             {figures.map((figure) => (
               <li className={highlightedNodeId === figure.id ? "active" : undefined} key={figure.id}>
@@ -82,14 +68,12 @@ export function OutlinePanel({
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </details>
+      )}
 
-      <section className="outline-section" aria-label="Table list">
-        <h3>Tables</h3>
-        {tables.length === 0 ? (
-          <p className="outline-empty">No tables yet</p>
-        ) : (
+      {tables.length > 0 && (
+        <details className="outline-section outline-collapsible" aria-label="Table list" open>
+          <summary className="outline-group-heading"><h3>Tables</h3><span>{tables.length}</span></summary>
           <ul className="outline-list structured-list">
             {tables.map((table) => (
               <li className={highlightedNodeId === table.id ? "active" : undefined} key={table.id}>
@@ -101,8 +85,8 @@ export function OutlinePanel({
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </details>
+      )}
     </div>
   );
 }

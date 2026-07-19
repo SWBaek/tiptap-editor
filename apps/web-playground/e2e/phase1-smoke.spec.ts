@@ -66,7 +66,8 @@ test("loads the Phase 3 playground and exercises preview/export basics", async (
   const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
   await expect(settingsPanel).toBeVisible();
   await expect(settingsPanel.getByLabel("Document properties")).toContainText("Document Properties");
-  await expect(settingsPanel.getByLabel("Document properties")).toContainText("Healthy");
+  await expect(settingsPanel.getByLabel("Document properties")).not.toContainText("Document status");
+  await expect(settingsPanel.getByLabel("Document properties")).not.toContainText("Attachments");
   await expect(settingsPanel).not.toContainText("Schema");
   await expect(settingsPanel).not.toContainText("Review");
   await expect(settingsPanel).not.toContainText("References");
@@ -248,6 +249,9 @@ test("shows authoring structure projections without changing heading text", asyn
   const outlinePanel = page.getByRole("complementary", { name: "Outline side panel" });
   await expect(outlinePanel.getByLabel("Document outline")).toContainText("1");
   await expect(outlinePanel.getByLabel("Document outline")).toContainText("System Overview");
+  await expect(outlinePanel.getByLabel("Document outline")).not.toContainText("Depth");
+  await expect(outlinePanel).not.toContainText("No figures yet");
+  await expect(outlinePanel).not.toContainText("No tables yet");
 
   const headingNumberCss = page.locator("style[data-sdoc-heading-number-runtime]");
   await expect.poll(() => headingNumberCss.evaluate((node) => node.textContent ?? "")).toContain('content:"1. "');
@@ -522,7 +526,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(page.locator(".status-note")).toContainText("Accepted modified blk_intro");
   await selectPreviewTab(page, "JSON");
   expect(await readPreviewDocument(page)).toEqual(beforeReviewSelection);
-  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
+  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No block changes");
 
   await page.locator(".editor-surface p").first().click();
   await page.keyboard.press("End");
@@ -534,7 +538,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(page.locator(".status-note")).toContainText("Rejected modified blk_intro");
   await selectPreviewTab(page, "JSON");
   expect(await readPreviewDocument(page)).toEqual(beforeReviewSelection);
-  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
+  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No block changes");
 
   await page.locator(".editor-surface p").first().click();
   await page.keyboard.press("End");
@@ -549,7 +553,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Applied");
   await selectPreviewTab(page, "JSON");
   expect(await readPreviewDocument(page)).toEqual(batchAcceptedDocument);
-  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
+  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No block changes");
 
   await page.locator(".editor-surface p").first().click();
   await page.keyboard.press("End");
@@ -562,7 +566,7 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await expect(reviewPanel.getByLabel("Review batch result")).toContainText("Skipped");
   await selectPreviewTab(page, "JSON");
   expect(await readPreviewDocument(page)).toEqual(batchAcceptedDocument);
-  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No document events");
+  await expect(reviewPanel.getByLabel("Semantic review events")).toContainText("No block changes");
 
   await expect(reviewPanel).not.toContainText("Git workflow");
   await expect(reviewPanel).not.toContainText("Copy semantic diff command");
@@ -578,6 +582,10 @@ test("uses the Review side panel for diff workflow controls", async ({ page }) =
   await reviewBaselineDownload;
   await expect(page.locator(".status-note")).toContainText("Downloaded Review Panel Spec.sdoc");
   await expect(reviewPanel.locator(".status-block").filter({ hasText: "Review" })).toContainText("No changes");
+  await expect(reviewPanel.getByRole("status")).toContainText("No changes since the last saved version");
+  await expect(reviewPanel.getByLabel("Review counts")).toHaveCount(0);
+  await expect(reviewPanel.getByLabel("Review event filters")).toHaveCount(0);
+  await expect(reviewPanel.getByLabel("Semantic review events")).toHaveCount(0);
   await expect(page.locator(".diff-empty")).toContainText("No changes");
   await expect(page.locator("style[data-sdoc-diff-overlay-runtime]")).toBeHidden();
 });
@@ -682,10 +690,11 @@ test("keeps browser Documents focused on explicit files and downloads", async ({
   await page.getByRole("button", { name: "Documents panel" }).click();
   const filesPanel = page.getByRole("complementary", { name: "Documents side panel" });
   await expect(filesPanel).toBeVisible();
-  await expect(filesPanel.getByLabel("Browser documents")).toContainText("Playground Document.sdoc");
   await expect(filesPanel.getByRole("button", { name: "New document" })).toBeVisible();
   await expect(filesPanel.getByRole("button", { name: "Open .sdoc" })).toBeVisible();
-  await expect(filesPanel).toContainText("Folder access, file watchers, rename, and Trash are available only in the desktop app");
+  await expect(filesPanel).toContainText("Browser mode opens individual `.sdoc` files");
+  await expect(filesPanel).not.toContainText("Current document");
+  await expect(filesPanel).not.toContainText("Recent activity");
   await expect(filesPanel).not.toContainText("Developer workspace");
 
   await page.getByRole("button", { name: "Settings panel" }).click();
@@ -698,8 +707,8 @@ test("keeps browser Documents focused on explicit files and downloads", async ({
   await page.reload();
   await page.getByRole("button", { name: "Documents panel" }).click();
   const reloadedFilesPanel = page.getByRole("complementary", { name: "Documents side panel" });
-  await expect(reloadedFilesPanel.getByLabel("Browser documents")).toContainText("Playground Document.sdoc");
-  await expect(reloadedFilesPanel.getByLabel("Recent browser activity")).toContainText("Files Panel Spec.sdoc");
+  await expect(reloadedFilesPanel.getByRole("button", { name: "Open .sdoc" })).toBeVisible();
+  await expect(reloadedFilesPanel).not.toContainText("Files Panel Spec.sdoc");
 });
 
 test("shows a desktop start screen before opening a Tauri workspace document", async ({ page }) => {
@@ -1263,7 +1272,7 @@ test("inserts cross references from the target picker", async ({ page }) => {
   await page.getByRole("button", { name: "Settings panel" }).click();
   const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
   await settingsPanel.getByRole("tab", { name: "Document" }).click();
-  await expect(settingsPanel.getByLabel("Document properties")).toContainText("Healthy");
+  await expect(page.getByRole("contentinfo", { name: "Workbench status" })).toContainText("Document healthy");
 });
 
 test("sets requirement traceability IDs from Review document health", async ({ page }) => {
@@ -1375,7 +1384,7 @@ test("detects broken cross references in the playground", async ({ page }, testI
   await page.getByRole("button", { name: "Settings panel" }).click();
   const settingsPanel = page.getByRole("complementary", { name: "Settings side panel" });
   await settingsPanel.getByRole("tab", { name: "Document" }).click();
-  await expect(settingsPanel.getByLabel("Document properties")).toContainText("Healthy");
+  await expect(page.getByRole("contentinfo", { name: "Workbench status" })).toContainText("Document healthy");
 });
 
 test("round-trips a downloaded .sdoc through the browser open flow", async ({ page }, testInfo) => {

@@ -558,4 +558,6 @@ Slice 2 is also accepted on current evidence:
 - browser mode exposes none of the native reveal behavior;
 - `npm test` (317), `npm run build`, `npm run test:e2e` (46), desktop typecheck/build, Rust tests, focused E2E, and 1280px visual inspection pass.
 
-Panel simplification and responsive corrections stay open. Compact folder chains, multi-select, and drag/drop remain deferred until user evidence justifies their interaction models. The authoritative live evidence record is `docs/goal-prompt/phase-5.3-explorer-sidebar-ux.md`.
+Slice 3 is accepted on current evidence. Outline no longer duplicates depth controls or renders empty Figure/Table blocks; Browser Documents keeps only explicit file actions and the browser boundary; clean Review omits zero dashboards, filters, disabled/stale actions, and empty event sections; History explains the first snapshot action; and Document Properties no longer repeats Status Bar health/attachment facts. Focused panel E2E, `npm test` (317), `npm run build`, `npm run test:e2e` (46), and 1280px Outline/Review/Documents inspection pass.
+
+Start/Export/Status and responsive corrections stay open. Compact folder chains, multi-select, and drag/drop remain deferred until user evidence justifies their interaction models. The authoritative live evidence record is `docs/goal-prompt/phase-5.3-explorer-sidebar-ux.md`.

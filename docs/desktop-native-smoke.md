@@ -61,6 +61,10 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
 2. Workspace Explorer
    - Choose a workspace folder containing multiple `.sdoc` files.
    - Include nested folders and confirm Explorer starts directly with its compact action header and recursive file tree.
+   - Press `Ctrl+P`, search with separate folder and filename tokens, use Arrow keys/Enter to open a nested document, and confirm Escape closes without changing the current document.
+   - Use the transient Explorer filter and name/modified sort choices; restart the app and confirm sort and active-file auto-reveal preferences persist as runtime UI state without appearing in `document.json`.
+   - Open a nested document and confirm its ancestors expand and remain visible while scrolling; disable auto-reveal and confirm manual folder state is respected.
+   - Invoke Reveal in File Explorer for a file and folder and confirm Windows Explorer selects/opens only entries inside the chosen canonical workspace. Confirm browser mode has no equivalent native command.
    - Confirm nested `.sdoc` files open from the tree while symlinked folders are not traversed outside the selected workspace.
    - Select a nested folder, create a subfolder and a new document, and confirm the document is a valid single-file `.sdoc` that opens from the refreshed tree.
    - Confirm duplicate names, parent traversal, and invalid names are rejected without overwriting an existing entry.

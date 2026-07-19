@@ -148,4 +148,4 @@ Slice 3 is accepted: the normal Activity Bar is Explorer/Outline/Review with Set
 
 상태: 진행 중. Phase 5.2의 완료 기록과 현재 렌더링이 충돌하는 Explorer resize/direct-open, 빠른 탐색, 빈 panel, responsive 동작을 실제 evidence로 다시 검증한다.
 
-Slice 1은 완료되었다. 260px 기본/220-420px runtime resize, sidebar/Explorer 단축키, 파일·폴더 단일 클릭, 장식 root 제거, secondary header action 이동, portal context menu와 keyboard/focus/collision 검증이 구현되었으며 unit 310개, build, E2E 46개와 1280/1440/640 시각 검토를 통과했다. 다음 slice는 Quick Open, transient filter, active-file reveal preference와 sort 설정이다.
+Slice 1-2는 완료되었다. 260px 기본/220-420px runtime resize, sidebar/Explorer 단축키, 파일·폴더 단일 클릭, 장식 root 제거, portal context menu에 이어 desktop `Ctrl+P` Quick Open, transient filter, folders-first name/modified sort, runtime-only active-file auto reveal, sticky ancestor, typed OS file-manager reveal이 구현되었다. unit 317개, build, E2E 46개, desktop typecheck/native build, Rust test와 시각 검토를 통과했다. compact folder chain, multi-select, drag/drop은 사용자 evidence 전까지 연기하며 다음 slice는 빈 패널과 browser Documents 단순화다.

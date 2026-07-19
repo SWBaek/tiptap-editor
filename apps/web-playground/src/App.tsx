@@ -174,6 +174,7 @@ import {
 } from "./components/dialogs/WorkspaceEntryActionDialog";
 import { DrawioConflictDialog } from "./components/dialogs/DrawioConflictDialog";
 import { ExportDialog } from "./components/dialogs/ExportDialog";
+import { QuickOpenDialog } from "./components/dialogs/QuickOpenDialog";
 
 const ExclusiveSubscript = Subscript.extend({ excludes: "superscript" });
 const ExclusiveSuperscript = Superscript.extend({ excludes: "subscript" });
@@ -298,6 +299,7 @@ export function App() {
   const [sidePanelWidth, setSidePanelWidth] = useState(() => loadStoredSidebarWidth(window.localStorage));
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
   const [savedAt, setSavedAt] = useState<string>("Not saved");
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [documentId, setDocumentId] = useState<string>(initialDocument.attrs.id);
@@ -356,6 +358,7 @@ export function App() {
   const currentNativePathRef = useRef<string | null>(null);
   const hasUnsavedChangesRef = useRef(false);
   const ignoredWorkspaceEventPathsRef = useRef<Map<string, number>>(new Map());
+  const quickOpenReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -433,6 +436,12 @@ export function App() {
         setIsSidePanelOpen(true);
         return;
       }
+      if (!event.shiftKey && event.key.toLowerCase() === "p" && detectDocumentFileRuntime().kind === "desktop" && workspaceDirectory) {
+        event.preventDefault();
+        quickOpenReturnFocusRef.current = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : null;
+        setIsQuickOpenOpen(true);
+        return;
+      }
       if (!event.shiftKey && event.key.toLowerCase() === "b" && !isTextEditingTarget(event.target)) {
         event.preventDefault();
         setIsSidePanelOpen((open) => !open);
@@ -441,7 +450,7 @@ export function App() {
 
     window.addEventListener("keydown", handleWorkbenchShortcut);
     return () => window.removeEventListener("keydown", handleWorkbenchShortcut);
-  }, []);
+  }, [workspaceDirectory]);
 
   useEffect(() => {
     if (!developerToolsEnabled && activeTab === "json") {
@@ -1028,6 +1037,37 @@ export function App() {
     try {
       const opened = await nativeSdocWorkspaceAdapter.openFile(entry.path);
       await openDocumentBytes(filenameFromNativePath(opened.path), opened.bytes, opened.path);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function openQuickOpen() {
+    if (documentFileRuntime.kind !== "desktop" || !workspaceDirectory || workspaceEntries.length === 0) {
+      setStatusMessage("Open a desktop workspace with .sdoc documents to use Quick Open.");
+      return;
+    }
+    quickOpenReturnFocusRef.current = window.document.activeElement instanceof HTMLElement ? window.document.activeElement : null;
+    setIsQuickOpenOpen(true);
+  }
+
+  function closeQuickOpen() {
+    setIsQuickOpenOpen(false);
+    requestAnimationFrame(() => quickOpenReturnFocusRef.current?.focus());
+  }
+
+  async function revealWorkspaceEntry(entry: WindowSdocWorkspaceEntry) {
+    if (!workspaceDirectory || !nativeSdocWorkspaceAdapter?.revealEntry) {
+      setStatusMessage("Reveal in File Explorer is available in the packaged desktop app.");
+      return;
+    }
+    const relativePath = getWorkspaceRelativePath(workspaceDirectory, entry.path);
+    if (relativePath === null) {
+      setStatusMessage("The selected entry is outside the active workspace.");
+      return;
+    }
+    try {
+      await nativeSdocWorkspaceAdapter.revealEntry(workspaceDirectory, relativePath);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     }
@@ -2661,11 +2701,13 @@ export function App() {
               onNewDocument={createNewDocument}
               onOpenDocument={() => void openDocumentAction()}
               onChooseWorkspaceDirectory={chooseWorkspaceDirectoryAction}
+              onQuickOpen={openQuickOpen}
               onRefreshWorkspace={() => void refreshWorkspaceEntries()}
               onOpenWorkspaceEntry={openWorkspaceEntry}
               onCreateWorkspaceEntry={createWorkspaceEntry}
               onRenameWorkspaceEntry={renameWorkspaceEntry}
               onTrashWorkspaceEntry={(entry) => openWorkspaceEntryActionDialog(entry, "trash")}
+              onRevealWorkspaceEntry={(entry) => void revealWorkspaceEntry(entry)}
             />
           )}
 
@@ -2955,6 +2997,17 @@ export function App() {
           </>
         )}
       </section>
+      {isQuickOpenOpen && workspaceDirectory && (
+        <QuickOpenDialog
+          workspaceDirectory={workspaceDirectory}
+          entries={workspaceEntries}
+          onOpen={(entry) => {
+            setIsQuickOpenOpen(false);
+            void openWorkspaceEntry(entry);
+          }}
+          onCancel={closeQuickOpen}
+        />
+      )}
       {isExportDialogOpen && (
         <ExportDialog
           filenames={exportFilenames}

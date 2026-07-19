@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, MutableRefObject } from "react";
 import { createPortal } from "react-dom";
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -13,6 +14,8 @@ import {
   MoreHorizontal,
   Pencil,
   RefreshCw,
+  Search,
+  Clock3,
   Trash2
 } from "lucide-react";
 import type { WindowSdocWorkspaceEntry } from "../../documentNativeBridge";
@@ -23,14 +26,18 @@ import {
   type WorkspaceCreateKind
 } from "../dialogs/WorkspaceCreateDialog";
 import {
+  collectWorkspaceFolderPaths,
+  filterWorkspaceEntries,
   findWorkspaceAncestorFolders,
   findWorkspaceEntry,
   flattenVisibleWorkspaceEntries,
   isWorkspaceFolder,
   sortWorkspaceEntries,
   workspacePathsEqual,
+  type ExplorerSortMode,
   type VisibleWorkspaceEntry
 } from "./explorerTreeModel";
+import { loadExplorerPreferences, storeExplorerPreferences } from "./explorerPreferences";
 
 export interface FilesPanelProps {
   currentFilePath: string | null;
@@ -44,11 +51,13 @@ export interface FilesPanelProps {
   onNewDocument: () => void;
   onOpenDocument: () => void;
   onChooseWorkspaceDirectory: () => void;
+  onQuickOpen: () => void;
   onRefreshWorkspace: () => void;
   onOpenWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
   onCreateWorkspaceEntry: (parent: WindowSdocWorkspaceEntry | null, kind: WorkspaceCreateKind, name: string) => Promise<boolean>;
   onRenameWorkspaceEntry: (entry: WindowSdocWorkspaceEntry, name: string) => Promise<boolean>;
   onTrashWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
+  onRevealWorkspaceEntry: (entry: WindowSdocWorkspaceEntry) => void;
 }
 
 type InlineEditState =
@@ -73,23 +82,45 @@ export function FilesPanel({
   onNewDocument,
   onOpenDocument,
   onChooseWorkspaceDirectory,
+  onQuickOpen,
   onRefreshWorkspace,
   onOpenWorkspaceEntry,
   onCreateWorkspaceEntry,
   onRenameWorkspaceEntry,
-  onTrashWorkspaceEntry
+  onTrashWorkspaceEntry,
+  onRevealWorkspaceEntry
 }: FilesPanelProps) {
   const [expandedWorkspacePaths, setExpandedWorkspacePaths] = useState<Set<string>>(() => new Set());
   const [selectedWorkspacePath, setSelectedWorkspacePath] = useState<string | null>(null);
   const [focusedWorkspacePath, setFocusedWorkspacePath] = useState<string | null>(null);
   const [openWorkspaceActions, setOpenWorkspaceActions] = useState<WorkspaceActionsMenuState | null>(null);
   const [inlineEdit, setInlineEdit] = useState<InlineEditState | null>(null);
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [explorerPreferences, setExplorerPreferences] = useState(() => loadExplorerPreferences(window.localStorage));
   const treeItemRefs = useRef(new Map<string, HTMLDivElement>());
+  const filterInputRef = useRef<HTMLInputElement>(null);
   const lastRevealedCurrentPath = useRef<string | null>(null);
 
+  const displayedWorkspaceEntries = useMemo(
+    () => filterWorkspaceEntries(workspaceEntries, filterQuery),
+    [filterQuery, workspaceEntries]
+  );
+  const effectiveExpandedWorkspacePaths = useMemo(
+    () => filterQuery.trim()
+      ? new Set([...expandedWorkspacePaths, ...collectWorkspaceFolderPaths(displayedWorkspaceEntries)])
+      : expandedWorkspacePaths,
+    [displayedWorkspaceEntries, expandedWorkspacePaths, filterQuery]
+  );
   const visibleEntries = useMemo(
-    () => flattenVisibleWorkspaceEntries(workspaceEntries, expandedWorkspacePaths),
-    [expandedWorkspacePaths, workspaceEntries]
+    () => flattenVisibleWorkspaceEntries(
+      displayedWorkspaceEntries,
+      effectiveExpandedWorkspacePaths,
+      1,
+      null,
+      explorerPreferences.sortMode
+    ),
+    [displayedWorkspaceEntries, effectiveExpandedWorkspacePaths, explorerPreferences.sortMode]
   );
   const visiblePaths = useMemo(() => new Set(visibleEntries.map(({ entry }) => entry.path)), [visibleEntries]);
   const effectiveFocusedPath = focusedWorkspacePath && visiblePaths.has(focusedWorkspacePath)
@@ -110,11 +141,13 @@ export function FilesPanel({
     setFocusedWorkspacePath(null);
     setOpenWorkspaceActions(null);
     setInlineEdit(null);
+    setFilterQuery("");
+    setIsFilterVisible(false);
     lastRevealedCurrentPath.current = null;
   }, [workspaceDirectory]);
 
   useEffect(() => {
-    if (!currentFilePath || workspacePathsEqual(lastRevealedCurrentPath.current, currentFilePath)) {
+    if (!explorerPreferences.autoReveal || !currentFilePath || workspacePathsEqual(lastRevealedCurrentPath.current, currentFilePath)) {
       return;
     }
     const currentEntry = findWorkspaceEntry(workspaceEntries, currentFilePath);
@@ -130,7 +163,17 @@ export function FilesPanel({
     setFocusedWorkspacePath(currentEntry.path);
     lastRevealedCurrentPath.current = currentEntry.path;
     requestAnimationFrame(() => treeItemRefs.current.get(currentEntry.path)?.scrollIntoView({ block: "nearest" }));
-  }, [currentFilePath, workspaceEntries]);
+  }, [currentFilePath, explorerPreferences.autoReveal, workspaceEntries]);
+
+  useEffect(() => {
+    storeExplorerPreferences(window.localStorage, explorerPreferences);
+  }, [explorerPreferences]);
+
+  useEffect(() => {
+    if (isFilterVisible) {
+      requestAnimationFrame(() => filterInputRef.current?.focus());
+    }
+  }, [isFilterVisible]);
 
   useEffect(() => {
     if (focusedWorkspacePath && !visiblePaths.has(focusedWorkspacePath)) {
@@ -167,6 +210,8 @@ export function FilesPanel({
       toggleFolder(parent, true);
     }
     setOpenWorkspaceActions(null);
+    setFilterQuery("");
+    setIsFilterVisible(false);
     setInlineEdit({ mode: "create", parentPath: parent?.path ?? null, kind, value: "" });
   }
 
@@ -223,7 +268,7 @@ export function FilesPanel({
       if (!expandedWorkspacePaths.has(entry.path)) {
         toggleFolder(entry, true);
       } else {
-        const firstChild = sortWorkspaceEntries(entry.children ?? [])[0];
+        const firstChild = sortWorkspaceEntries(entry.children ?? [], explorerPreferences.sortMode)[0];
         if (firstChild) {
           focusEntry(firstChild.path);
         }
@@ -309,6 +354,28 @@ export function FilesPanel({
                   <button
                     type="button"
                     role="menuitem"
+                    disabled={!workspaceDirectory || workspaceEntries.length === 0}
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      onQuickOpen();
+                    }}
+                  >
+                    <Search size={14} /> Quick Open <kbd>Ctrl+P</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!workspaceDirectory}
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      setIsFilterVisible(true);
+                    }}
+                  >
+                    <Search size={14} /> Filter files
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
                     disabled={!workspaceDirectory || expandedWorkspacePaths.size === 0}
                     onClick={(event) => {
                       event.currentTarget.closest("details")?.removeAttribute("open");
@@ -330,6 +397,42 @@ export function FilesPanel({
                   </button>
                   <button
                     type="button"
+                    role="menuitemradio"
+                    aria-checked={explorerPreferences.sortMode === "name"}
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      setExplorerPreferences((current) => ({ ...current, sortMode: "name" }));
+                    }}
+                  >
+                    {explorerPreferences.sortMode === "name" ? <Check size={14} /> : <span className="explorer-menu-icon-space" />}
+                    Sort by name
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={explorerPreferences.sortMode === "modified"}
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      setExplorerPreferences((current) => ({ ...current, sortMode: "modified" }));
+                    }}
+                  >
+                    {explorerPreferences.sortMode === "modified" ? <Check size={14} /> : <Clock3 size={14} />}
+                    Sort by modified
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={explorerPreferences.autoReveal}
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      setExplorerPreferences((current) => ({ ...current, autoReveal: !current.autoReveal }));
+                    }}
+                  >
+                    {explorerPreferences.autoReveal ? <Check size={14} /> : <span className="explorer-menu-icon-space" />}
+                    Auto reveal active file
+                  </button>
+                  <button
+                    type="button"
                     role="menuitem"
                     onClick={(event) => {
                       event.currentTarget.closest("details")?.removeAttribute("open");
@@ -344,6 +447,34 @@ export function FilesPanel({
           )}
         </header>
 
+        {isDesktopRuntime && isFilterVisible && (
+          <div className="explorer-filter">
+            <Search size={14} aria-hidden="true" />
+            <input
+              ref={filterInputRef}
+              value={filterQuery}
+              aria-label="Filter Explorer files"
+              placeholder="Filter files"
+              onChange={(event) => setFilterQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setFilterQuery("");
+                  setIsFilterVisible(false);
+                }
+              }}
+            />
+            <button
+              type="button"
+              aria-label="Close Explorer filter"
+              onClick={() => {
+                setFilterQuery("");
+                setIsFilterVisible(false);
+              }}
+            >×</button>
+          </div>
+        )}
+
         <div className="explorer-tree-scroll">
           {isDesktopRuntime ? (
             <>
@@ -353,17 +484,22 @@ export function FilesPanel({
                   <button type="button" onClick={onChooseWorkspaceDirectory}>Open folder</button>
                 </div>
               ) : null}
-              {workspaceDirectory && workspaceEntries.length === 0 && !inlineEdit ? (
-                <p className="explorer-empty">{isWorkspaceLoading ? "Loading workspace files" : "No folders or .sdoc files in this workspace"}</p>
+              {workspaceDirectory && displayedWorkspaceEntries.length === 0 && !inlineEdit ? (
+                <p className="explorer-empty">{isWorkspaceLoading
+                  ? "Loading workspace files"
+                  : filterQuery.trim()
+                    ? `No files match “${filterQuery.trim()}”`
+                    : "No folders or .sdoc files in this workspace"}</p>
               ) : workspaceDirectory ? (
                 <div className="explorer-tree" role="tree" aria-label="Workspace folders and documents">
                   <WorkspaceTreeGroup
-                    entries={workspaceEntries}
+                    entries={displayedWorkspaceEntries}
                     parentPath={null}
                     level={1}
                     currentFilePath={currentFilePath}
                     isCurrentFileUnsaved={isCurrentFileUnsaved}
-                    expandedPaths={expandedWorkspacePaths}
+                    expandedPaths={effectiveExpandedWorkspacePaths}
+                    sortMode={explorerPreferences.sortMode}
                     selectedPath={selectedWorkspacePath}
                     focusedPath={effectiveFocusedPath}
                     openActions={openWorkspaceActions}
@@ -378,6 +514,7 @@ export function FilesPanel({
                     onStartCreate={startCreate}
                     onStartRename={startRename}
                     onTrash={onTrashWorkspaceEntry}
+                    onReveal={onRevealWorkspaceEntry}
                     onInlineChange={(value) => setInlineEdit((current) => current ? { ...current, value } : null)}
                     onInlineCancel={() => setInlineEdit(null)}
                     onInlineSubmit={async () => {
@@ -435,6 +572,7 @@ interface WorkspaceTreeGroupProps {
   currentFilePath: string | null;
   isCurrentFileUnsaved: boolean;
   expandedPaths: Set<string>;
+  sortMode: ExplorerSortMode;
   selectedPath: string | null;
   focusedPath: string | null;
   openActions: WorkspaceActionsMenuState | null;
@@ -449,6 +587,7 @@ interface WorkspaceTreeGroupProps {
   onStartCreate: (parent: WindowSdocWorkspaceEntry | null, kind: WorkspaceCreateKind) => void;
   onStartRename: (entry: WindowSdocWorkspaceEntry) => void;
   onTrash: (entry: WindowSdocWorkspaceEntry) => void;
+  onReveal: (entry: WindowSdocWorkspaceEntry) => void;
   onInlineChange: (value: string) => void;
   onInlineCancel: () => void;
   onInlineSubmit: () => Promise<boolean>;
@@ -462,6 +601,7 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
     currentFilePath,
     isCurrentFileUnsaved,
     expandedPaths,
+    sortMode,
     selectedPath,
     focusedPath,
     openActions,
@@ -476,6 +616,7 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
     onStartCreate,
     onStartRename,
     onTrash,
+    onReveal,
     onInlineChange,
     onInlineCancel,
     onInlineSubmit
@@ -495,7 +636,7 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
           onSubmit={onInlineSubmit}
         />
       )}
-      {sortWorkspaceEntries(entries).map((entry) => {
+      {sortWorkspaceEntries(entries, sortMode).map((entry) => {
         const isFolder = isWorkspaceFolder(entry);
         const isExpanded = isFolder && expandedPaths.has(entry.path);
         const isCurrent = workspacePathsEqual(entry.path, currentFilePath);
@@ -527,7 +668,7 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
                     treeItemRefs.current.delete(entry.path);
                   }
                 }}
-                className={`explorer-entry-row${isCurrent ? " active" : ""}${isSelected ? " selected" : ""}`}
+                className={`explorer-entry-row${isFolder ? " folder" : ""}${isExpanded ? " expanded" : ""}${isCurrent ? " active" : ""}${isSelected ? " selected" : ""}`}
                 style={style}
                 role="treeitem"
                 tabIndex={workspacePathsEqual(focusedPath, entry.path) ? 0 : -1}
@@ -618,6 +759,10 @@ function WorkspaceTreeGroup(props: WorkspaceTreeGroupProps) {
                     onTrash={() => {
                       onCloseActions();
                       onTrash(entry);
+                    }}
+                    onReveal={() => {
+                      onCloseActions();
+                      onReveal(entry);
                     }}
                   />
                 )}
@@ -723,7 +868,8 @@ function WorkspaceEntryMenu({
   onClose,
   onCreate,
   onRename,
-  onTrash
+  onTrash,
+  onReveal
 }: {
   entry: WindowSdocWorkspaceEntry;
   position: WorkspaceActionsMenuState;
@@ -731,6 +877,7 @@ function WorkspaceEntryMenu({
   onCreate: (kind: WorkspaceCreateKind) => void;
   onRename: () => void;
   onTrash: () => void;
+  onReveal: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState({ left: position.x, top: position.y });
@@ -802,6 +949,9 @@ function WorkspaceEntryMenu({
       )}
       <button type="button" role="menuitem" onClick={onRename}>
         <Pencil size={13} /> Rename
+      </button>
+      <button type="button" role="menuitem" onClick={onReveal}>
+        <FolderOpen size={13} /> Reveal in File Explorer
       </button>
       <button className="danger" type="button" role="menuitem" onClick={onTrash}>
         <Trash2 size={13} /> Move to Trash

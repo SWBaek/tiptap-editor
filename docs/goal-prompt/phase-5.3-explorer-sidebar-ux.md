@@ -1,14 +1,14 @@
 ---
 title: "Phase 5.3 Explorer And Sidebar UX Goal"
 status: in_progress
-progress_percent: 20
-current_slice: quick-navigation
+progress_percent: 40
+current_slice: side-panel-simplification
 created_at: 2026-07-20
 started_at: 2026-07-20
 completed_slices:
   - explorer-structure-and-interactions
-remaining_slices:
   - quick-navigation
+remaining_slices:
   - side-panel-simplification
   - start-export-status-responsive-polish
   - final-review-gate
@@ -19,6 +19,9 @@ progress_log:
   - date: 2026-07-20
     progress_percent: 20
     note: "Slice 1 completed. Explorer now uses a 260px default and 220-420px runtime-only resizable width, Ctrl+B toggles the sidebar outside text-editing contexts, Ctrl+Shift+E opens Explorer, files open on one click, folder rows toggle as a whole, the redundant decorative root is removed, secondary header actions live in More, row actions no longer reserve a permanent column, and the shared context menu is portaled with viewport collision, full keyboard movement, outside close, and focus return. Evidence: 3 sidebar preference unit tests, focused desktop E2E, npm test (310), npm run build, npm run test:e2e (46), and visual inspection at 1280x800, 1440x1000, and 640x800."
+  - date: 2026-07-20
+    progress_percent: 40
+    note: "Slice 2 completed. Desktop Ctrl+P Quick Open supports tokenized filename/path search and full keyboard selection; Explorer adds a transient file filter, folders-first name/modified sorting, runtime-only auto-reveal preference, sticky expanded ancestors, and a typed Reveal in File Explorer command that reuses canonical workspace path and symlink validation. Compact folder chains, multi-select, and drag/drop remain deferred pending review evidence. Evidence: npm test (317), npm run build, npm run test:e2e (46), npm run typecheck:desktop, cargo test, npm run build:desktop, focused desktop E2E, and visual inspection of the 1280px Explorer and Quick Open states."
 ---
 
 # Phase 5.3 Explorer And Sidebar UX
@@ -39,6 +42,7 @@ Turn the current left-side management surfaces into an Explorer-first technical-
 | Context menu | Adopt | Absolutely positioned inside the scroll owner with Escape-only keyboard support | Portal, viewport collision handling, complete menu keyboard navigation, outside close and focus return |
 | Quick Open/filter/reveal | Adapt | Reveal exists; Quick Open/filter absent | Runtime navigation in Slice 2 without browser filesystem claims |
 | Multi-select/drag and drop | Defer | Not implemented | Defer until core navigation user evidence; no preview-tab or batch model is accepted yet |
+| Compact folder chains | Defer | Ordinary nested tree rows | Defer until user evidence shows deep single-child trees are a material problem |
 | Browser Documents | Adapt | Permanent action card, current card, recent block and boundary paragraph | Honest minimal browser-session surface in Slice 3 |
 | Zero-value panel dashboards | Reject | Empty Outline/Review groups remain visible | Render concise actionable empty states only |
 
@@ -65,6 +69,15 @@ A prior Accepted/Done label is not considered proof when the current DOM, intera
 - Entry menus render through a portal, clamp to the viewport, support Arrow Up/Down, Home/End, Escape, outside close, and invoker focus return.
 - Automated evidence: `npm test` 310 passed, `npm run build` passed, `npm run test:e2e` 46 passed.
 - Visual evidence: `%TEMP%/sdoc-ux-review-phase53-slice1/explorer-1280x800.png`, `explorer-1440x1000.png`, and `explorer-640x800.png`. The desktop views show the narrower tree-first layout; the 640px capture confirms the remaining non-overlay mobile behavior for Slice 4.
+
+### Slice 2 — Quick navigation
+
+- Desktop `Ctrl+P` opens a focused Quick Open dialog; tokenized filename/path matching, Arrow keys, Home/End, Enter, Escape, and outside dismissal are covered without introducing preview-tab state.
+- Explorer More exposes a transient filter, folders-first name/modified sorting, and an auto-reveal preference. Filter expansion is temporary; sorting and auto-reveal persist only in local runtime preferences.
+- Expanded ancestor rows remain sticky while traversing a long tree, and opening a nested document reveals its parent folders when auto-reveal is enabled.
+- Reveal in File Explorer crosses the typed desktop bridge and invokes the platform file manager only after the existing canonical-root, relative-path, file-type, and symlink checks pass. Browser Documents does not expose this command.
+- Automated evidence: `npm test` 317 passed, `npm run build` passed, `npm run test:e2e` 46 passed, `npm run typecheck:desktop` passed, `cargo test` passed, and `npm run build:desktop` produced the Windows release executable.
+- Visual evidence: `%TEMP%/sdoc-phase53-slice2-explorer.png` and `%TEMP%/sdoc-phase53-slice2-quick-open.png` at the 1280px acceptance viewport.
 
 ## Known Limits
 

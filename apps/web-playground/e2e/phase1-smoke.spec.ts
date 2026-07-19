@@ -732,7 +732,8 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
         kind: "folder",
         children: [{ name: "nested.sdoc", path: "C:\\Docs\\Guides\\nested.sdoc", kind: "sdoc-file" }]
       },
-      { name: "opened.sdoc", path: "C:\\Docs\\opened.sdoc", kind: "sdoc-file" }
+      { name: "opened.sdoc", path: "C:\\Docs\\opened.sdoc", kind: "sdoc-file", modifiedAtMs: 200 },
+      { name: "older.sdoc", path: "C:\\Docs\\older.sdoc", kind: "sdoc-file", modifiedAtMs: 100 }
     ];
     const addWorkspaceEntry = (relativePath: string, kind: "folder" | "sdoc-file") => {
       const parts = relativePath.split("/").filter(Boolean);
@@ -787,6 +788,7 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
       __SDOC_NATIVE_SAVE_BRIDGE__?: unknown;
       __LAST_SAVED_PATH__?: string;
       __LAST_OPENED_PATH__?: string;
+      __LAST_REVEALED_PATH__?: string;
       __FAIL_NEXT_SAVE__?: boolean;
     }).__SDOC_NATIVE_SAVE_BRIDGE__ = {
       async saveSdoc(path: string) {
@@ -849,6 +851,10 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
         queueWorkspaceWatchEvent({ kind: "removed", path: entry.path, isSdoc: entry.kind === "sdoc-file" });
         return { status: "trashed", path: entry.path, relativePath, kind: entry.kind, message: `Moved ${relativePath} to Trash.` };
       },
+      async revealSdocWorkspaceEntry(_directoryPath: string, relativePath: string) {
+        (window as typeof window & { __LAST_REVEALED_PATH__?: string }).__LAST_REVEALED_PATH__ = relativePath;
+        return true;
+      },
       async startSdocWorkspaceWatch(directoryPath: string) {
         return { watchId: "watch-1", rootPath: directoryPath };
       },
@@ -901,8 +907,44 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await expect(filesPanel).toHaveCount(0);
   await page.keyboard.press("Control+Shift+e");
   await expect(page.getByRole("complementary", { name: "Explorer side panel" })).toBeVisible();
-  await expect(workspaceTree.getByRole("treeitem", { name: "Guides" })).toHaveAttribute("aria-level", "1");
-  await expect(filesPanel.getByRole("button", { name: /nested\.sdoc/ })).toHaveCount(0);
+  await page.keyboard.press("Control+p");
+  const quickOpenDialog = page.getByRole("dialog", { name: "Quick Open" });
+  const quickOpenInput = quickOpenDialog.getByRole("combobox", { name: "Find a document" });
+  await expect(quickOpenInput).toBeFocused();
+  await quickOpenInput.fill("guides nested");
+  await expect(quickOpenDialog.getByRole("option", { name: /nested\.sdoc/ })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(quickOpenDialog).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __LAST_OPENED_PATH__?: string }).__LAST_OPENED_PATH__)).toBe(
+    "C:\\Docs\\Guides\\nested.sdoc"
+  );
+  await filesPanel.locator('summary[aria-label="More Explorer actions"]').click();
+  await filesPanel.getByRole("menu", { name: "More Explorer actions" }).getByRole("menuitem", { name: "Filter files" }).click();
+  const explorerFilter = filesPanel.getByRole("textbox", { name: "Filter Explorer files" });
+  await expect(explorerFilter).toBeFocused();
+  await explorerFilter.fill("nested");
+  await expect(filesPanel.getByRole("button", { name: "nested.sdoc", exact: true })).toBeVisible();
+  await explorerFilter.press("Escape");
+  await expect(explorerFilter).toHaveCount(0);
+  await filesPanel.locator('summary[aria-label="More Explorer actions"]').click();
+  await filesPanel.getByRole("menu", { name: "More Explorer actions" }).getByRole("menuitemradio", { name: "Sort by modified" }).click();
+  await expect.poll(async () => workspaceTree.locator('.explorer-entry-row[aria-level="1"] .explorer-entry-name').allTextContents()).toEqual([
+    "Guides",
+    "opened.sdoc",
+    "older.sdoc"
+  ]);
+  await filesPanel.locator('summary[aria-label="More Explorer actions"]').click();
+  const autoRevealItem = filesPanel.getByRole("menu", { name: "More Explorer actions" }).getByRole("menuitemcheckbox", { name: "Auto reveal active file" });
+  await expect(autoRevealItem).toHaveAttribute("aria-checked", "true");
+  await autoRevealItem.click();
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.localStorage.getItem("sdoc-explorer-preferences") ?? "{}").autoReveal)).toBe(false);
+  await filesPanel.locator('summary[aria-label="More Explorer actions"]').click();
+  await filesPanel.getByRole("menu", { name: "More Explorer actions" }).getByRole("menuitemcheckbox", { name: "Auto reveal active file" }).click();
+  const guidesTreeItem = workspaceTree.getByRole("treeitem", { name: "Guides" });
+  await expect(guidesTreeItem).toHaveAttribute("aria-level", "1");
+  await expect(guidesTreeItem).toHaveAttribute("aria-expanded", "true");
+  await filesPanel.getByRole("button", { name: "Guides", exact: true }).click();
+  await expect(filesPanel.getByRole("button", { name: "nested.sdoc", exact: true })).toHaveCount(0);
   await filesPanel.getByRole("button", { name: "Guides", exact: true }).click();
   const nestedDocument = filesPanel.getByRole("button", { name: "nested.sdoc", exact: true });
   await expect(nestedDocument).toBeVisible();
@@ -911,7 +953,6 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
     "C:\\Docs\\Guides\\nested.sdoc"
   );
   await expect(workspaceTree.getByRole("treeitem", { name: "nested.sdoc" })).toHaveAttribute("aria-level", "2");
-  const guidesTreeItem = workspaceTree.getByRole("treeitem", { name: "Guides" });
   await guidesTreeItem.focus();
   await guidesTreeItem.press("ArrowRight");
   await expect(workspaceTree.getByRole("treeitem", { name: "nested.sdoc" })).toBeFocused();
@@ -1011,6 +1052,11 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await externalChangeAlert.getByRole("button", { name: "Keep current" }).click();
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Dirty review");
   await expect(filesPanel.getByRole("button", { name: "Review.sdoc", exact: true })).toBeVisible();
+  await filesPanel.getByRole("button", { name: "Actions for Review.sdoc" }).click();
+  await page.getByRole("menu", { name: "Workspace actions for Review.sdoc" }).getByRole("menuitem", { name: "Reveal in File Explorer" }).click();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __LAST_REVEALED_PATH__?: string }).__LAST_REVEALED_PATH__)).toBe(
+    "Guides/Reference/Review.sdoc"
+  );
   await filesPanel.getByRole("button", { name: "Actions for Review.sdoc" }).click();
   await page.getByRole("menu", { name: "Workspace actions for Review.sdoc" }).getByRole("menuitem", { name: "Move to Trash" }).click();
   await expect(page.getByRole("dialog", { name: "Move workspace entry to Trash" })).toHaveCount(0);

@@ -157,6 +157,12 @@ const SDOC_NATIVE_SAVE_BRIDGE_SCRIPT: &str = r#"
         relativePath
       });
     },
+    async revealSdocWorkspaceEntry(directoryPath, relativePath) {
+      return await internals.invoke("reveal_sdoc_workspace_entry", {
+        directoryPath,
+        relativePath
+      });
+    },
     async startSdocWorkspaceWatch(directoryPath) {
       return await internals.invoke("start_sdoc_workspace_watch", { directoryPath });
     },
@@ -495,6 +501,17 @@ fn trash_sdoc_workspace_entry(
 }
 
 #[tauri::command]
+fn reveal_sdoc_workspace_entry(
+    directory_path: String,
+    relative_path: String,
+) -> Result<bool, String> {
+    let (target, _, _) = resolve_workspace_existing_target(&directory_path, &relative_path)?;
+    reveal_with_platform_file_manager(&target)
+        .map_err(|error| format!("Could not reveal workspace entry: {error}"))?;
+    Ok(true)
+}
+
+#[tauri::command]
 fn start_sdoc_workspace_watch(
     state: tauri::State<'_, AppState>,
     directory_path: String,
@@ -660,14 +677,16 @@ fn resolve_workspace_existing_target(
     let parent = relative.parent().unwrap_or_else(|| Path::new(""));
     ensure_workspace_parent_is_safe(&workspace, parent)?;
     let target = workspace.join(&relative);
-    let metadata = fs::symlink_metadata(&target)
-        .map_err(|_| "Workspace entry does not exist.".to_string())?;
+    let metadata =
+        fs::symlink_metadata(&target).map_err(|_| "Workspace entry does not exist.".to_string())?;
     if metadata.file_type().is_symlink() {
         return Err("Workspace entry actions cannot target symlinks.".to_string());
     }
     let kind = if metadata.is_dir() {
         if is_unpacked_sdoc_folder(&target) {
-            return Err("Unpacked .sdoc folders are developer-only and cannot be changed here.".to_string());
+            return Err(
+                "Unpacked .sdoc folders are developer-only and cannot be changed here.".to_string(),
+            );
         }
         WorkspaceEntryKind::Folder
     } else if metadata.is_file() && has_extension(&target, "sdoc") {
@@ -721,7 +740,9 @@ fn validate_workspace_relative_path(value: &str) -> Result<PathBuf, String> {
     let mut relative = PathBuf::new();
     for component in Path::new(trimmed).components() {
         let Component::Normal(name) = component else {
-            return Err("Workspace target cannot use absolute or parent traversal paths.".to_string());
+            return Err(
+                "Workspace target cannot use absolute or parent traversal paths.".to_string(),
+            );
         };
         validate_workspace_name_component(&name.to_string_lossy())?;
         relative.push(name);
@@ -744,7 +765,11 @@ fn validate_workspace_name_component(value: &str) -> Result<(), String> {
         return Err("Workspace entry name contains unsupported characters.".to_string());
     }
 
-    let stem = value.split('.').next().unwrap_or(value).to_ascii_lowercase();
+    let stem = value
+        .split('.')
+        .next()
+        .unwrap_or(value)
+        .to_ascii_lowercase();
     let is_reserved = matches!(stem.as_str(), "con" | "prn" | "aux" | "nul")
         || (stem.len() == 4
             && (stem.starts_with("com") || stem.starts_with("lpt"))
@@ -756,10 +781,7 @@ fn validate_workspace_name_component(value: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn ensure_workspace_parent_is_safe(
-    workspace: &Path,
-    relative_parent: &Path,
-) -> Result<(), String> {
+fn ensure_workspace_parent_is_safe(workspace: &Path, relative_parent: &Path) -> Result<(), String> {
     let mut current = workspace.to_path_buf();
     for component in relative_parent.components() {
         let Component::Normal(name) = component else {
@@ -837,14 +859,21 @@ fn open_drawio_external_editor(
         (session.source_asset_id.clone(), session.temp_path.clone())
     };
 
-    let launch_result = if let Some(executable_path) = executable_path.filter(|value| !value.trim().is_empty()) {
-        Command::new(executable_path).arg(&temp_path).spawn()
-    } else {
-        open_with_platform_default(&temp_path)
-    };
+    let launch_result =
+        if let Some(executable_path) = executable_path.filter(|value| !value.trim().is_empty()) {
+            Command::new(executable_path).arg(&temp_path).spawn()
+        } else {
+            open_with_platform_default(&temp_path)
+        };
 
     match launch_result {
-        Ok(_) => Ok(drawio_status_event("opened", &session_id, &source_asset_id, &temp_path, None)),
+        Ok(_) => Ok(drawio_status_event(
+            "opened",
+            &session_id,
+            &source_asset_id,
+            &temp_path,
+            None,
+        )),
         Err(error) => Ok(drawio_status_event(
             "launch-failed",
             &session_id,
@@ -909,7 +938,10 @@ fn read_drawio_external_edit(
 }
 
 #[tauri::command]
-fn close_drawio_external_edit(state: tauri::State<'_, AppState>, session_id: String) -> Result<DrawioStatusEvent, String> {
+fn close_drawio_external_edit(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+) -> Result<DrawioStatusEvent, String> {
     let session = state
         .drawio_sessions
         .lock()
@@ -1012,7 +1044,9 @@ fn hash_bytes(bytes: &[u8]) -> String {
 fn is_usable_drawio_source(bytes: &[u8]) -> bool {
     let text = String::from_utf8_lossy(bytes);
     let trimmed = text.trim_start_matches('\u{feff}').trim_start();
-    trimmed.starts_with("<mxfile") || trimmed.starts_with("<diagram") || trimmed.contains("<mxfile ")
+    trimmed.starts_with("<mxfile")
+        || trimmed.starts_with("<diagram")
+        || trimmed.contains("<mxfile ")
 }
 
 fn open_with_platform_default(path: &PathBuf) -> std::io::Result<std::process::Child> {
@@ -1034,6 +1068,27 @@ fn open_with_platform_default(path: &PathBuf) -> std::io::Result<std::process::C
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         Command::new("xdg-open").arg(path).spawn()
+    }
+}
+
+fn reveal_with_platform_file_manager(path: &PathBuf) -> std::io::Result<std::process::Child> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer.exe")
+            .arg(format!("/select,{}", path.to_string_lossy()))
+            .spawn()
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open").arg("-R").arg(path).spawn()
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        Command::new("xdg-open")
+            .arg(path.parent().unwrap_or(path.as_path()))
+            .spawn()
     }
 }
 
@@ -1078,12 +1133,12 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let window_config = app
-                .config()
-                .app
-                .windows
-                .first()
-                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "Missing main window configuration."))?;
+            let window_config = app.config().app.windows.first().ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Missing main window configuration.",
+                )
+            })?;
 
             tauri::WebviewWindowBuilder::from_config(app, window_config)?
                 .initialization_script(SDOC_NATIVE_SAVE_BRIDGE_SCRIPT)
@@ -1103,6 +1158,7 @@ fn main() {
             create_sdoc_workspace_file,
             rename_sdoc_workspace_entry,
             trash_sdoc_workspace_entry,
+            reveal_sdoc_workspace_entry,
             start_sdoc_workspace_watch,
             read_sdoc_workspace_watch_events,
             stop_sdoc_workspace_watch,
@@ -1165,8 +1221,7 @@ mod tests {
 
         let workspace_path = root.to_string_lossy().to_string();
         let created_folder =
-            create_sdoc_workspace_folder(workspace_path.clone(), "Guides/New".to_string())
-                .unwrap();
+            create_sdoc_workspace_folder(workspace_path.clone(), "Guides/New".to_string()).unwrap();
         assert_eq!(created_folder.relative_path, "Guides/New");
         assert!(root.join("Guides/New").is_dir());
         let created_file = create_sdoc_workspace_file(
@@ -1245,8 +1300,7 @@ mod tests {
         )
         .is_none());
         assert!(
-            create_sdoc_workspace_folder(workspace_path.clone(), "../escape".to_string())
-                .is_err()
+            create_sdoc_workspace_folder(workspace_path.clone(), "../escape".to_string()).is_err()
         );
         assert!(create_sdoc_workspace_file(
             workspace_path.clone(),
@@ -1256,11 +1310,10 @@ mod tests {
         .is_err());
 
         #[cfg(unix)]
-        assert!(create_sdoc_workspace_folder(
-            workspace_path,
-            "linked-guides/Escape".to_string()
-        )
-        .is_err());
+        assert!(
+            create_sdoc_workspace_folder(workspace_path, "linked-guides/Escape".to_string())
+                .is_err()
+        );
 
         fs::remove_dir_all(&root).unwrap();
     }

@@ -14,6 +14,7 @@ export interface WindowSdocNativeSaveBridge {
   createSdocWorkspaceFile?(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<WindowSdocWorkspaceMutationResult>;
   renameSdocWorkspaceEntry?(directoryPath: string, relativePath: string, newName: string): Promise<WindowSdocWorkspaceMutationResult>;
   trashSdocWorkspaceEntry?(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
+  revealSdocWorkspaceEntry?(directoryPath: string, relativePath: string): Promise<boolean>;
   startSdocWorkspaceWatch?(directoryPath: string): Promise<WindowSdocWorkspaceWatchStartResult>;
   readSdocWorkspaceWatchEvents?(watchId: string): Promise<WindowSdocWorkspaceWatchEvent[]>;
   stopSdocWorkspaceWatch?(watchId: string): Promise<boolean>;
@@ -76,6 +77,7 @@ export interface NativeSdocWorkspaceAdapter {
   createSdoc(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<WindowSdocWorkspaceMutationResult>;
   renameEntry(directoryPath: string, relativePath: string, newName: string): Promise<WindowSdocWorkspaceMutationResult>;
   trashEntry(directoryPath: string, relativePath: string): Promise<WindowSdocWorkspaceMutationResult>;
+  revealEntry?(directoryPath: string, relativePath: string): Promise<boolean>;
   startWatch(directoryPath: string): Promise<WindowSdocWorkspaceWatchStartResult>;
   readWatchEvents(watchId: string): Promise<WindowSdocWorkspaceWatchEvent[]>;
   stopWatch(watchId: string): Promise<boolean>;
@@ -196,6 +198,15 @@ export function getWindowSdocWorkspaceAdapter(globalScope: unknown = globalThis)
       }
       return result;
     },
+    revealEntry: bridge.revealSdocWorkspaceEntry
+      ? async (directoryPath, relativePath) => {
+        const result = await bridge.revealSdocWorkspaceEntry?.(directoryPath, relativePath);
+        if (typeof result !== "boolean") {
+          throw new Error("Native workspace reveal returned an invalid result.");
+        }
+        return result;
+      }
+      : undefined,
     async startWatch(directoryPath) {
       const result = await bridge.startSdocWorkspaceWatch?.(directoryPath);
       if (!isWindowSdocWorkspaceWatchStartResult(result)) {

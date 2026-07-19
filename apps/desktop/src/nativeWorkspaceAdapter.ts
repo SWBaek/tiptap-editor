@@ -22,6 +22,7 @@ export type NativeWorkspaceAdapter = {
   createSdoc(directoryPath: string, relativePath: string, bytes: Uint8Array): Promise<NativeWorkspaceMutationResult>;
   renameEntry(directoryPath: string, relativePath: string, newName: string): Promise<NativeWorkspaceMutationResult>;
   trashEntry(directoryPath: string, relativePath: string): Promise<NativeWorkspaceMutationResult>;
+  revealEntry(directoryPath: string, relativePath: string): Promise<boolean>;
   startWatch(directoryPath: string): Promise<NativeWorkspaceWatchStartResult>;
   readWatchEvents(watchId: string): Promise<NativeWorkspaceWatchEvent[]>;
   stopWatch(watchId: string): Promise<boolean>;
@@ -76,6 +77,14 @@ export const nativeWorkspaceAdapter: NativeWorkspaceAdapter = {
     const result = await invoke<unknown>("trash_sdoc_workspace_entry", { directoryPath, relativePath });
     if (!isWorkspaceMutationResult(result)) {
       throw new Error("Native workspace trash returned an invalid result.");
+    }
+    return result;
+  },
+
+  async revealEntry(directoryPath, relativePath) {
+    const result = await invoke<unknown>("reveal_sdoc_workspace_entry", { directoryPath, relativePath });
+    if (typeof result !== "boolean") {
+      throw new Error("Native workspace reveal returned an invalid result.");
     }
     return result;
   },

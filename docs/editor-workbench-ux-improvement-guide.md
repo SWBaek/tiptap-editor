@@ -550,4 +550,12 @@ Slice 1 is accepted on current evidence:
 - entry context menus are portaled, collision-safe, fully keyboard navigable, outside-dismissible, and return focus;
 - `npm test` (310), `npm run build`, `npm run test:e2e` (46), and 1280x800/1440x1000/640x800 visual checks pass.
 
-Quick Open/filter and the remaining panel simplification/responsive corrections stay open. The authoritative live evidence record is `docs/goal-prompt/phase-5.3-explorer-sidebar-ux.md`.
+Slice 2 is also accepted on current evidence:
+
+- desktop `Ctrl+P` opens tokenized filename/path Quick Open with complete keyboard selection;
+- Explorer offers a transient filter, folders-first name/modified sorting, runtime-only active-file auto-reveal, and sticky expanded ancestors;
+- Reveal in File Explorer crosses the typed Tauri adapter only after the existing canonical workspace path and symlink validation;
+- browser mode exposes none of the native reveal behavior;
+- `npm test` (317), `npm run build`, `npm run test:e2e` (46), desktop typecheck/build, Rust tests, focused E2E, and 1280px visual inspection pass.
+
+Panel simplification and responsive corrections stay open. Compact folder chains, multi-select, and drag/drop remain deferred until user evidence justifies their interaction models. The authoritative live evidence record is `docs/goal-prompt/phase-5.3-explorer-sidebar-ux.md`.

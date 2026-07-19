@@ -148,6 +148,9 @@ describe("document native bridge", () => {
             message: `Moved ${relativePath} to Trash.`
           };
         },
+        async revealSdocWorkspaceEntry(directoryPath: string, relativePath: string) {
+          return directoryPath === "C:/docs" && relativePath === "Guides/Renamed.sdoc";
+        },
         async startSdocWorkspaceWatch(directoryPath: string) {
           return { watchId: "watch-1", rootPath: directoryPath };
         },
@@ -191,6 +194,7 @@ describe("document native bridge", () => {
       status: "trashed",
       relativePath: "Guides/Renamed.sdoc"
     });
+    await expect(adapter?.revealEntry?.("C:/docs", "Guides/Renamed.sdoc")).resolves.toBe(true);
     await expect(adapter?.startWatch("C:/docs")).resolves.toEqual({ watchId: "watch-1", rootPath: "C:/docs" });
     await expect(adapter?.readWatchEvents("watch-1")).resolves.toEqual([
       { watchId: "watch-1", kind: "modified", path: "C:/docs/Spec.sdoc", isSdoc: true, occurredAtMs: 10 }

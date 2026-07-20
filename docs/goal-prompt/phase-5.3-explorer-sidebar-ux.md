@@ -1,16 +1,16 @@
 ---
 title: "Phase 5.3 Explorer And Sidebar UX Goal"
 status: in_progress
-progress_percent: 60
-current_slice: start-export-status-responsive-polish
+progress_percent: 80
+current_slice: final-review-gate
 created_at: 2026-07-20
 started_at: 2026-07-20
 completed_slices:
   - explorer-structure-and-interactions
   - quick-navigation
   - side-panel-simplification
-remaining_slices:
   - start-export-status-responsive-polish
+remaining_slices:
   - final-review-gate
 progress_log:
   - date: 2026-07-20
@@ -25,6 +25,9 @@ progress_log:
   - date: 2026-07-20
     progress_percent: 60
     note: "Slice 3 completed. Outline now presents headings first, consumes authoring depth settings without duplicating controls, and hides empty Figure/Table groups while retaining accessible collapsible groups when content exists. Browser Documents contains only New/Open and an honest browser boundary instead of current-file/recent-activity duplicates. Review hides zero dashboards, filters, disabled batch controls, stale batch results, and empty event sections; compact tabs retain the Document Health accessibility name. History has an actionable empty state, and Document Properties no longer repeats Status Bar health or attachment counts. Evidence: npm test (317), npm run build, npm run test:e2e (46), focused panel E2E, and 1280px visual inspection of Outline, clean Review, and Browser Documents."
+  - date: 2026-07-20
+    progress_percent: 80
+    note: "Slice 4 completed. An empty desktop Start Screen centers only Open Folder, New .sdoc, and Open .sdoc with one primary action and omits a zero-value Recent Documents column. Export exposes only working Markdown/HTML choices and compresses unavailable PDF/DOCX/PPTX into a truthful non-interactive note. Routine workspace refresh is silent, while explicit open feedback remains transient. At 640px and below the Activity Bar becomes horizontal and the side panel is a dismissible max-320px overlay drawer that no longer pushes the document below it; transient Status Bar messages remain visible. Evidence: npm test (317), npm run build, npm run test:e2e (46), focused Start/Export/mobile E2E, and visual inspection at 1280px and 390x844."
 ---
 
 # Phase 5.3 Explorer And Sidebar UX
@@ -91,6 +94,16 @@ A prior Accepted/Done label is not considered proof when the current DOM, intera
 - Document Properties is limited to editable author/version content and no longer duplicates health or attachment facts already owned elsewhere.
 - Automated evidence: `npm test` 317 passed, `npm run build` passed, and `npm run test:e2e` 46 passed after focused panel checks.
 - Visual evidence: `%TEMP%/sdoc-phase53-slice3-outline.png`, `%TEMP%/sdoc-phase53-slice3-review-clean.png`, and `%TEMP%/sdoc-phase53-slice3-browser-documents.png` at 1280px.
+
+### Slice 4 — Start, Export, Status, and responsive polish
+
+- The empty desktop Start Screen centers the three valid entry actions and gives Open Folder the only primary treatment. Recent Documents appears only when it contains actionable entries.
+- Export lists working Markdown/HTML formats as choices; unavailable PDF/DOCX/PPTX remain discoverable in one non-interactive note instead of five equal options and disabled calls to action.
+- Routine workspace refresh does not occupy the Status Bar. Explicit workspace opening still reports a short transient result, and narrow layouts retain non-empty status feedback.
+- At 640px and below, the Activity Bar is horizontal and the side panel becomes a max-320px overlay drawer with a dismissible scrim. The underlying workspace begins directly below the Activity Bar and is no longer pushed down by the panel.
+- Context-menu initial focus is scheduled after portal positioning so unrelated shell rerenders do not steal it.
+- Automated evidence: `npm test` 317 passed, `npm run build` passed, and `npm run test:e2e` 46 passed.
+- Visual evidence: `%TEMP%/sdoc-phase53-slice4-start.png`, `%TEMP%/sdoc-phase53-slice4-export.png`, and `%TEMP%/sdoc-phase53-slice4-mobile-sidebar.png`.
 
 ## Known Limits
 

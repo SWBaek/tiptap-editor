@@ -55,8 +55,8 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
 
 1. Start Screen
    - Launch the desktop app without an active workspace/document.
-   - Confirm it offers Open Folder, Open `.sdoc`, New `.sdoc`, and Recent Documents.
-   - Confirm it does not present a sample document as the user's active saved document.
+   - Confirm it offers Open Folder, Open `.sdoc`, and New `.sdoc`, with Open Folder as the single primary action.
+   - Confirm an empty history does not render a zero-value Recent Documents column and the screen does not present a sample document as the user's active saved document.
 
 2. Workspace Explorer
    - Choose a workspace folder containing multiple `.sdoc` files.
@@ -122,6 +122,9 @@ Automated coverage now includes a Playwright desktop-runtime simulation for the 
    - At 1920x1080, 1440x900, and 1280x720, confirm the command bar, one-row authoring toolbar, canvas, sidebar, and Status Bar do not overlap or create page-level horizontal scrolling.
    - Without a mouse, traverse Activity Bar controls, Explorer tree, Review tabs, Settings tabs, document commands, toolbar menus, and Export.
    - Confirm focus is visibly outlined, settings tabs support arrows/Home/End, Explorer supports its documented tree keys, and Escape closes Export and returns focus to its invoking button.
+   - Resize to 640px or narrower, open each Activity Bar view, and confirm the max-320px sidebar overlays rather than pushing the document down; activate the shaded outside area to dismiss it.
+   - Confirm a non-empty transient success/failure message remains visible in the narrow Status Bar while secondary counts and the zoom range are compacted.
+   - Open Export and confirm only Markdown and HTML are selectable; PDF, DOCX, and PPTX appear as one honest unavailable-formats note rather than disabled export actions.
 
 ## Evidence To Record
 

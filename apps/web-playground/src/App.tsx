@@ -990,14 +990,15 @@ export function App() {
         return;
       }
 
-      await refreshWorkspaceEntries(directoryPath);
+      await refreshWorkspaceEntries(directoryPath, false);
       setIsDesktopStartScreenOpen(false);
+      setStatusMessage("Opened workspace folder.");
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
     }
   }
 
-  async function refreshWorkspaceEntries(directoryPath = workspaceDirectory, announce = true) {
+  async function refreshWorkspaceEntries(directoryPath = workspaceDirectory, announce = false) {
     if (!directoryPath) {
       setStatusMessage("Choose a workspace folder first.");
       return;
@@ -2650,6 +2651,10 @@ export function App() {
         showDeveloperTools={developerToolsEnabled}
         onSelect={selectActivityPanel}
       />
+
+      {isSidePanelOpen && (
+        <button className="sidebar-scrim" type="button" aria-label="Close side panel" onClick={() => setIsSidePanelOpen(false)} />
+      )}
 
       {isSidePanelOpen && (
         <aside

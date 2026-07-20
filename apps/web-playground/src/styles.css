@@ -114,6 +114,10 @@ button {
   border-right: 1px solid #0f151c;
 }
 
+.sidebar-scrim {
+  display: none;
+}
+
 .sidebar-resize-handle {
   position: absolute;
   z-index: 20;
@@ -2152,6 +2156,11 @@ button {
   background: #f5f7f8;
 }
 
+.desktop-start-screen.empty {
+  grid-template-columns: minmax(280px, 480px);
+  place-content: center;
+}
+
 .desktop-start-main,
 .desktop-start-recent {
   display: grid;
@@ -2215,6 +2224,17 @@ button {
 .desktop-start-recent button:hover {
   background: #eef3f6;
   border-color: #9db7c4;
+}
+
+.desktop-start-actions button.primary {
+  color: #ffffff;
+  background: #244b55;
+  border-color: #244b55;
+}
+
+.desktop-start-actions button.primary:hover:not(:disabled) {
+  background: #2e606c;
+  border-color: #2e606c;
 }
 
 .desktop-start-actions button:disabled {
@@ -2974,18 +2994,24 @@ button {
   white-space: nowrap;
 }
 
-.export-dialog .export-availability {
-  color: #62440e;
-  background: #fff8e7;
-  border-color: #e5ca8c;
+.export-future-formats {
+  display: grid;
+  gap: 3px;
+  align-content: start;
+  padding: 10px;
+  color: #657484;
+  background: #f6f8fa;
+  border-left: 2px solid #a7b5bf;
 }
 
-.export-dialog .export-availability strong {
-  color: #62440e;
+.export-future-formats span,
+.export-future-formats small {
+  font-size: 11px;
 }
 
-.export-dialog .export-availability span {
-  color: #745b2d;
+.export-future-formats strong {
+  color: #4e5d69;
+  font-size: 12px;
 }
 
 .workspace-trash-confirmation > p {
@@ -4792,27 +4818,44 @@ button {
   .app-shell,
   .app-shell.side-panel-collapsed {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 48px auto minmax(0, 1fr);
-  }
-
-  .app-shell.side-panel-collapsed {
     grid-template-rows: 48px minmax(0, 1fr);
   }
 
   .activity-bar {
+    position: relative;
+    z-index: 42;
+    grid-row: 1;
     flex-direction: row;
     overflow-x: auto;
     padding: 4px 6px;
   }
 
   .sidebar {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    max-height: 230px;
-    padding: 10px;
-    border-right: 0;
-    border-bottom: 1px solid #0f151c;
+    position: fixed;
+    z-index: 41;
+    top: 48px;
+    bottom: 0;
+    left: 0;
+    width: min(320px, calc(100vw - 48px));
+    max-width: none;
+    max-height: none;
+    padding: 14px;
+    border-right: 1px solid #0f151c;
+    box-shadow: 14px 0 30px rgba(6, 11, 16, 0.34);
+  }
+
+  .sidebar-scrim {
+    position: fixed;
+    z-index: 40;
+    top: 48px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    padding: 0;
+    background: rgba(15, 21, 28, 0.34);
+    border: 0;
   }
 
   .sidebar-resize-handle {
@@ -4848,6 +4891,7 @@ button {
   }
 
   .workspace {
+    grid-row: 2;
     grid-template-rows: auto 52px auto minmax(0, 1fr) auto;
   }
 
@@ -4923,6 +4967,11 @@ button {
   .workbench-status-message,
   .editor-zoom-control input[type="range"] {
     display: none;
+  }
+
+  .workbench-status-message:not(:empty) {
+    display: block;
+    text-align: left;
   }
 
   .toolbar-group {

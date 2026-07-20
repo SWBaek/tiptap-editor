@@ -882,7 +882,7 @@ test("shows a desktop start screen before opening a Tauri workspace document", a
   await expect(startScreen.getByRole("button", { name: "Open Folder" })).toBeVisible();
   await expect(startScreen.getByRole("button", { name: "Open .sdoc" })).toBeVisible();
   await expect(startScreen.getByRole("button", { name: "New .sdoc" })).toBeVisible();
-  await expect(startScreen.getByLabel("Recent Documents")).toContainText("No recent documents yet.");
+  await expect(startScreen.getByLabel("Recent Documents")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Document workflow" })).toHaveCount(0);
   await expect(page.locator(".editor-surface")).toHaveCount(0);
 
@@ -1112,9 +1112,8 @@ test("exports deliverables and keeps developer outputs separate", async ({ page 
   await expect(exportDialog).not.toContainText("CLI");
   await expect(exportDialog).not.toContainText("Tauri");
 
-  await exportDialog.getByRole("radio", { name: /PDF/ }).check();
-  await expect(exportDialog.getByText("PDF export is not available in this app build")).toBeVisible();
-  await expect(exportDialog.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+  await expect(exportDialog.getByRole("radio", { name: /PDF/ })).toHaveCount(0);
+  await expect(exportDialog.getByLabel("Unavailable export formats")).toContainText("PDF · DOCX · PPTX");
   await exportDialog.getByRole("radio", { name: /HTML/ }).check();
   await exportDialog.getByLabel("Publishing profile").selectOption("korean");
   await expect(exportDialog.getByLabel("Export destination")).toContainText("Export Panel Spec.html");
@@ -2158,6 +2157,23 @@ test("keeps the playground usable on a mobile viewport", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Document workflow" })).toBeVisible();
   await expect(page.getByLabel("More document actions")).toBeVisible();
   await expect(page.locator(".editor-surface")).toContainText("System Overview");
+
+  await page.getByRole("button", { name: "Documents panel" }).click();
+  const mobilePanel = page.getByRole("complementary", { name: "Documents side panel" });
+  await expect(mobilePanel).toBeVisible();
+  const mobileGeometry = await page.evaluate(() => {
+    const sidebar = document.querySelector(".sidebar")?.getBoundingClientRect();
+    const workspace = document.querySelector(".workspace")?.getBoundingClientRect();
+    return {
+      sidebar: sidebar ? { x: sidebar.x, y: sidebar.y, width: sidebar.width, height: sidebar.height } : null,
+      workspace: workspace ? { x: workspace.x, y: workspace.y, width: workspace.width, height: workspace.height } : null
+    };
+  });
+  expect(mobileGeometry.sidebar?.y).toBe(48);
+  expect(mobileGeometry.sidebar?.width).toBeLessThanOrEqual(320);
+  expect(mobileGeometry.workspace?.y).toBe(48);
+  await page.getByRole("button", { name: "Close side panel" }).click({ position: { x: 380, y: 100 } });
+  await expect(mobilePanel).toHaveCount(0);
 
   const fitsViewport = await page.evaluate(() => {
     const selectors = [".app-shell", ".toolbar", ".editor-surface"];

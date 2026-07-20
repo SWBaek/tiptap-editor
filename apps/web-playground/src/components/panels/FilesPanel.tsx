@@ -876,7 +876,7 @@ function WorkspaceEntryMenu({
       left: Math.max(padding, Math.min(position.x, window.innerWidth - bounds.width - padding)),
       top: Math.max(padding, Math.min(position.y, window.innerHeight - bounds.height - padding))
     });
-    menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    requestAnimationFrame(() => menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus());
   }, [position.x, position.y]);
 
   useEffect(() => {

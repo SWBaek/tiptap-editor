@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { PublishingStyleProfileName } from "@sdoc/export";
 import type { ExportFilenames } from "../panels/ExportPanel";
 
-type DeliverableFormat = "markdown" | "html" | "pdf" | "docx" | "pptx";
+type DeliverableFormat = "markdown" | "html";
 
 export interface ExportDialogProps {
   filenames: ExportFilenames;
@@ -14,12 +14,9 @@ export interface ExportDialogProps {
   onClose: () => void;
 }
 
-const formats: Array<{ value: DeliverableFormat; label: string; description: string; supported: boolean }> = [
-  { value: "markdown", label: "Markdown", description: "Readable text with stable section anchors.", supported: true },
-  { value: "html", label: "HTML", description: "A styled single-file document for reading or publishing.", supported: true },
-  { value: "pdf", label: "PDF", description: "Print-ready fixed-layout document.", supported: false },
-  { value: "docx", label: "DOCX", description: "Editable Microsoft Word handoff.", supported: false },
-  { value: "pptx", label: "PPTX", description: "Editable presentation deck.", supported: false }
+const formats: Array<{ value: DeliverableFormat; label: string; description: string }> = [
+  { value: "markdown", label: "Markdown", description: "Readable text with stable section anchors." },
+  { value: "html", label: "HTML", description: "A styled single-file document for reading or publishing." }
 ];
 
 export function ExportDialog({
@@ -37,7 +34,7 @@ export function ExportDialog({
     window.document.activeElement instanceof HTMLElement ? window.document.activeElement : null
   );
   const option = formats.find((candidate) => candidate.value === format) ?? formats[0];
-  const filename = format === "docx" ? filenames.sdoc.replace(/\.sdoc$/i, ".docx") : filenames[format];
+  const filename = filenames[format];
 
   useLayoutEffect(() => {
     dialogRef.current?.querySelector<HTMLElement>("[data-initial-focus]")?.focus();
@@ -102,12 +99,11 @@ export function ExportDialog({
                   onChange={() => setFormat(candidate.value)}
                 />
                 <span><strong>{candidate.label}</strong><small>{candidate.description}</small></span>
-                {!candidate.supported && <em>Unavailable</em>}
               </label>
             ))}
           </fieldset>
 
-          {(format === "html" || format === "pdf") && (
+          {format === "html" && (
             <label className="dialog-field">
               <span>Publishing profile</span>
               <select value={styleProfile} onChange={(event) => onStyleProfileChange(event.target.value as PublishingStyleProfileName)}>
@@ -124,16 +120,15 @@ export function ExportDialog({
             <span>Destination</span><strong>{isDesktopRuntime ? "Downloads" : "Browser downloads"}</strong>
           </div>
 
-          {!option.supported && (
-            <div className="workspace-boundary export-availability" role="status">
-              <strong>{option.label} export is not available in this app build</strong>
-              <span>Export HTML now, then use the operating system print workflow when a fixed-layout copy is required.</span>
-            </div>
-          )}
+          <div className="export-future-formats" aria-label="Unavailable export formats">
+            <span>Unavailable in this build</span>
+            <strong>PDF · DOCX · PPTX</strong>
+            <small>Export HTML for browser printing or downstream conversion.</small>
+          </div>
         </div>
         <footer>
           <button type="button" onClick={onClose}>Cancel</button>
-          <button className="primary" type="button" disabled={!option.supported} onClick={runExport}>Export {option.label}</button>
+          <button className="primary" type="button" onClick={runExport}>Export {option.label}</button>
         </footer>
       </section>
     </div>

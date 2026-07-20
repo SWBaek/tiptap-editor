@@ -2,11 +2,11 @@
 
 Created: 2026-07-06
 First Tauri review: 2026-07-06
-Phase 5.2 review kit prepared: 2026-07-18
+Phase 5.3 review kit prepared: 2026-07-20
 
 ## Gate Status
 
-**Ready for 3-5 real-user sessions; user review is now required.** Phase 5.2 implementation, automated viewport/keyboard validation, desktop typecheck/build, and basic packaged executable launch are complete. The full native interaction checklist remains in `docs/desktop-native-smoke.md`; its manual scenarios and the user sessions must be recorded by people on the target Windows environment.
+**Ready for 3-5 real-user sessions; user review is now required.** Phase 5.3 Explorer/sidebar implementation, automated viewport/keyboard validation, desktop typecheck/build, Rust tests, and basic packaged executable launch are complete. The full native interaction checklist remains in `docs/desktop-native-smoke.md`; its manual scenarios and the user sessions must be recorded by people on the target Windows environment.
 
 Feature expansion stops at this gate. Findings are triaged after the sessions; they do not justify changing `.sdoc`, stable IDs, or browser/native boundaries without a separate architecture decision.
 
@@ -51,7 +51,9 @@ Run these scenarios with each participant:
 
 4. **Navigation and recovery**
    - Navigate from Outline, change zoom, move the cursor back/forward, and return to writing.
-   - Create a nested folder/document, rename it, refresh the explorer, and explain where the current document is saved.
+   - Use `Ctrl+P` to find a nested document from separate folder/filename terms, then locate it through Explorer filtering and clear the filter.
+   - Create a nested folder/document, rename it, change sort order, reveal it in Windows Explorer, move a disposable entry to Trash, and explain where the current document is saved.
+   - Resize to 640px or narrower, open and dismiss the overlay sidebar, and confirm writing remains in place underneath.
    - With facilitator help to produce an external file change, choose Compare, Keep, or Reload and explain the expected result before clicking.
 
 5. **Save, reopen, and export**

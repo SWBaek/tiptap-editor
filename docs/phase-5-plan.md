@@ -70,7 +70,7 @@ The phase stops at a refreshed packaged-app and 3-5-person review gate. It repor
 
 Status: in progress. The 2026-07-20 audit reopened Phase 5.2 claims that were contradicted by the current rendered workbench. This phase is limited to Explorer interaction/navigation, empty panel information architecture, and responsive polish; canonical `.sdoc`, stable IDs, assets, and native security boundaries remain unchanged.
 
-Slices 1-4 are accepted with current code/test/render evidence. The Explorer/navigation and panel simplification are joined by a focused empty Start Screen, an Export dialog that presents only working choices, silent routine refresh, preserved transient narrow-screen feedback, and a dismissible max-320px overlay sidebar at 640px and below. `npm test` (317), `npm run build`, `npm run test:e2e` (46), prior desktop/native validation, focused E2E, and 1280/390px visual checks pass. Compact folder chains, multi-select, and drag/drop remain deferred pending user evidence. Only the final review gate remains open in `docs/goal-prompt/phase-5.3-explorer-sidebar-ux.md`.
+Slices 1-4 and the final evidence gate are accepted. The final Windows run passed `npm test` (317), `npm run build`, `npm run test:e2e` (46), desktop typecheck, Rust tests, Tauri release build, and responsive packaged launch. Compact folder chains, multi-select, and drag/drop remain deferred pending evidence. Phase 5.3 stops at **user review required**; native interaction and 3-5 real-user records are not claimed by automation. See `docs/goal-prompt/phase-5.3-explorer-sidebar-ux.md`.
 
 ## Priority Slice 1: Desktop Workspace Entry
 

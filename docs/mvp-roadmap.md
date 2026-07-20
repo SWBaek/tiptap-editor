@@ -148,4 +148,4 @@ Slice 3 is accepted: the normal Activity Bar is Explorer/Outline/Review with Set
 
 상태: 진행 중. Phase 5.2의 완료 기록과 현재 렌더링이 충돌하는 Explorer resize/direct-open, 빠른 탐색, 빈 panel, responsive 동작을 실제 evidence로 다시 검증한다.
 
-Slice 1-4는 완료되었다. Explorer/navigation과 side-panel 단순화에 이어 빈 Start Screen의 핵심 동작 집중, Export의 실제 지원 형식 우선, routine refresh 무음 처리, narrow Status 피드백 유지, 640px 이하 dismissible overlay sidebar가 적용되었다. unit 317개, build, E2E 46개, 이전 desktop/native 검증과 1280/390px 시각 검토를 통과했다. compact folder chain, multi-select, drag/drop은 사용자 evidence 전까지 연기하며 최종 review gate만 남았다.
+Slice 1-4와 final evidence gate가 완료되었다. 최종 Windows에서 unit 317개, build, E2E 46개, desktop typecheck, Rust test, Tauri release build와 responsive packaged launch가 통과했다. compact folder chain, multi-select, drag/drop은 사용자 evidence 전까지 연기한다. 현재 상태는 **user review required**이며 native interaction 기록과 3-5명 실제 사용자 기록 전에는 기능 확장을 중지한다.

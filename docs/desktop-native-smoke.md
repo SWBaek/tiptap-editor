@@ -1,7 +1,7 @@
 # Desktop Native Smoke Checklist
 
 Created: 2026-07-05
-Phase 5.2 checklist updated: 2026-07-18
+Phase 5.3 checklist updated: 2026-07-20
 Execution status: desktop typecheck/build and packaged executable launch passed; interactive scenarios remain user-review evidence
 
 ## Purpose
@@ -41,12 +41,13 @@ apps/desktop/src-tauri/target/release/sdoc-desktop.exe
 
 ## Latest Automated And Launch Evidence
 
-- Date/platform: 2026-07-18, Windows x64.
+- Date/platform: 2026-07-20, Windows x64, candidate commit `0d688f2` plus final evidence documentation.
 - `npm run typecheck:desktop`: passed.
+- `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`: passed (1 test).
 - `npm run build:desktop`: passed; Tauri release executable produced.
 - Basic packaged launch: passed; process remained alive and responsive with window title `SDoc Editor`.
-- Candidate executable size: 11,423,744 bytes.
-- Candidate SHA-256: `22C8F7D4FFBC44D559FB13276281B1DCDE47B70794490EF750F346756308388F`.
+- Candidate executable size: 11,445,760 bytes.
+- Candidate SHA-256: `A1AC85BFD4B6A7FB6BBC039A10CEE2D4AAC858C2E19FDA148041C1C217FD8D72`.
 - Scope limit: this proves packaging and window startup, not native dialog, filesystem mutation, watcher, Trash, Draw.io, or full save/reopen interaction. Record those manually below.
 
 ## Manual Scenarios
